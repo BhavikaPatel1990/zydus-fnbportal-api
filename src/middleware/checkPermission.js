@@ -1,49 +1,38 @@
-import authPrisma from '../config/authDb.js';
-import response from '../utils/response.js';
+import response from "../utils/response.js";
 
 const checkPermission = (moduleKey, action) => {
-    return async (req, res, next) => {
+    return (req, res, next) => {
         try {
-            const user = req.user;
+            const user = req.userProfile;
+            const permissions = req.permissions;
 
             if (!user) {
                 return response.authError(res, "Unauthorized");
             }
 
-            const isSuperAdmin =
-                user.role_name === "SUPER_ADMIN" ||
-                (Array.isArray(user.role_name) &&
-                    user.role_name.some((role) => role.toUpperCase() === "SUPER_ADMIN"));
+            // ✅ SUPER_ADMIN bypass (same behavior as before)
+            const isSuperAdmin = user.userRoles?.some(
+                (ur) => ur.role?.name?.toUpperCase() === "SUPER_ADMIN"
+            );
 
-            if (isSuperAdmin) {
+            if (isSuperAdmin || permissions === "ALL_ACCESS") {
                 return next();
             }
 
-            const userId = user.id;
+            // ✅ Check module permission
+            const modulePermissions = permissions?.[moduleKey];
 
-            const permissionExists = await authPrisma.rolePermission.findFirst({
-                where: {
-                    role: {
-                        userRoles: {
-                            some: {
-                                user_id: userId
-                            }
-                        }
-                    },
-                    module: {
-                        module_key: moduleKey
-                    },
-                    permission: {
-                        permission_name: action
-                    }
-                }
-            });
+            if (!modulePermissions) {
+                return response.error(res, "Forbidden - No module access");
+            }
 
-            if (!permissionExists) {
+            // ✅ Check action
+            if (!modulePermissions.includes(action)) {
                 return response.error(res, "Forbidden - No permission");
             }
 
             next();
+
         } catch (error) {
             return response.serverError(res, error.message);
         }

@@ -1,26 +1,40 @@
-import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
-import response from '../utils/response.js';
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+import response from "../utils/response.js";
+
 dotenv.config();
 
-export const authorize = async (req, res, next) => {
-  try {
-    // Get token from the header
-    const token = req.header("Authorization")?.split(" ")[1]; // Expected: "Bearer <token>"
+export const authorize = (req, res, next) => {
+    try {
+        const authHeader = req.headers.authorization;
 
-    if (!token) {
-      return response.authError(res, "Unauthorized: No token provided");
+        if (!authHeader) {
+            return response.authError(res, "No Authorization header");
+        }
+
+        // ✅ Validate Bearer format
+        const parts = authHeader.split(" ");
+
+        if (parts.length !== 2 || parts[0] !== "Bearer") {
+            return response.authError(res, "Invalid token format");
+        }
+
+        const token = parts[1];
+
+        // ✅ Verify JWT
+        const payload = jwt.verify(token, process.env.JWT_SECRET);
+
+        // ✅ Attach minimal user info
+        req.user = {
+            userId: payload.userId,
+            username: payload.username,
+            roles: payload.roles || []
+        };
+
+        next();
+    } catch (err) {
+        console.error("Authorization error:", err.message);
+
+        return response.authError(res, "Invalid or expired token");
     }
-
-    // Verify the token (uses same JWT_SECRET as zydus-api)
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-
-    // Attach user to the request
-    req.user = payload;
-
-    next(); // Proceed to the next middleware or route handler
-  } catch (err) {
-    console.error('Authorization error:', err.message);
-    return response.authError(res, "Unauthorized: Invalid token");
-  }
 };

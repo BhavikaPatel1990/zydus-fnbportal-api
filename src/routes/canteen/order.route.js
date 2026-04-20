@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authorize } from '../../middleware/authorize.js';
 import checkPermission from '../../middleware/checkPermission.js';
+import { activityLogger } from '../../middleware/activityLogger.js';
 import {
     getAllOrders,
     getOrderById,
@@ -11,7 +12,7 @@ import {
 
 const router = Router();
 
-router.use(authorize);
+router.use(authorize, activityLogger("FNB_PORTAL"));
 
 router.get('/', checkPermission('FNB_PORTAL', 'READ'), getAllOrders);
 router.get('/:id', checkPermission('FNB_PORTAL', 'READ'), getOrderById);
