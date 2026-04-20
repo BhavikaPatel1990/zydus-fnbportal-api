@@ -12,7 +12,7 @@ import {
 
 const router = Router();
 
-// router.use(authorize);
+router.use(authorize, activityLogger("FNB_PORTAL"));
 
 // router.get('/', checkPermission('FNB_PORTAL', 'READ'), getAllOrders);
 // router.get('/:id', checkPermission('FNB_PORTAL', 'READ'), getOrderById);
