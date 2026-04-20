@@ -1,0 +1,7 @@
+node_modules/
+.env
+logs/
+uploads/
+prisma/generated/
+package-lock.json
+Zydus_FNB_Portal_API.postman_collection.json

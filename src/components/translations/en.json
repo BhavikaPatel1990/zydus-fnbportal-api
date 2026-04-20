@@ -1,0 +1,15 @@
+{
+    "WELCOME_MESSAGE": "Welcome to Zydus FNB Portal",
+    "ORDER": {
+        "NOT_FOUND": "Order not found",
+        "CREATED": "Order created successfully",
+        "FETCHED": "Orders fetched successfully",
+        "UPDATED": "Order updated successfully",
+        "DELETED": "Order deleted successfully"
+    },
+    "AUTH": {
+        "UNAUTHORIZED": "Unauthorized: No token provided",
+        "INVALID_TOKEN": "Unauthorized: Invalid token",
+        "ACCESS_DENIED": "Access denied: Insufficient role"
+    }
+}
