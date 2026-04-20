@@ -12,12 +12,12 @@ import {
 
 const router = Router();
 
-router.use(authorize, activityLogger("FNB_PORTAL"));
+// router.use(authorize);
 
-router.get('/', checkPermission('FNB_PORTAL', 'READ'), getAllOrders);
-router.get('/:id', checkPermission('FNB_PORTAL', 'READ'), getOrderById);
-router.post('/', checkPermission('FNB_PORTAL', 'CREATE'), createOrder);
-router.put('/:id', checkPermission('FNB_PORTAL', 'UPDATE'), updateOrder);
-router.delete('/:id', checkPermission('FNB_PORTAL', 'DELETE'), deleteOrder);
+// router.get('/', checkPermission('FNB_PORTAL', 'READ'), getAllOrders);
+// router.get('/:id', checkPermission('FNB_PORTAL', 'READ'), getOrderById);
+// router.post('/', checkPermission('FNB_PORTAL', 'CREATE'), createOrder);
+// router.put('/:id', checkPermission('FNB_PORTAL', 'UPDATE'), updateOrder);
+// router.delete('/:id', checkPermission('FNB_PORTAL', 'DELETE'), deleteOrder);
 
 export default router;

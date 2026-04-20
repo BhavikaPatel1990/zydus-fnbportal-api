@@ -7,3 +7,217 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model CurrentlyEditing {
+  id         String   @id @default(uuid())
+  page_id    Int
+  user_id    String
+  po_id      String
+  timestamp  DateTime @default(now())
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  deleted_at DateTime?
+  created_by String?
+  updated_by String?
+  deleted_by String?
+  is_active  Boolean  @default(true)
+
+  @@index([page_id])
+}
+
+model DietType {
+  id         String   @id @default(uuid())
+  diet_type_id Int
+  diet_name  String
+  from_time  DateTime
+  to_time    DateTime
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  deleted_at DateTime?
+  created_by String?
+  updated_by String?
+  deleted_by String?
+  is_active  Boolean  @default(true)
+}
+
+model HinaiOrder {
+  id               String   @id @default(uuid())
+  patient_id       Int
+  mr_no            BigInt
+  patient_name     String
+  admission_no     String
+  admission_at   DateTime
+  bed_no           String
+  ward             String
+  doctor           String
+  menu             String
+  menu_detail      String
+  order_date       DateTime
+  time_diff        Int
+  diet_type        Int
+  order_id         Int      @unique
+  status           Boolean
+  nurse_remark     String?
+  is_discharge     Boolean
+  nursing_user     String
+  is_diet_change   Boolean
+  is_transfer      Boolean
+  age_gender       String
+  mobile_no        String?
+  email            String?
+  site_id          BigInt?
+  clearance        Boolean?
+  out_time         String?
+  out_by           String?
+  remarks          String?
+  clearance_time   String?
+  clearance_by     BigInt?
+  diagnosis        String?
+  approved_date    DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  deleted_at DateTime?
+  created_by String?
+  updated_by String?
+  deleted_by String?
+  is_active  Boolean  @default(true)
+
+  @@index([patient_id])
+  @@index([site_id])
+}
+
+model Location {
+  id          String   @id @default(uuid())
+  name        String
+  service_center_id Int
+  display_order Int
+  is_active_flag String
+  site_id     Int
+  wing_id     Int
+  floor_id    Int
+
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  deleted_at  DateTime?
+  created_by  String?
+  updated_by  String?
+  deleted_by  String?
+  is_active   Boolean  @default(true)
+
+  @@index([site_id])
+}
+
+model MenuTime {
+  id          String @id @default(uuid())
+  description String  @unique   // ⭐ ADD THIS
+
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  deleted_at  DateTime?
+  created_by  String?
+  updated_by  String?
+  deleted_by  String?
+  is_active   Boolean  @default(true)
+}
+
+model PatientOrder {
+  id              String   @id @default(uuid())
+  patient_id      Int
+  diet_type       Int
+  nursing_remark  String
+  diet_remark     String
+  dispatched      Boolean?
+  dispatched_by   Int?
+  dispatched_at   DateTime?
+  hinai_order_id  Int
+  is_cancelled    Boolean?
+  liquid_hours    Int
+  site_id         BigInt?
+  mail_flag       Int      @default(0)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  deleted_at DateTime?
+  created_by String?
+  updated_by String?
+  deleted_by String?
+  is_active  Boolean  @default(true)
+
+  @@index([patient_id])
+  @@index([hinai_order_id])
+}
+
+model PatientOrderDetail {
+  id          String   @id @default(uuid())
+  po_id       String
+  ptm_id      Int
+  item_id     Int
+  remarks     String
+
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  deleted_at  DateTime?
+  created_by  String?
+  updated_by  String?
+  deleted_by  String?
+  is_active   Boolean  @default(true)
+
+  @@index([po_id])
+}
+
+model PatientOrderLiquid {
+  id          String   @id @default(uuid())
+  po_id       String
+  ptm_id      Int
+  liquid_time Int
+  remarks     String
+
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  deleted_at  DateTime?
+  created_by  String?
+  updated_by  String?
+  deleted_by  String?
+  is_active   Boolean  @default(true)
+
+  @@index([po_id])
+}
+
+model PatientDiagnosis {
+  id             String   @id @default(uuid())
+  mr_no          String
+  patient_id     Int
+  diagnosis      String
+  hinai_order_id Int
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  deleted_at DateTime?
+  created_by String?
+  updated_by String?
+  deleted_by String?
+  is_active  Boolean  @default(true)
+
+  @@index([patient_id])
+}
+
+model StickerPrintStatus {
+  id          String   @id @default(uuid())
+  patient_id  Int
+  po_id       Int
+  menu_time_id Int
+  print_done  Boolean  @default(false)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  deleted_at DateTime?
+  created_by String?
+  updated_by String?
+  deleted_by String?
+  is_active  Boolean  @default(true)
+
+  @@index([patient_id])
+  @@index([po_id])
+}
