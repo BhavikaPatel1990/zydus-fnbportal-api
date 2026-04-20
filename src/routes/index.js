@@ -9,7 +9,4 @@ router.use('/profile', profileRoutes);
 router.use('/canteen', canteenRoutes);
 router.use('/ipd', ipdRoutes);
 
-// Backward-compatible route for existing order APIs
-router.use('/orders', canteenRoutes);
-
 export default router;

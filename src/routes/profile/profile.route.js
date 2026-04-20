@@ -5,7 +5,7 @@ import checkPermission from "../../middleware/checkPermission.js";
 
 const router = express.Router();
 
-router.use(authorize, attachUserProfile);
+// router.get('/', authorize, getProfile);
 
 router.post("/create", checkPermission("ROLE", "CREATE"), (req, res) => {
     res.json({ message: "Role created" });

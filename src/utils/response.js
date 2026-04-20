@@ -55,6 +55,10 @@ const formatDate = (date, format) => {
 const formatDatesFast = (data) => {
     if (!data) return data;
 
+    if (typeof data === "bigint") {
+        return data.toString();
+    }
+
     if (Array.isArray(data)) {
         return data.map(item => formatDatesFast(item));
     }
@@ -71,8 +75,18 @@ const formatDatesFast = (data) => {
         let isUpdated = false;
 
         for (const key in data) {
+            if (typeof data[key] === "bigint") {
+                updated[key] = data[key].toString();
+                isUpdated = true;
+            }
+
             if (Array.isArray(data[key])) {
                 updated[key] = data[key].map(item => formatDatesFast(item));
+                isUpdated = true;
+            }
+
+            if (typeof data[key] === "object" && data[key] !== null && !(data[key] instanceof Date) && !Array.isArray(data[key])) {
+                updated[key] = formatDatesFast(data[key]);
                 isUpdated = true;
             }
 

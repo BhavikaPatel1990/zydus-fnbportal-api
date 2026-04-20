@@ -34,12 +34,16 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // CORS
+// app.use(cors({
+//     origin: [process.env.FRONT_END_URL, process.env.BACKEND_END_URL],
+//     methods: ['GET', 'POST', 'PUT', 'DELETE'],
+//     allowedHeaders: ['Content-Type', 'Authorization', 'Access-Control-Allow-Methods'],
+// }));
 app.use(cors({
-    origin: [process.env.FRONT_END_URL, process.env.BACKEND_END_URL],
+    origin: [process.env.FRONT_END_URL],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Access-Control-Allow-Methods'],
 }));
-
 app.use((req, res, next) => {
     const lang = req.body.lang || 'en';
     res.setLocale(lang);

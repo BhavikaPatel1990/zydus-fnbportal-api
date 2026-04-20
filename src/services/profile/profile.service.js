@@ -1,4 +1,4 @@
-import authPrisma from '../../config/authDb.js';
+// import authPrisma from '../../config/authDb.js';
 
 const toSafeJson = (data) => JSON.parse(
     JSON.stringify(data, (key, value) => (typeof value === 'bigint' ? value.toString() : value))
