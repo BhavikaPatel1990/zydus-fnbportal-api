@@ -10,18 +10,25 @@ const checkPermission = (permissionKey) => {
                 return response.authError(res, "Unauthorized");
             }
 
-            // SUPER ADMIN bypass
-            const isSuperAdmin =
-                user.role === "SUPER_ADMIN" ||
-                (Array.isArray(user.role) &&
-                    user.role.includes("SUPER_ADMIN"));
+            // ✅ SUPER_ADMIN bypass (same behavior as before)
+            const isSuperAdmin = user.userRoles?.some(
+                (ur) => ur.role?.name?.toUpperCase() === "SUPER_ADMIN"
+            );
+
 
             if (isSuperAdmin || permissions === "ALL_ACCESS") {
                 return next();
             }
 
-            // Check permissions from JWT
-            if (!user.permissions || !user.permissions.includes(permissionKey)) {
+            // ✅ Check module permission
+            const modulePermissions = permissions?.[moduleKey];
+
+            if (!modulePermissions) {
+                return response.error(res, "Forbidden - No module access");
+            }
+
+            // ✅ Check action
+            if (!modulePermissions.includes(action)) {
                 return response.error(res, "Forbidden - No permission");
             }
 

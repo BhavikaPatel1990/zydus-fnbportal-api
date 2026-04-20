@@ -1,4 +1,4 @@
-import { PrismaClient } from '../../prisma/generated/auth-client/index.js';
+import { PrismaClient } from '@prisma/client';
 
 const authPrisma = new PrismaClient({
     datasources: {
