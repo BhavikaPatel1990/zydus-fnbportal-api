@@ -13,6 +13,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 7001;
+const allowedOrigins = [process.env.FRONT_END_URL].filter(Boolean);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,7 +41,7 @@ app.use(express.urlencoded({ extended: true }));
 //     allowedHeaders: ['Content-Type', 'Authorization', 'Access-Control-Allow-Methods'],
 // }));
 app.use(cors({
-    origin: [process.env.FRONT_END_URL],
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Access-Control-Allow-Methods'],
 }));
@@ -61,6 +62,9 @@ app.use('/api', apiRoutes);
 // Home route
 app.get('/', (req, res) => {
     res.send('Welcome to the Zydus FNB Portal API!');
+});
+app.get('/api', (req, res) => {
+    res.send('FNB API running');
 });
 
 // 404 handler

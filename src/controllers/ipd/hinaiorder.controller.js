@@ -3,7 +3,7 @@ import * as hinaiOrderService from '../../services/ipd/hinaiorder.service.js';
 
 export const createHinaiOrder = async (req, res) => {
     try {
-        const data = await hinaiOrderService.createHinaiOrder(req.body);
+        const data = await hinaiOrderService.createHinaiOrder(req.body, req.user);
         const message = data.created
             ? 'Hinai order created successfully'
             : 'Hinai order already exists, insert ignored';
@@ -17,7 +17,7 @@ export const createHinaiOrder = async (req, res) => {
 
 export const updateHinaiOrderTransfer = async (req, res) => {
     try {
-        const data = await hinaiOrderService.markHinaiOrderTransfer(req.body);
+        const data = await hinaiOrderService.markHinaiOrderTransfer(req.body, req.user);
         const message = data.updated
             ? 'Hinai order transfer updated successfully'
             : 'No hinai order found for transfer update';
@@ -31,7 +31,7 @@ export const updateHinaiOrderTransfer = async (req, res) => {
 
 export const updateHinaiOrderDischarge = async (req, res) => {
     try {
-        const data = await hinaiOrderService.markHinaiOrderDischarge(req.body);
+        const data = await hinaiOrderService.markHinaiOrderDischarge(req.body, req.user);
         const message = data.updated
             ? 'Hinai order discharge updated successfully'
             : 'No hinai order found for discharge update';

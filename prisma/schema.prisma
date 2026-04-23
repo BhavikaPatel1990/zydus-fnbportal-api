@@ -66,7 +66,7 @@ model HinaiOrder {
   age_gender       String
   mobile_no        String?
   email            String?
-  site_id          BigInt?
+  mst_id           BigInt?
   clearance        Boolean?
   out_time         String?
   out_by           String?
@@ -85,7 +85,7 @@ model HinaiOrder {
   is_active  Boolean  @default(true)
 
   @@index([patient_id])
-  @@index([site_id])
+  @@index([mst_id])
 }
 
 model Location {
@@ -94,7 +94,7 @@ model Location {
   service_center_id Int
   display_order Int
   is_active_flag String
-  site_id     Int
+  mst_id      Int?
   wing_id     Int
   floor_id    Int
 
@@ -106,7 +106,7 @@ model Location {
   deleted_by  String?
   is_active   Boolean  @default(true)
 
-  @@index([site_id])
+  @@index([mst_id])
 }
 
 model MenuTime {
@@ -134,7 +134,7 @@ model PatientOrder {
   hinai_order_id  Int
   is_cancelled    Boolean?
   liquid_hours    Int
-  site_id         BigInt?
+  mst_id         BigInt?
   mail_flag       Int      @default(0)
 
   created_at DateTime @default(now())

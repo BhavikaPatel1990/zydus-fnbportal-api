@@ -1,4 +1,50 @@
 import prisma from '../../config/db.js';
+import axios from 'axios';
+
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL?.replace(/\/$/, '');
+
+const hinaiOrderSelect = {
+    id: true,
+    patient_id: true,
+    mr_no: true,
+    patient_name: true,
+    admission_no: true,
+    admission_at: true,
+    bed_no: true,
+    ward: true,
+    doctor: true,
+    menu: true,
+    menu_detail: true,
+    order_date: true,
+    time_diff: true,
+    diet_type: true,
+    order_id: true,
+    status: true,
+    nurse_remark: true,
+    is_discharge: true,
+    nursing_user: true,
+    is_diet_change: true,
+    is_transfer: true,
+    age_gender: true,
+    mobile_no: true,
+    email: true,
+    mst_id: true,
+    clearance: true,
+    out_time: true,
+    out_by: true,
+    remarks: true,
+    clearance_time: true,
+    clearance_by: true,
+    diagnosis: true,
+    approved_date: true,
+    created_at: true,
+    updated_at: true,
+    deleted_at: true,
+    created_by: true,
+    updated_by: true,
+    deleted_by: true,
+    is_active: true,
+};
 
 const getFirstDefined = (payload, keys) => {
     for (const key of keys) {
@@ -96,11 +142,52 @@ const toBooleanValue = (value, defaultValue = false) => {
 const serializeHinaiOrder = (order) => ({
     ...order,
     mr_no: order.mr_no?.toString() ?? null,
-    site_id: order.site_id?.toString() ?? null,
+    mst_id: order.mst_id?.toString() ?? null,
     clearance_by: order.clearance_by?.toString() ?? null,
 });
 
-const mapHinaiOrderPayload = (payload) => {
+const getAuditUserId = (jwtUser) => jwtUser?.userId ?? jwtUser?.id ?? null;
+
+const getSiteListApiUrl = () => {
+    if (!AUTH_SERVICE_URL) {
+        throw new Error('AUTH_SERVICE_URL is not configured');
+    }
+
+    return AUTH_SERVICE_URL.endsWith('/api')
+        ? `${AUTH_SERVICE_URL}/site/list`
+        : `${AUTH_SERVICE_URL}/api/site/list`;
+};
+
+const resolveSiteMapping = async (siteValue) => {
+    if (siteValue === undefined) {
+        return null;
+    }
+
+    const parsedSiteId = toIntValue(siteValue, 'site_id', { required: false });
+
+    if (parsedSiteId === null) {
+        return null;
+    }
+
+    const apiResponse = await axios.get(getSiteListApiUrl());
+    const siteList = Array.isArray(apiResponse.data?.data) ? apiResponse.data.data : [];
+
+    const siteRecordByExternalId = siteList.find(
+        (site) => Number(site.site_id) === parsedSiteId
+    );
+    const siteRecordByMstId = siteList.find(
+        (site) => Number(site.id) === parsedSiteId
+    );
+    const siteRecord = siteRecordByExternalId ?? siteRecordByMstId;
+
+    if (!siteRecord) {
+        throw new Error(`No active mst_site mapping found for site_id ${parsedSiteId}`);
+    }
+
+    return BigInt(siteRecord.id);
+};
+
+const mapHinaiOrderPayload = async (payload) => {
     const patientId = getFirstDefined(payload, ['patient_id', 'PATIENT_ID']);
     const mrNo = getFirstDefined(payload, ['mr_no', 'MRNO']);
     const patientName = getFirstDefined(payload, ['patient_name', 'PATIENT']);
@@ -133,6 +220,7 @@ const mapHinaiOrderPayload = (payload) => {
     const remarks = getFirstDefined(payload, ['remarks']);
     const clearanceTime = getFirstDefined(payload, ['clearance_time']);
     const clearanceBy = getFirstDefined(payload, ['clearance_by']);
+    const mstId = await resolveSiteMapping(siteId);
 
     return {
         patient_id: toIntValue(patientId, 'patient_id'),
@@ -158,7 +246,7 @@ const mapHinaiOrderPayload = (payload) => {
         age_gender: toStringValue(ageGender, 'age_gender'),
         mobile_no: toStringValue(mobileNo, 'mobile_no', { required: false }),
         email: toStringValue(email, 'email', { required: false }),
-        site_id: toBigIntValue(siteId, 'site_id', { required: false }),
+        mst_id: mstId,
         clearance: clearance === undefined ? null : toBooleanValue(clearance),
         out_time: toStringValue(outTime, 'out_time', { required: false }),
         out_by: toStringValue(outBy, 'out_by', { required: false }),
@@ -170,11 +258,15 @@ const mapHinaiOrderPayload = (payload) => {
     };
 };
 
-export const createHinaiOrder = async (body) => {
-    const data = mapHinaiOrderPayload(body);
+export const createHinaiOrder = async (body, jwtUser) => {
+    const data = await mapHinaiOrderPayload(body);
+    const auditUserId = getAuditUserId(jwtUser);
+
+    console.log(jwtUser);
 
     const existingOrder = await prisma.hinaiOrder.findUnique({
         where: { order_id: data.order_id },
+        select: hinaiOrderSelect,
     });
 
     if (existingOrder) {
@@ -185,7 +277,13 @@ export const createHinaiOrder = async (body) => {
         };
     }
 
-    const order = await prisma.hinaiOrder.create({ data });
+    const order = await prisma.hinaiOrder.create({
+        data: {
+            ...data,
+            created_by: auditUserId,
+        },
+        select: hinaiOrderSelect,
+    });
 
     return {
         created: true,
@@ -204,7 +302,8 @@ const getTodayRange = () => {
     return { start, end };
 };
 
-export const markHinaiOrderTransfer = async (body) => {
+export const markHinaiOrderTransfer = async (body, jwtUser) => {
+    const auditUserId = getAuditUserId(jwtUser);
     const patientId = toIntValue(
         getFirstDefined(body, ['patient_id', 'PATIENT_ID']),
         'patient_id'
@@ -233,6 +332,7 @@ export const markHinaiOrderTransfer = async (body) => {
             is_transfer: true,
             bed_no: bedNo,
             ward,
+            updated_by: auditUserId,
         },
     });
 
@@ -246,7 +346,8 @@ export const markHinaiOrderTransfer = async (body) => {
     };
 };
 
-export const markHinaiOrderDischarge = async (body) => {
+export const markHinaiOrderDischarge = async (body, jwtUser) => {
+    const auditUserId = getAuditUserId(jwtUser);
     const admissionNo = toStringValue(
         getFirstDefined(body, ['admission_no', 'ADMISSIONNO', 'admno']),
         'admission_no'
@@ -264,6 +365,7 @@ export const markHinaiOrderDischarge = async (body) => {
         },
         data: {
             is_discharge: true,
+            updated_by: auditUserId,
         },
     });
 

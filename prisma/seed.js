@@ -1,8 +1,33 @@
+import 'dotenv/config';
 import fs from 'fs';
 import csv from 'csv-parser';
+import axios from 'axios';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL?.replace(/\/$/, '');
+
+function getSiteListApiUrl() {
+  if (!AUTH_SERVICE_URL) {
+    throw new Error('AUTH_SERVICE_URL is not configured');
+  }
+
+  return AUTH_SERVICE_URL.endsWith('/api')
+    ? `${AUTH_SERVICE_URL}/site/list`
+    : `${AUTH_SERVICE_URL}/api/site/list`;
+}
+
+async function getSiteMappingMap() {
+  const apiResponse = await axios.get(getSiteListApiUrl());
+  const siteList = Array.isArray(apiResponse.data?.data) ? apiResponse.data.data : [];
+
+  return new Map(
+    siteList.map((site) => [
+      Number(site.site_id),
+      Number(site.id)
+    ])
+  );
+}
 
 /* ===============================
    MENU TIME SEED
@@ -63,18 +88,27 @@ async function seedDietType() {
 =============================== */
 async function seedLocationsFromCSV() {
   const results = [];
+  const siteMap = await getSiteMappingMap();
 
   return new Promise((resolve, reject) => {
     fs.createReadStream('prisma/data/locations.csv')
       .pipe(csv())
       .on('data', (row) => {
+        const rawSiteId = parseInt(row.site_id || 0);
+        const mstId = siteMap.get(rawSiteId);
+
+        if (!mstId && rawSiteId) {
+          reject(new Error(`No mst_id mapping found for location site_id ${rawSiteId}`));
+          return;
+        }
+
         // Clean + map CSV fields
         results.push({
           name: row.location_name || row.name,
           service_center_id: parseInt(row.hinai_service_center_id || 0),
           display_order: parseInt(row.display_order || 0),
           is_active_flag: row.is_active || "1",
-          site_id: parseInt(row.site_id || 0),
+          mst_id: mstId ?? null,
           wing_id: parseInt(row.wing_id || 0),
           floor_id: parseInt(row.floor_id || 0)
         });

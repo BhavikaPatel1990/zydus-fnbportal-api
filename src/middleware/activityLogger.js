@@ -30,7 +30,7 @@ export const activityLogger = (moduleName) => {
                     status_code: res.statusCode,
                 };
 
-                logger.info(`ACTIVITY: ${JSON.stringify(logData)}`);
+               // logger.info(`ACTIVITY: ${JSON.stringify(logData)}`);
             } catch (err) {
                 logger.error(`Activity log error: ${err.message}`);
             }

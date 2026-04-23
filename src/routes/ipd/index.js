@@ -5,14 +5,14 @@ import { activityLogger } from '../../middleware/activityLogger.js';
 
 const router = Router();
 
-router.use(authorize, activityLogger("IPD"));
+    router.use(authorize, activityLogger("IPD"));
 
-router.get('/health', (req, res) => {
-    res.status(200).json({
-        success: true,
-        message: 'IPD module is ready',
+    router.get('/health', (req, res) => {
+        res.status(200).json({
+            success: true,
+            message: 'IPD module is ready',
+        });
     });
-});
-router.use('/hinaiorders', hinaiOrderRoutes);
+    router.use('/hinaiorders', hinaiOrderRoutes);
 
-export default router;
+    export default router;
