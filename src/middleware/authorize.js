@@ -23,7 +23,7 @@ export const authorize = (req, res, next) => {
 
         // ✅ Verify JWT
         const payload = jwt.verify(token, process.env.JWT_SECRET);
-        console.log(payload);
+        // console.log(payload);
         // ✅ Attach minimal user info
         req.user = {
             userId: payload.id,
