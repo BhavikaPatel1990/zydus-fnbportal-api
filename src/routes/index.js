@@ -5,6 +5,10 @@ import profileRoutes from './profile/profile.route.js';
 
 const router = Router();
 
+router.get('/', (req, res) => {
+    res.send('FNB API running');
+});
+
 router.use('/profile', profileRoutes);
 router.use('/canteen', canteenRoutes);
 router.use('/ipd', ipdRoutes);

@@ -9,14 +9,15 @@ import { fileURLToPath } from 'url';
 // Routes
 import apiRoutes from './routes/index.js';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 7001;
+const BASE_PATH = process.env.BASE_PATH || '/fnb-api';
+const API_BASE_PATH = `${BASE_PATH}/api`;
 const allowedOrigins = [process.env.FRONT_END_URL].filter(Boolean);
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Session setup
 app.use(session({ secret: 'fnb-portal-api', resave: false, saveUninitialized: true }));
@@ -52,20 +53,22 @@ app.use((req, res, next) => {
 });
 
 // Serve uploads as static files
-app.use('/api/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+app.use(`${API_BASE_PATH}/uploads`, express.static(path.join(__dirname, '..', 'uploads')));
 
 // ──────────────────────────────────────────────
 // API Routes
 // ──────────────────────────────────────────────
-app.use('/api', apiRoutes);
-
 // Home route
 app.get('/', (req, res) => {
     res.send('Welcome to the Zydus FNB Portal API!');
 });
-app.get('/api', (req, res) => {
+app.get(BASE_PATH, (req, res) => {
+    res.send('FNB API context running');
+});
+app.get(API_BASE_PATH, (req, res) => {
     res.send('FNB API running');
 });
+app.use(API_BASE_PATH, apiRoutes);
 
 // 404 handler
 app.use((req, res) => {

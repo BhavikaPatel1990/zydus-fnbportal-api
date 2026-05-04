@@ -42,3 +42,13 @@ export const updateHinaiOrderDischarge = async (req, res) => {
         return response.serverError(res, error.message);
     }
 };
+
+export const getHinaiOrders = async (req, res) => {
+    try {
+        const data = await hinaiOrderService.getHinaiOrders(req.body, req.user);
+        return response.success(res, 'Hinai orders fetched successfully', data);
+    } catch (error) {
+        console.error('getHinaiOrders error:', error.message);
+        return response.serverError(res, error.message);
+    }
+};

@@ -376,3 +376,122 @@ export const markHinaiOrderDischarge = async (body, jwtUser) => {
         patient_id: patientId,
     };
 };
+
+export const getHinaiOrders = async (body, jwtUser) => {
+    const siteIdParam = getFirstDefined(body, ['site_id', 'SITEID', 'siteid']);
+    const viewdata = getFirstDefined(body, ['viewdata']) || '0';
+    const ordertype = getFirstDefined(body, ['ordertype']) || '0';
+
+    const page = parseInt(body.page) || 1;
+    const limit = parseInt(body.limit) || 10;
+    const search = body.search || '';
+    const offset = (page - 1) * limit;
+
+    const mstId = await resolveSiteMapping(siteIdParam);
+    if (!mstId) {
+        throw new Error('Invalid site mapping');
+    }
+
+    const ctime = new Date().toISOString().split('T')[0];
+    let whereConditions = [`mst_id = $1`, `is_discharge = false`];
+    let subqueryWhere = [`mst_id = $1`];
+    let params = [mstId];
+
+    if (ordertype === 'extra') {
+        whereConditions.push(`menu = 'EXTRA ORDER'`);
+        subqueryWhere.push(`diet_type = 18894123`);
+    } else if (ordertype === 'regular') {
+        whereConditions.push(`menu != 'EXTRA ORDER'`);
+        subqueryWhere.push(`diet_type != 18894123`);
+    }
+
+    if (viewdata === 'today') {
+        params.push(ctime);
+        const dateParam = `$${params.length}`;
+        whereConditions.push(`to_char(order_date, 'YYYY-MM-DD') = ${dateParam}`);
+        subqueryWhere.push(`to_char(order_date, 'YYYY-MM-DD') = ${dateParam}`);
+    }
+
+    if (search) {
+        params.push(`%${search}%`);
+        const searchParam = `$${params.length}`;
+        whereConditions.push(`(
+            h.patient_name ILIKE ${searchParam} OR
+            h.mr_no::text ILIKE ${searchParam} OR
+            h.bed_no ILIKE ${searchParam} OR
+            h.ward ILIKE ${searchParam} OR
+            h.doctor ILIKE ${searchParam} OR
+            h.menu ILIKE ${searchParam} OR
+            h.menu_detail ILIKE ${searchParam}
+        )`);
+    }
+
+    const whereClause = `WHERE ${whereConditions.join(' AND ')}`;
+    const subqueryWhereClause = `WHERE ${subqueryWhere.join(' AND ')}`;
+
+    const countSql = `
+        SELECT count(*) FROM "HinaiOrder" h
+        ${whereClause}
+        AND h.order_id IN (
+            SELECT max(order_id) FROM "HinaiOrder"
+            ${subqueryWhereClause}
+            GROUP BY patient_id
+        )
+    `;
+
+    const sql = `
+        SELECT
+            h.patient_id AS "PATIENT_ID",
+            h.mr_no AS "MRNO",
+            h.patient_name AS "PATIENT",
+            h.bed_no AS "BED_NO",
+            h.ward,
+            h.bed_no,
+            h.ward AS "SCNAME",
+            h.doctor AS "DOCTOR",
+            h.menu AS "MENU",
+            h.menu_detail AS "NAME",
+            to_char(h.order_date, 'DD-MM-YYYY HH24:MI') AS "ORDDATE",
+            h.time_diff AS "dd",
+            EXTRACT(EPOCH FROM (now() - h.order_date)) / 60 AS "DIFF",
+            h.diet_type AS "DIETTYPE",
+            to_char(h.admission_at, 'YYYY-MM-DD') AS "admdt",
+            h.order_id AS "HINAIORDERID",
+            h.status AS "ostatus",
+            to_char(h.admission_at, 'DD-MM-YYYY HH24:MI') AS "ADMDATE",
+            h.nursing_user,
+            h.is_diet_change,
+            h.is_transfer,
+            CASE WHEN h.diet_type IN (17129492, 17129493, 17129495) THEN 'liquid' ELSE 'regular' END AS "dietorder",
+            to_char(h.approved_date, 'DD-MM-YYYY HH24:MI') AS "approveddate"
+        FROM "HinaiOrder" h
+        ${whereClause}
+        AND h.order_id IN (
+            SELECT max(order_id) FROM "HinaiOrder"
+            ${subqueryWhereClause}
+            GROUP BY patient_id
+        )
+        ORDER BY h.order_id DESC
+        LIMIT ${limit} OFFSET ${offset}
+    `;
+
+    const [totalResults, results] = await Promise.all([
+        prisma.$queryRawUnsafe(countSql, ...params),
+        prisma.$queryRawUnsafe(sql, ...params)
+    ]);
+
+    const total = Number(totalResults[0].count);
+
+    return {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        data: results.map(row => ({
+            ...row,
+            MRNO: row.MRNO ? row.MRNO.toString() : null,
+            HINAIORDERID: row.HINAIORDERID ? Number(row.HINAIORDERID) : null,
+            DIFF: Math.floor(row.DIFF || 0)
+        }))
+    };
+};
