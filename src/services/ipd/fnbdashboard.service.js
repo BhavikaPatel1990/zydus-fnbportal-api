@@ -66,6 +66,35 @@ const resolveSiteMapping = async (siteValue) => {
         throw new Error(`No active mst_site mapping found for site_id ${parsedSiteId}`);
     }
 
+    return siteRecord.id;
+};
+
+const resolveHINAISiteMapping = async (siteValue) => {
+    if (siteValue === undefined) {
+        return null;
+    }
+
+    const parsedSiteId = toIntValue(siteValue, 'site_id', { required: false });
+
+    if (parsedSiteId === null) {
+        return null;
+    }
+
+    const apiResponse = await axios.get(getSiteListApiUrl());
+    const siteList = Array.isArray(apiResponse.data?.data) ? apiResponse.data.data : [];
+
+    const siteRecordByExternalId = siteList.find(
+        (site) => Number(site.site_id) === parsedSiteId
+    );
+    const siteRecordByMstId = siteList.find(
+        (site) => Number(site.id) === parsedSiteId
+    );
+    const siteRecord = siteRecordByExternalId ?? siteRecordByMstId;
+
+    if (!siteRecord) {
+        throw new Error(`No active mst_site mapping found for site_id ${parsedSiteId}`);
+    }
+
     return siteRecord.site_id;
 };
 
@@ -501,7 +530,7 @@ export const getPendingDietOrders = async (body, jwtUser) => {
     const search = (body.search || '').toLowerCase();
 
     // ✅ KEEP mapping (used in your system elsewhere)
-    const mstId = await resolveSiteMapping(siteIdParam);
+    const mstId = await resolveHINAISiteMapping(siteIdParam);
     if (!mstId) throw new Error('Invalid site mapping');
 
     let connection;
