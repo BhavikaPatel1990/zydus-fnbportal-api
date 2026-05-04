@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import hinaiOrderRoutes from './hinaiorder.route.js';
 import inpatientRoutes from './inpatient.route.js';
+import fnbDashboardRoutes from './fnbdashboard.route.js';
 import { authorize } from '../../middleware/authorize.js';
 import { activityLogger } from '../../middleware/activityLogger.js';
 
@@ -16,5 +17,6 @@ const router = Router();
     });
     router.use('/hinaiorders', hinaiOrderRoutes);
     router.use('/inpatients', inpatientRoutes);
+    router.use('/fnbdashboard', fnbDashboardRoutes);
 
     export default router;
