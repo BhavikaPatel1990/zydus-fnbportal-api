@@ -98,6 +98,15 @@ const resolveHINAISiteMapping = async (siteValue) => {
     return siteRecord.site_id;
 };
 
+const formatDateTime = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+
+    const pad = (n) => n.toString().padStart(2, '0');
+
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 export const getDietOrder = async (body, jwtUser) => {
     const siteIdParam = getFirstDefined(body, ['site_id', 'SITEID', 'siteid']);
     const page = parseInt(body.page) || 1;
@@ -655,4 +664,376 @@ export const getPendingDietOrders = async (body, jwtUser) => {
             }
         }
     }
+};
+
+export const getExtraOrders = async (body, jwtUser) => {
+    try {
+        const siteIdParam = getFirstDefined(body, ['site_id', 'SITEID', 'siteid']);
+        const sdateRaw = body.sdate;
+        const edateRaw = body.edate;
+        const search = (body.search || '').trim();
+
+        const page = parseInt(body.page) || 1;
+        const limit = parseInt(body.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        // ✅ Site mapping
+        const mstId = await resolveSiteMapping(siteIdParam);
+        if (!mstId) throw new Error('invalid site mapping');
+
+        // ✅ Date validation
+        if (!sdateRaw || !edateRaw) {
+            throw new Error('sdate and edate are required');
+        }
+
+        const sdate = new Date(sdateRaw);
+        const edate = new Date(edateRaw);
+
+        if (isNaN(sdate.getTime()) || isNaN(edate.getTime())) {
+            throw new Error('invalid date format, use yyyy-mm-dd');
+        }
+
+        sdate.setHours(0, 0, 0, 0);
+        edate.setHours(23, 59, 59, 999);
+
+        // ✅ Search filter
+        const searchFilter = search
+            ? {
+                  OR: [
+                      { nursing_remark: { contains: search, mode: 'insensitive' } },
+                      { diet_remark: { contains: search, mode: 'insensitive' } },
+                      {
+                          hinaiOrder: {
+                              OR: [
+                                  { patient_name: { contains: search, mode: 'insensitive' } },
+                                  { doctor: { contains: search, mode: 'insensitive' } },
+                                  { ward: { contains: search, mode: 'insensitive' } },
+                                  { bed_no: { contains: search, mode: 'insensitive' } },
+                                  { admission_no: { contains: search, mode: 'insensitive' } }
+                              ]
+                          }
+                      }
+                  ]
+              }
+            : {};
+
+        // ✅ Count
+        const total = await prisma.patientOrder.count({
+            where: {
+                mst_id: mstId,
+                diet_type: 18894123,
+                created_at: { gte: sdate, lte: edate },
+                is_active: true,
+                ...searchFilter
+            }
+        });
+
+        // ✅ Data fetch
+        const orders = await prisma.patientOrder.findMany({
+            where: {
+                mst_id: mstId,
+                diet_type: 18894123,
+                created_at: { gte: sdate, lte: edate },
+                is_active: true,
+                ...searchFilter
+            },
+            include: {
+                hinaiOrder: true
+            },
+            orderBy: [
+                { created_at: 'desc' },
+                { hinaiOrder: { ward: 'asc' } },
+                { hinaiOrder: { order_date: 'asc' } }
+            ],
+            skip,
+            take: limit
+        });
+
+        // ✅ Diet map
+        const dietTypes = await prisma.dietType.findMany({
+            where: { diet_type_id: 18894123 }
+        });
+
+        const dietMap = new Map(
+            dietTypes.map(d => [d.diet_type_id, d.diet_name])
+        );
+
+        // ✅ Date formatter
+        const formatDate = (date) => {
+            if (!date) return '';
+            const d = new Date(date);
+            const pad = (n) => n.toString().padStart(2, '0');
+            return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        };
+
+        // ✅ Final response (snake_case)
+        const data = orders.map(po => {
+            const ho = po.hinaiOrder;
+
+            return {
+                mrno: ho?.mr_no?.toString() || '',
+                patient: ho?.patient_name || '',
+                age_gender: ho?.age_gender || '',
+                admission_no: ho?.admission_no || '',
+                ho_date: formatDate(ho?.order_date),
+                menu_detail: ho?.menu_detail || '',
+                admission_date: formatDate(ho?.admission_at),
+                bed_no: ho?.bed_no || '',
+                ward: ho?.ward || '',
+                doctor: ho?.doctor || '',
+                mobile_no: ho?.mobile_no || '',
+                username: po?.created_by || '',
+                diet_name: dietMap.get(po.diet_type) || '',
+                nursing_remark: po.nursing_remark || '',
+                diet_remark: po.diet_remark || '',
+                punch_date: formatDate(po.created_at),
+                nursing_user: ho?.nursing_user || ''
+            };
+        });
+
+        return {
+            total,
+            page,
+            limit,
+            total_pages: Math.ceil(total / limit),
+            data
+        };
+
+    } catch (error) {
+        console.error('getExtraOrders service error:', error);
+        throw error;
+    }
+};
+
+export const downloadExtraOrdersCsv = async (body, jwtUser) => {
+    try {
+        // ✅ reuse existing logic (fetch ALL data)
+        const result = await getExtraOrders(
+            { ...body, page: 1, limit: 1000000 },
+            jwtUser
+        );
+
+        const data = result.data;
+
+        // ✅ CSV headers (snake_case)
+        const headers = [
+            'mrno',
+            'patient',
+            'age_gender',
+            'admission_no',
+            'ho_date',
+            'menu_detail',
+            'admission_date',
+            'bed_no',
+            'ward',
+            'doctor',
+            'mobile_no',
+            'username',
+            'diet_name',
+            'nursing_remark',
+            'diet_remark',
+            'punch_date',
+            'nursing_user'
+        ];
+
+        // ✅ Escape CSV values
+        const escapeCsvValue = (val) => {
+            if (val === null || val === undefined) return '';
+            const str = String(val);
+            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                return `"${str.replace(/"/g, '""')}"`;
+            }
+            return str;
+        };
+
+        // ✅ Build CSV rows
+        const csvRows = [
+            headers.join(','),
+            ...data.map(row =>
+                headers.map(field => escapeCsvValue(row[field])).join(',')
+            )
+        ];
+
+        return csvRows.join('\n');
+
+    } catch (error) {
+        console.error('downloadExtraOrdersCsv service error:', error);
+        throw error;
+    }
+};
+
+export const getLiquidData = async (body, jwtUser) => {
+    try {
+        const siteIdParam = getFirstDefined(body, ['site_id', 'SITEID', 'siteid']);
+        const fromRaw = body.fromdate;
+        const toRaw = body.todate;
+        const search = (body.search || '').trim();
+
+        const page = parseInt(body.page) || 1;
+        let limit = parseInt(body.limit);
+
+        if (!limit) limit = 10;
+
+        // ✅ special case: fetch all
+        const isAll = limit === -1;
+        const skip = (page - 1) * limit;
+
+        // ✅ site mapping
+        const mstId = await resolveSiteMapping(siteIdParam);
+        if (!mstId) throw new Error('invalid site mapping');
+
+        // ✅ date validation (dd-mm-yyyy input)
+        if (!fromRaw || !toRaw) throw new Error('fromdate and todate required');
+
+        const parseDMY = (d) => {
+            const [day, month, year] = d.split('-');
+            return new Date(`${year}-${month}-${day}`);
+        };
+
+        const from = parseDMY(fromRaw);
+        const to = parseDMY(toRaw);
+
+        if (isNaN(from) || isNaN(to)) throw new Error('invalid date format (use dd-mm-yyyy)');
+
+        from.setHours(0, 0, 0, 0);
+        to.setHours(23, 59, 59, 999);
+
+        // ✅ latest patient orders (PHP max(id))
+        const latestOrders = await prisma.patientOrder.findMany({
+            where: {
+                mst_id: mstId,
+                diet_type: { not: 18894123 }
+            },
+            orderBy: { id: 'desc' }
+        });
+
+        const latestMap = new Map();
+        for (const po of latestOrders) {
+            if (!latestMap.has(po.patient_id)) {
+                latestMap.set(po.patient_id, po.id);
+            }
+        }
+
+        const latestIds = Array.from(latestMap.values());
+
+        if (!latestIds.length) {
+            return {
+                total: 0,
+                page,
+                limit,
+                total_pages: 0,
+                data: []
+            };
+        }
+
+        // ✅ main query
+        const records = await prisma.patientOrder.findMany({
+            where: {
+                id: { in: latestIds },
+                mst_id: mstId,
+                is_active: true,
+                hinaiOrder: {
+                    is_discharge: false,
+                    order_date: { gte: from, lte: to }
+                }
+            },
+            include: {
+                hinaiOrder: true,
+                patientOrderLiquids: true
+            },
+            orderBy: [
+                { hinaiOrder: { ward: 'asc' } },
+                { hinaiOrder: { bed_no: 'asc' } }
+            ]
+        });
+
+        // ✅ flatten + filter search
+        let data = [];
+
+        for (const po of records) {
+            const ho = po.hinaiOrder;
+
+            for (const liq of po.patientOrderLiquids) {
+                const row = {
+                    ho_date: formatDateTime(ho?.order_date),
+                    id: po.id,
+                    diet_remark: po.diet_remark,
+                    nursing_remark: po.nursing_remark,
+                    mrno: ho?.mr_no?.toString(),
+                    patient: ho?.patient_name,
+                    bed_no: ho?.bed_no,
+                    ward: ho?.ward,
+                    liq_time: liq?.liquid_time,
+                    doctor: ho?.doctor,
+                    admission_date: formatDateTime(ho?.admission_at),
+                    remarks: liq?.remarks || '-',
+                    mid: liq?.id,
+                    username: po?.created_by,
+                    admission_no: ho?.admission_no,
+                    menu: ho?.menu,
+                    menu_detail: ho?.menu_detail,
+                    punch_date: formatDateTime(po.created_at)
+                };
+
+                data.push(row);
+            }
+        }
+
+        // ✅ search (multi-field)
+        if (search) {
+            const s = search.toLowerCase();
+            data = data.filter(r =>
+                Object.values(r).some(v =>
+                    String(v || '').toLowerCase().includes(s)
+                )
+            );
+        }
+
+        // ✅ pagination
+        const total = data.length;
+        const paginated = isAll ? data : data.slice(skip, skip + limit);
+
+        return {
+            total,
+            page,
+            limit,
+            total_pages: isAll ? 1 : Math.ceil(total / limit),
+            data: paginated
+        };
+
+    } catch (error) {
+        console.error('getLiquidData error:', error);
+        throw error;
+    }
+};
+
+export const downloadLiquidDataCsv = async (body, jwtUser) => {
+    const result = await getLiquidData(
+        { ...body, page: 1, limit: -1 },
+        jwtUser
+    );
+
+    const data = result.data;
+
+    const headers = [
+        'ho_date','id','diet_remark','nursing_remark','mrno','patient',
+        'bed_no','ward','liq_time','doctor','admission_date','remarks',
+        'mid','username','admission_no','menu','menu_detail','punch_date'
+    ];
+
+    const escape = (v) => {
+        if (v === null || v === undefined) return '';
+        const s = String(v);
+        if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+            return `"${s.replace(/"/g, '""')}"`;
+        }
+        return s;
+    };
+
+    const rows = [
+        headers.join(','),
+        ...data.map(r => headers.map(h => escape(r[h])).join(','))
+    ];
+
+    return rows.join('\n');
 };
