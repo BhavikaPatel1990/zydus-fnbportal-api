@@ -84,6 +84,9 @@ model HinaiOrder {
   deleted_by String?
   is_active  Boolean  @default(true)
 
+  patientOrders PatientOrder[] @relation("HinaiToPatientOrder")
+
+
   @@index([patient_id])
   @@index([mst_id])
 }
@@ -145,6 +148,9 @@ model PatientOrder {
   deleted_by String?
   is_active  Boolean  @default(true)
 
+  hinaiOrder HinaiOrder @relation("HinaiToPatientOrder", fields: [hinai_order_id], references: [order_id])
+  patientOrderLiquids PatientOrderLiquid[] @relation("PoToLiquid")
+
   @@index([patient_id])
   @@index([hinai_order_id])
 }
@@ -181,6 +187,8 @@ model PatientOrderLiquid {
   updated_by  String?
   deleted_by  String?
   is_active   Boolean  @default(true)
+  
+  patientOrder PatientOrder @relation("PoToLiquid", fields: [po_id], references: [id])
 
   @@index([po_id])
 }

@@ -80,3 +80,57 @@ export const getPendingDietOrders = async (req, res) => {
         return response.serverError(res, error.message);
     }
 };
+
+export const getExtraOrders = async (req, res) => {
+    try {
+        const data = await fnbDashboardService.getExtraOrders(req.body, req.user);
+        return response.success(res, 'Extra orders fetched successfully', data);
+    } catch (error) {
+        console.error('getExtraOrders error:', error.message);
+        return response.serverError(res, error.message);
+    }
+};
+
+export const downloadExtraOrdersCsv = async (req, res) => {
+    try {
+        const csvContent = await fnbDashboardService.downloadExtraOrdersCsv(
+            req.body,
+            req.user
+        );
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader(
+            'Content-Disposition',
+            'attachment; filename=extra_orders.csv'
+        );
+
+        return res.status(200).send(csvContent);
+    } catch (error) {
+        console.error('downloadExtraOrdersCsv error:', error.message);
+        return response.serverError(res, error.message);
+    }
+};
+
+export const getLiquidData = async (req, res) => {
+    try {
+        const data = await fnbDashboardService.getLiquidData(req.body, req.user);
+        return response.success(res, 'liquid data fetched', data);
+    } catch (error) {
+        console.error('getLiquidData error:', error.message);
+        return response.serverError(res, error.message);
+    }
+};
+
+export const downloadLiquidDataCsv = async (req, res) => {
+    try {
+        const csv = await fnbDashboardService.downloadLiquidDataCsv(req.body, req.user);
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename=liquid_data.csv');
+
+        return res.send(csv);
+    } catch (error) {
+        console.error('downloadLiquidDataCsv error:', error.message);
+        return response.serverError(res, error.message);
+    }
+};
