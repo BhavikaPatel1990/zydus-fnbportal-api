@@ -160,34 +160,64 @@ const getSiteListApiUrl = () => {
         : `${AUTH_SERVICE_URL}/api/site/list`;
 };
 
-const resolveSiteMapping = async (siteValue) => {
-    if (siteValue === undefined) {
+const getMstIdFromSiteId = async (siteId) => {
+    if (siteId === undefined || siteId === null) {
         return null;
     }
 
-    const parsedSiteId = toIntValue(siteValue, 'site_id', { required: false });
-
-    if (parsedSiteId === null) {
-        return null;
-    }
+    const parsedSiteId = toIntValue(siteId, 'site_id', { required: false });
+    if (parsedSiteId === null) return null;
 
     const apiResponse = await axios.get(getSiteListApiUrl());
-    const siteList = Array.isArray(apiResponse.data?.data) ? apiResponse.data.data : [];
 
-    const siteRecordByExternalId = siteList.find(
+    const siteList = Array.isArray(apiResponse.data?.data)
+        ? apiResponse.data.data
+        : [];
+
+    const siteRecord = siteList.find(
         (site) => Number(site.site_id) === parsedSiteId
     );
-    const siteRecordByMstId = siteList.find(
-        (site) => Number(site.id) === parsedSiteId
-    );
-    const siteRecord = siteRecordByExternalId ?? siteRecordByMstId;
 
     if (!siteRecord) {
-        throw new Error(`No active mst_site mapping found for site_id ${parsedSiteId}`);
+        throw new Error(`No mst mapping found for site_id ${parsedSiteId}`);
     }
 
-    return BigInt(siteRecord.id);
+    return siteRecord.id; // mst_id
 };
+
+const getMstIdDirect = async (mstId) => {
+    if (mstId === undefined || mstId === null) {
+        return null;
+    }
+
+    const parsedMstId = toIntValue(mstId, 'mst_id', { required: false });
+    if (parsedMstId === null) return null;
+
+    const apiResponse = await axios.get(getSiteListApiUrl());
+
+    const siteList = Array.isArray(apiResponse.data?.data)
+        ? apiResponse.data.data
+        : [];
+
+    const siteRecord = siteList.find(
+        (site) => Number(site.id) === parsedMstId
+    );
+
+    if (!siteRecord) {
+        throw new Error(`Invalid mst_id ${parsedMstId}`);
+    }
+
+    return siteRecord.id;
+};
+
+const resolveSiteMapping = async (value, type = 'site_id') => {
+    if (type === 'mst_id') {
+        return await getMstIdDirect(value);
+    }
+
+    return await getMstIdFromSiteId(value);
+};
+
 
 const mapHinaiOrderPayload = async (payload) => {
     const patientId = getFirstDefined(payload, ['patient_id', 'PATIENT_ID']);
@@ -379,7 +409,7 @@ export const markHinaiOrderDischarge = async (body, jwtUser) => {
     };
 };
 
-export const getHinaiOrders = async (body, jwtUser) => {
+export const getHinaiOrdersOldAsRawQuery = async (body, jwtUser) => {
     const siteIdParam = getFirstDefined(body, ['site_id', 'SITEID', 'siteid']);
     const viewdata = getFirstDefined(body, ['viewdata']) || '0';
     const ordertype = getFirstDefined(body, ['ordertype']) || '0';
@@ -389,7 +419,7 @@ export const getHinaiOrders = async (body, jwtUser) => {
     const search = body.search || '';
     const offset = (page - 1) * limit;
 
-    const mstId = await resolveSiteMapping(siteIdParam);
+    const mstId = await resolveSiteMapping(siteIdParam, 'mst_id');
     if (!mstId) {
         throw new Error('Invalid site mapping');
     }
@@ -494,6 +524,112 @@ export const getHinaiOrders = async (body, jwtUser) => {
             MRNO: row.MRNO ? row.MRNO.toString() : null,
             HINAIORDERID: row.HINAIORDERID ? Number(row.HINAIORDERID) : null,
             DIFF: Math.floor(row.DIFF || 0)
+        }))
+    };
+};
+
+export const getHinaiOrders = async (body, jwtUser) => {
+    const siteIdParam = getFirstDefined(body, ['site_id', 'SITEID', 'siteid']);
+    const viewdata = getFirstDefined(body, ['viewdata']) || '0';
+    const ordertype = getFirstDefined(body, ['ordertype']) || '0';
+
+    const page = parseInt(body.page) || 1;
+    const limit = parseInt(body.limit) || 10;
+    const search = body.search || '';
+
+    const mstId = await resolveSiteMapping(siteIdParam, 'mst_id');
+    if (!mstId) throw new Error('Invalid site mapping');
+
+    const today = new Date();
+    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+
+    let where = {
+        mst_id: mstId,
+        is_discharge: false
+    };
+
+    // order type filter
+    if (ordertype === 'extra') {
+        where.menu = 'EXTRA ORDER';
+        where.diet_type = 18894123;
+    } else if (ordertype === 'regular') {
+        where.menu = { not: 'EXTRA ORDER' };
+        where.diet_type = { not: 18894123 };
+    }
+
+    // today filter
+    if (viewdata === 'today') {
+        where.order_date = {
+            gte: startOfDay,
+            lte: endOfDay
+        };
+    }
+
+    // search
+    if (search) {
+        where.OR = [
+            { patient_name: { contains: search, mode: 'insensitive' } },
+            { mr_no: { equals: isNaN(search) ? undefined : BigInt(search) } },
+            { bed_no: { contains: search, mode: 'insensitive' } },
+            { ward: { contains: search, mode: 'insensitive' } },
+            { doctor: { contains: search, mode: 'insensitive' } },
+            { menu: { contains: search, mode: 'insensitive' } },
+            { menu_detail: { contains: search, mode: 'insensitive' } }
+        ];
+    }
+
+    // fetch ordered (IMPORTANT)
+    const rows = await prisma.hinaiOrder.findMany({
+        where,
+        orderBy: [
+            { patient_id: 'asc' },
+            { order_id: 'desc' } // latest first
+        ]
+    });
+
+    // 🔥 DISTINCT ON replacement (latest per patient)
+    const map = new Map();
+
+    for (const row of rows) {
+        if (!map.has(row.patient_id)) {
+            map.set(row.patient_id, row);
+        }
+    }
+
+    const uniqueRows = Array.from(map.values());
+
+    // pagination AFTER grouping
+    const total = uniqueRows.length;
+    const paginated = uniqueRows.slice((page - 1) * limit, page * limit);
+
+    return {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        data: paginated.map(row => ({
+             patient_id: row.patient_id,
+            mrno: row.mr_no ? row.mr_no.toString() : null,
+            patient: row.patient_name,
+            bed_no: row.bed_no,
+            ward: row.ward,
+            scname: row.ward,
+            doctor: row.doctor,
+            menu: row.menu,
+            name: row.menu_detail,
+            order_date: row.order_date,
+            diff: Math.floor((Date.now() - new Date(row.order_date)) / 60000),
+            diet_type: row.diet_type,
+            hinaiorderid: row.order_id,
+            admission_date: row.admission_at,
+            nursing_user: row.nursing_user,
+            is_diet_change: row.is_diet_change,
+            is_transfer: row.is_transfer,
+            dietorder: [17129492,17129493,17129495].includes(row.diet_type)
+                ? 'liquid'
+                : 'regular',
+            approved_date: row.approved_date
         }))
     };
 };
@@ -611,12 +747,10 @@ WHERE rn = 1
     );
 
     for (const row of result.rows) {
-
       const mappedSiteId = await resolveSiteMapping(
-        row.SITEID,
-        row.AD_SITEID
+        row.SITEID, 'site_id'
       );
-
+      console.log("mappedSiteId",mappedSiteId);
       await prisma.hinaiOrder.upsert({
         where: { order_id: Number(row.HINAIORDERID) },
         update: {

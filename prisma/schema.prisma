@@ -89,6 +89,9 @@ model HinaiOrder {
 
   @@index([patient_id])
   @@index([mst_id])
+  @@index([mst_id, is_discharge, patient_id, order_id(sort: Desc)])
+  @@index([mst_id, diet_type])
+  @@index([order_date])
 }
 
 model Location {
