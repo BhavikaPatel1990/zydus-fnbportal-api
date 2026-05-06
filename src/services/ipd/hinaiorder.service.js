@@ -1,5 +1,7 @@
 import prisma from '../../config/db.js';
 import axios from 'axios';
+import { getOracleConnection } from '../../config/oracleDb.js';
+import oracledb from 'oracledb';
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL?.replace(/\/$/, '');
 
@@ -158,34 +160,64 @@ const getSiteListApiUrl = () => {
         : `${AUTH_SERVICE_URL}/api/site/list`;
 };
 
-const resolveSiteMapping = async (siteValue) => {
-    if (siteValue === undefined) {
+const getMstIdFromSiteId = async (siteId) => {
+    if (siteId === undefined || siteId === null) {
         return null;
     }
 
-    const parsedSiteId = toIntValue(siteValue, 'site_id', { required: false });
-
-    if (parsedSiteId === null) {
-        return null;
-    }
+    const parsedSiteId = toIntValue(siteId, 'site_id', { required: false });
+    if (parsedSiteId === null) return null;
 
     const apiResponse = await axios.get(getSiteListApiUrl());
-    const siteList = Array.isArray(apiResponse.data?.data) ? apiResponse.data.data : [];
 
-    const siteRecordByExternalId = siteList.find(
+    const siteList = Array.isArray(apiResponse.data?.data)
+        ? apiResponse.data.data
+        : [];
+
+    const siteRecord = siteList.find(
         (site) => Number(site.site_id) === parsedSiteId
     );
-    const siteRecordByMstId = siteList.find(
-        (site) => Number(site.id) === parsedSiteId
-    );
-    const siteRecord = siteRecordByExternalId ?? siteRecordByMstId;
 
     if (!siteRecord) {
-        throw new Error(`No active mst_site mapping found for site_id ${parsedSiteId}`);
+        throw new Error(`No mst mapping found for site_id ${parsedSiteId}`);
     }
 
-    return BigInt(siteRecord.id);
+    return siteRecord.id; // mst_id
 };
+
+const getMstIdDirect = async (mstId) => {
+    if (mstId === undefined || mstId === null) {
+        return null;
+    }
+
+    const parsedMstId = toIntValue(mstId, 'mst_id', { required: false });
+    if (parsedMstId === null) return null;
+
+    const apiResponse = await axios.get(getSiteListApiUrl());
+
+    const siteList = Array.isArray(apiResponse.data?.data)
+        ? apiResponse.data.data
+        : [];
+
+    const siteRecord = siteList.find(
+        (site) => Number(site.id) === parsedMstId
+    );
+
+    if (!siteRecord) {
+        throw new Error(`Invalid mst_id ${parsedMstId}`);
+    }
+
+    return siteRecord.id;
+};
+
+const resolveSiteMapping = async (value, type = 'site_id') => {
+    if (type === 'mst_id') {
+        return await getMstIdDirect(value);
+    }
+
+    return await getMstIdFromSiteId(value);
+};
+
 
 const mapHinaiOrderPayload = async (payload) => {
     const patientId = getFirstDefined(payload, ['patient_id', 'PATIENT_ID']);
@@ -377,7 +409,7 @@ export const markHinaiOrderDischarge = async (body, jwtUser) => {
     };
 };
 
-export const getHinaiOrders = async (body, jwtUser) => {
+export const getHinaiOrdersOldAsRawQuery = async (body, jwtUser) => {
     const siteIdParam = getFirstDefined(body, ['site_id', 'SITEID', 'siteid']);
     const viewdata = getFirstDefined(body, ['viewdata']) || '0';
     const ordertype = getFirstDefined(body, ['ordertype']) || '0';
@@ -387,7 +419,7 @@ export const getHinaiOrders = async (body, jwtUser) => {
     const search = body.search || '';
     const offset = (page - 1) * limit;
 
-    const mstId = await resolveSiteMapping(siteIdParam);
+    const mstId = await resolveSiteMapping(siteIdParam, 'mst_id');
     if (!mstId) {
         throw new Error('Invalid site mapping');
     }
@@ -494,4 +526,357 @@ export const getHinaiOrders = async (body, jwtUser) => {
             DIFF: Math.floor(row.DIFF || 0)
         }))
     };
+};
+
+export const getHinaiOrders = async (body, jwtUser) => {
+    const siteIdParam = getFirstDefined(body, ['site_id', 'SITEID', 'siteid']);
+    const viewdata = getFirstDefined(body, ['viewdata']) || '0';
+    const ordertype = getFirstDefined(body, ['ordertype']) || '0';
+
+    const page = parseInt(body.page) || 1;
+    const limit = parseInt(body.limit) || 10;
+    const search = body.search || '';
+
+    const mstId = await resolveSiteMapping(siteIdParam, 'mst_id');
+    if (!mstId) throw new Error('Invalid site mapping');
+
+    const today = new Date();
+    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+
+    let where = {
+        mst_id: mstId,
+        is_discharge: false
+    };
+
+    // order type filter
+    if (ordertype === 'extra') {
+        where.menu = 'EXTRA ORDER';
+        where.diet_type = 18894123;
+    } else if (ordertype === 'regular') {
+        where.menu = { not: 'EXTRA ORDER' };
+        where.diet_type = { not: 18894123 };
+    }
+
+    // today filter
+    if (viewdata === 'today') {
+        where.order_date = {
+            gte: startOfDay,
+            lte: endOfDay
+        };
+    }
+
+    // search
+    if (search) {
+        where.OR = [
+            { patient_name: { contains: search, mode: 'insensitive' } },
+            { mr_no: { equals: isNaN(search) ? undefined : BigInt(search) } },
+            { bed_no: { contains: search, mode: 'insensitive' } },
+            { ward: { contains: search, mode: 'insensitive' } },
+            { doctor: { contains: search, mode: 'insensitive' } },
+            { menu: { contains: search, mode: 'insensitive' } },
+            { menu_detail: { contains: search, mode: 'insensitive' } }
+        ];
+    }
+
+    // fetch ordered (IMPORTANT)
+    const rows = await prisma.hinaiOrder.findMany({
+        where,
+        orderBy: [
+            { patient_id: 'asc' },
+            { order_id: 'desc' } // latest first
+        ]
+    });
+
+    // 🔥 DISTINCT ON replacement (latest per patient)
+    const map = new Map();
+
+    for (const row of rows) {
+        if (!map.has(row.patient_id)) {
+            map.set(row.patient_id, row);
+        }
+    }
+
+    const uniqueRows = Array.from(map.values());
+
+    // pagination AFTER grouping
+    const total = uniqueRows.length;
+    const paginated = uniqueRows.slice((page - 1) * limit, page * limit);
+
+    return {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        data: paginated.map(row => ({
+             patient_id: row.patient_id,
+            mrno: row.mr_no ? row.mr_no.toString() : null,
+            patient: row.patient_name,
+            bed_no: row.bed_no,
+            ward: row.ward,
+            scname: row.ward,
+            doctor: row.doctor,
+            menu: row.menu,
+            name: row.menu_detail,
+            order_date: row.order_date,
+            diff: Math.floor((Date.now() - new Date(row.order_date)) / 60000),
+            diet_type: row.diet_type,
+            hinaiorderid: row.order_id,
+            admission_date: row.admission_at,
+            nursing_user: row.nursing_user,
+            is_diet_change: row.is_diet_change,
+            is_transfer: row.is_transfer,
+            dietorder: [17129492,17129493,17129495].includes(row.diet_type)
+                ? 'liquid'
+                : 'regular',
+            approved_date: row.approved_date
+        }))
+    };
+};
+
+export const refreshHinaiOrders = async () => {
+  let connection;
+
+  try {
+    connection = await getOracleConnection();
+
+    const ctime = new Date().toISOString().slice(0, 10);
+
+    const sql = `
+WITH cte AS (
+    SELECT ip.ADMITTED_SITE ad_siteid, sc.site_id siteid, p.patient_id, p.mrno,
+           pm2.prefix||' '||p.patientname AS PATIENT, ip.admissionnumber,
+           ip.admissiondate admdate, b.bed_id, dl.bedno AS bed_no,
+           sc.service_center_name scname,
+           pm.prefix||' '||e.employee_name AS DOCTOR,
+           dl.createddatetime cdate, dc.name, di.description,
+           dl.diettiming AS diettype, dl.id hinaiorderid,
+           h.username, dl.isdietchanged,
+           prb.manual_entry_desc AS Diagnosis,
+           FLOOR(MONTHS_BETWEEN(SYSDATE, p.dob)/12) ||
+           (CASE p.ageunit WHEN 1 THEN ' Years' WHEN 2 THEN ' Months' ELSE ' Days' END) ||
+           '/' || (CASE WHEN p.GENDERID = 1 THEN 'M' ELSE 'F' END) AS agegender,
+           p.mobileno, p.email,
+           dl.otherspecification nurseremark,
+           TO_CHAR(dl.approveddate,'yyyy-mm-dd hh24:mi') AS approveddate
+    FROM inpatients ip
+    LEFT JOIN visit v ON v.visitid=ip.visitid
+    LEFT JOIN problem prb ON prb.visitid=v.visitid
+    LEFT JOIN patient p ON p.patient_id=ip.patient
+    LEFT JOIN bed b ON b.bed_id=ip.bed
+    LEFT JOIN employee e ON e.employee_id=ip.consultant
+    LEFT JOIN prefix_master pm ON pm.id=e.emp_prefix
+    LEFT JOIN prefix_master pm2 ON pm2.id=p.patprefix
+    LEFT JOIN discharge d ON d.visit=v.visitid
+    LEFT JOIN dietlaterequest dl ON dl.patient=p.patient_id
+        AND dl.approvalstatus=2 AND dl.request_cancel_status<>2
+    LEFT JOIN servicecenter sc ON sc.service_center_id=dl.servicecenter
+    LEFT JOIN dietconfiguration dc ON dc.id = dl.dietprescription
+    LEFT JOIN DIET_LATE_REQUESTDETAILITEM dlr ON dlr.dietlaterequest_detailid =dl.id
+    LEFT JOIN DIETITEM di ON di.id = dlr.dietitemid
+    LEFT JOIN hisuser h ON h.id=dl.createdby
+    WHERE d.dateofdischarge IS NULL
+      AND ip.visit_patientstatus<>1122
+      AND dc.name IS NOT NULL
+      AND dl.approveddate >= SYSDATE - INTERVAL '2' HOUR
+
+    UNION
+
+    SELECT ip.ADMITTED_SITE ad_siteid, sc.site_id siteid, p.patient_id, p.mrno,
+           pm2.prefix||' '||p.patientname AS PATIENT, ip.admissionnumber,
+           ip.admissiondate admdate, b.bed_id, b.bed_no,
+           sc.service_center_name scname,
+           pm.prefix||' '||e.employee_name AS DOCTOR,
+           dr.createddatetime cdate, dc.name, di.description,
+           dr.diettiming AS diettype, dq.id hinaiorderid,
+           h.username, dq.isdietchanged,
+           NULL AS Diagnosis,
+           FLOOR(MONTHS_BETWEEN(SYSDATE, p.dob)/12) ||
+           (CASE p.ageunit WHEN 1 THEN ' Years' WHEN 2 THEN ' Months' ELSE ' Days' END) ||
+           '/' || (CASE WHEN p.GENDERID = 1 THEN 'M' ELSE 'F' END) AS agegender,
+           p.mobileno, p.email,
+           dietReqCo.comments nurseremark,
+           TO_CHAR(NVL(dr.approveddatetime, dr.createddatetime),'yyyy-mm-dd hh24:mi') AS approveddate
+    FROM inpatients ip
+    LEFT JOIN visit v ON v.visitid=ip.visitid
+    LEFT JOIN patient p ON p.patient_id=ip.patient
+    LEFT JOIN bed b ON b.bed_id=ip.bed
+    LEFT JOIN employee e ON e.employee_id=ip.consultant
+    LEFT JOIN prefix_master pm ON pm.id=e.emp_prefix
+    LEFT JOIN prefix_master pm2 ON pm2.id=p.patprefix
+    LEFT JOIN discharge d ON d.visit=v.visitid
+    LEFT JOIN DIETREQUESTDETAIL dq ON dq.patient=p.patient_id AND dq.request_cancel_status<>2
+    INNER JOIN dietrequest dr ON dr.id=dq.drid
+    LEFT JOIN servicecenter sc ON sc.service_center_id=dr.servicecenter
+    LEFT JOIN dietconfiguration dc ON dc.id=dq.dietclassification
+    LEFT JOIN DIETREQUESTDETAILITEM drd ON dq.id=drd.dietrequest_detailid
+    LEFT JOIN DIETITEM di ON di.id=drd.dietitemid
+    LEFT JOIN DIET_REQUEST_DETAIL_COMMENTS dietReqCo ON dietReqCo.DIET_REQUEST_DETAIL_ID = dq.id
+    LEFT JOIN hisuser h ON h.id=dr.requestedby
+    WHERE d.dateofdischarge IS NULL
+      AND ip.visit_patientstatus<>1122
+      AND drd.id IS NOT NULL
+      AND dc.name IS NOT NULL
+      AND dr.createddatetime >= SYSDATE - INTERVAL '2' HOUR
+),
+cte1 AS (
+    SELECT ROW_NUMBER() OVER (PARTITION BY mrno,diettype ORDER BY cdate DESC) RN,
+           ad_siteid, siteid, patient_id, mrno, PATIENT, admissionnumber,
+           admdate, bed_id, bed_no, scname, DOCTOR,
+           RTRIM(XMLAGG(XMLELEMENT(e, description || ', ')).EXTRACT('//text()'), ', ') AS NAME,
+           name AS menu, cdate, diettype, hinaiorderid,
+           username, isdietchanged, Diagnosis, agegender,
+           mobileno, email, nurseremark, approveddate
+    FROM cte
+    GROUP BY cdate, ad_siteid, siteid, patient_id, mrno, PATIENT,
+             admissionnumber, admdate, bed_id, bed_no,
+             scname, DOCTOR, name, diettype, hinaiorderid,
+             username, isdietchanged, Diagnosis, agegender,
+             mobileno, email, nurseremark, approveddate
+)
+SELECT *
+FROM cte1
+WHERE rn = 1
+  AND TO_CHAR(cdate,'yyyy-mm-dd') = :ctime
+`;
+
+    const result = await connection.execute(
+      sql,
+      { ctime },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    for (const row of result.rows) {
+      const mappedSiteId = await resolveSiteMapping(
+        row.SITEID, 'site_id'
+      );
+      console.log("mappedSiteId",mappedSiteId);
+      await prisma.hinaiOrder.upsert({
+        where: { order_id: Number(row.HINAIORDERID) },
+        update: {
+          ward: row.SCNAME,
+          bed_no: row.BED_NO,
+          is_transfer: false,
+          is_discharge: false
+        },
+        create: {
+          mst_id: mappedSiteId,
+          patient_id: Number(row.PATIENT_ID),
+          mr_no: BigInt(row.MRNO),
+          patient_name: row.PATIENT,
+          admission_no: row.ADMISSIONNUMBER,
+          admission_at: new Date(row.ADMDATE),
+          bed_no: row.BED_NO,
+          ward: row.SCNAME,
+          doctor: row.DOCTOR,
+          menu: row.MENU,
+          menu_detail: row.NAME,
+          order_date: new Date(row.CDATE),
+          time_diff: Number(row.DIFF || 0),
+          diet_type: Number(row.DIETTYPE),
+          order_id: Number(row.HINAIORDERID),
+          status: true,
+          is_discharge: false,
+          nursing_user: row.USERNAME,
+          is_diet_change: Boolean(row.ISDIETCHANGED),
+          is_transfer: false,
+          age_gender: row.AGEGENDER,
+          mobile_no: row.MOBILENO,
+          email: row.EMAIL,
+          nurse_remark: row.NURSEREMARK,
+          approved_date: row.APPROVEDDATE ? new Date(row.APPROVEDDATE) : null,
+          
+          created_by: row.USERNAME || null,
+          updated_by: row.USERNAME || null
+        }
+      });
+    }
+
+    // ===============================
+    // 2. DISCHARGE QUERY
+    // ===============================
+    const dischargeResult = await connection.execute(
+      `
+      select pa.admissionno, pa.patientid
+      from patientadmission pa 
+      left join visit v on v.visitid=pa.visitid
+      left join discharge d on d.visit=v.visitid
+      where d.dateofdischarge>=SYSDATE - INTERVAL '1' HOUR
+      and d.dateofdischarge is not null
+      `,
+      {},
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    for (const row of dischargeResult.rows) {
+      await prisma.hinaiOrder.updateMany({
+        where: {
+          admission_no: row.ADMISSIONNO,
+          patient_id: Number(row.PATIENTID)
+        },
+        data: {
+          is_discharge: true,
+          updated_at: new Date(),
+          updated_by: 'system'
+        }
+      });
+    }
+
+    // ===============================
+    // 3. TRANSFER QUERY
+    // ===============================
+    const transferResult = await connection.execute(
+      `
+      select * from (
+        select row_number() over(partition by from_patientid order by treq.transfer_id desc) trid,
+               pat.patient_id,
+               tosc.service_center_name as toWard,
+               tob.bed_no as toBed
+        from transferrequest treq
+        inner join patient pat on pat.patient_id = treq.from_patientid
+        left join bed tob on tob.bed_id = treq.to_bedid
+        inner join servicecenter tosc on tosc.service_center_id=treq.servicecenter_id
+        where to_char(treq.createddt,'yyyy-mm-dd') = :ctime
+        and pat.patient_id<>396106
+        and treq.to_bedid is not null
+        and treq.request_status = 352
+      ) where trid = 1
+      `,
+      { ctime },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    for (const row of transferResult.rows) {
+      await prisma.hinaiOrder.updateMany({
+        where: {
+          patient_id: Number(row.PATIENT_ID),
+          created_at: {
+            gte: new Date(`${ctime}T00:00:00.000Z`),
+            lte: new Date(`${ctime}T23:59:59.999Z`)
+          }
+        },
+        data: {
+          is_transfer: true,
+          bed_no: row.TOBED,
+          ward: row.TOWARD,
+          updated_at: new Date(),
+          updated_by: 'system'
+        }
+      });
+    }
+
+    return {
+      status: true,
+      message: "Hinai orders refreshed successfully"
+    };
+
+  } catch (err) {
+    console.error(err);
+    return {
+      status: false,
+      message: err.message
+    };
+  } finally {
+    if (connection) await connection.close();
+  }
 };
