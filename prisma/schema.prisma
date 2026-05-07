@@ -117,7 +117,7 @@ model Location {
 
 model MenuTime {
   id          String @id @default(uuid())
-  description String  @unique   // ⭐ ADD THIS
+  description String
 
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
@@ -126,6 +126,9 @@ model MenuTime {
   updated_by  String?
   deleted_by  String?
   is_active   Boolean  @default(true)
+
+  patientOrderDetails PatientOrderDetail[] @relation("MenuTimeToOrderDetail")
+  patientOrderLiquids PatientOrderLiquid[] @relation("MenuTimeToLiquid")
 }
 
 model PatientOrder {
@@ -161,7 +164,7 @@ model PatientOrder {
 model PatientOrderDetail {
   id          String   @id @default(uuid())
   po_id       String
-  ptm_id      Int
+  ptm_id      String
   item_id     Int
   remarks     String
 
@@ -173,13 +176,16 @@ model PatientOrderDetail {
   deleted_by  String?
   is_active   Boolean  @default(true)
 
+  menuTime MenuTime @relation("MenuTimeToOrderDetail", fields: [ptm_id], references: [id])
+
   @@index([po_id])
+  @@index([ptm_id])
 }
 
 model PatientOrderLiquid {
   id          String   @id @default(uuid())
   po_id       String
-  ptm_id      Int
+  ptm_id String
   liquid_time Int
   remarks     String
 
@@ -192,8 +198,10 @@ model PatientOrderLiquid {
   is_active   Boolean  @default(true)
   
   patientOrder PatientOrder @relation("PoToLiquid", fields: [po_id], references: [id])
+  menuTime MenuTime @relation( "MenuTimeToLiquid", fields: [ptm_id], references: [id] )
 
   @@index([po_id])
+  @@index([ptm_id])
 }
 
 model PatientDiagnosis {
