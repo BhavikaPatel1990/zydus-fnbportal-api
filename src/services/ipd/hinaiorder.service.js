@@ -751,7 +751,7 @@ WHERE rn = 1
       const mappedSiteId = await resolveSiteMapping(
         row.SITEID, 'site_id'
       );
-      console.log("mappedSiteId",mappedSiteId);
+    //   console.log("mappedSiteId",mappedSiteId);
       await prisma.hinaiOrder.upsert({
         where: { order_id: Number(row.HINAIORDERID) },
         update: {
@@ -1156,6 +1156,7 @@ export const getHinaiOrderDetails = async (body, jwtUser) => {
                 },
             });
 
+        // console.log(orderDetails);
         /*
         ===========================================================
         NO DATA
@@ -1167,6 +1168,7 @@ export const getHinaiOrderDetails = async (body, jwtUser) => {
             };
         }
 
+        
         /*
         ===========================================================
         RESPONSE
@@ -1198,5 +1200,80 @@ export const getHinaiOrderDetails = async (body, jwtUser) => {
         );
 
         throw new Error(error.message);
+    }
+};
+
+export const getNursingRemarks = async (body, jwtUser) => {
+    let connection;
+
+    try {
+        const patientId = Number(body.patient_id || body.patientid);
+        const hinaiOrderId = Number(body.order_id || body.orderid);
+
+        if (!patientId || Number.isNaN(patientId)) {
+            throw new Error('patient id is required and must be numeric');
+        }
+
+        if (!hinaiOrderId || Number.isNaN(hinaiOrderId)) {
+            throw new Error('order id is required and must be numeric');
+        }
+
+        connection = await getOracleConnection();
+
+        const sql = `
+            select 
+                dl.patient as patient_id,
+                dl.id as hinaiorderid,
+                dl.otherspecification as nurse_remark
+            from dietlaterequest dl
+            where dl.patient = :patientId
+                and dl.approvalstatus <> 3
+                and dl.request_cancel_status <> 2
+                and dl.id = :hinaiOrderId
+
+            union
+
+            select 
+                dq.patient as patient_id,
+                dq.id as hinaiorderid,
+                dietReqCo.comments as nurse_remark
+            from DIETREQUESTDETAIL dq
+            left join DIET_REQUEST_DETAIL_COMMENTS dietReqCo
+                on dietReqCo.DIET_REQUEST_DETAIL_ID = dq.id
+            where dq.patient = :patientId
+                and dq.request_cancel_status <> 2
+                and dq.id = :hinaiOrderId
+        `;
+
+        const result = await connection.execute(
+            sql,
+            {
+                patientId,
+                hinaiOrderId,
+            },
+            {
+                outFormat: oracledb.OUT_FORMAT_OBJECT,
+            }
+        );
+
+        const data = (result.rows || []).map((row) => ({
+            patient_id: row.PATIENT_ID,
+            hinaiorder_id: row.HINAIORDERID,
+            nurse_remark: row.NURSE_REMARK,
+        }));
+
+        return data;
+
+    } catch (error) {
+        console.error('getNursingRemarks service error:', error);
+        throw error;
+    } finally {
+        if (connection) {
+            try {
+                await connection.close();
+            } catch (err) {
+                console.error('Oracle connection close error:', err);
+            }
+        }
     }
 };

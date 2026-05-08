@@ -112,3 +112,15 @@ export const getHinaiOrderDetails = async (req, res) => {
         return response.serverError(res, error.message);
     }
 };
+
+export const getNursingRemarks = async (req, res) => {
+    try {
+        const data = await hinaiOrderService.getNursingRemarks(req.body, req.user);
+
+        return response.success(res, 'Nursing remarks fetched successfully', data);
+    } catch (error) {
+        console.error('getNursingRemarks controller error:', error);
+
+        return response.serverError(res, error.message);
+    }
+};
