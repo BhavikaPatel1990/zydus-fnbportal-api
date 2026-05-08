@@ -12,7 +12,11 @@ const DATETIME_FIELDS = [
     "delivery_date",
     "ORDDATE",
     "ADMDATE",
-    "approveddate"
+    "approveddate",
+    "createdon",
+    "admdate",
+    "admissiondate",
+    "ORDTIME"
 ];
 
 const DATE_ONLY_FIELDS = [

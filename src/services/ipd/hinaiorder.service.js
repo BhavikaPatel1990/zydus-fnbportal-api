@@ -2,6 +2,7 @@ import prisma from '../../config/db.js';
 import axios from 'axios';
 import { getOracleConnection } from '../../config/oracleDb.js';
 import oracledb from 'oracledb';
+import { Prisma } from '@prisma/client';
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL?.replace(/\/$/, '');
 
@@ -750,7 +751,7 @@ WHERE rn = 1
       const mappedSiteId = await resolveSiteMapping(
         row.SITEID, 'site_id'
       );
-      console.log("mappedSiteId",mappedSiteId);
+    //   console.log("mappedSiteId",mappedSiteId);
       await prisma.hinaiOrder.upsert({
         where: { order_id: Number(row.HINAIORDERID) },
         update: {
@@ -879,4 +880,400 @@ WHERE rn = 1
   } finally {
     if (connection) await connection.close();
   }
+};
+
+export const getHinaiOrderSummary = async (body, jwtUser) => {
+
+    const siteIdParam =
+        getFirstDefined(body, ['site_id', 'siteid', 'SITEID']) ||
+        jwtUser?.siteID;
+    
+    if (!siteIdParam) {
+        throw new Error('site id is required');
+    }
+
+    const viewdata = body.viewdata || 'today';
+    const ordertype = body.ordertype || 'all';
+
+    const mstId = await resolveSiteMapping(siteIdParam, 'mst_id');
+
+    if (!mstId) {
+        throw new Error('Invalid site mapping');
+    }
+
+    const today = new Date();
+
+    const startOfDay = new Date(today);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(today);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    let dateCondition = Prisma.empty;
+    let orderTypeCondition = Prisma.empty;
+
+    if (viewdata === 'today') {
+        dateCondition = Prisma.sql`
+            AND order_date >= ${startOfDay}
+            AND order_date <= ${endOfDay}
+        `;
+    }
+    if (ordertype === 'extra') {
+        orderTypeCondition = Prisma.sql`
+            AND menu = 'EXTRA ORDER'
+        `;
+    }
+
+    if (ordertype === 'regular') {
+        orderTypeCondition = Prisma.sql`
+            AND menu != 'EXTRA ORDER'
+        `;
+    }
+
+    const latestOrders = await prisma.$queryRaw`
+        SELECT DISTINCT ON (patient_id)
+            patient_id,
+            order_id,
+            menu,
+            status
+        FROM "HinaiOrder"
+        WHERE
+            mst_id = ${BigInt(mstId)}
+            AND is_discharge = false
+            AND is_active = true
+            ${dateCondition}
+            ${orderTypeCondition}
+        ORDER BY patient_id, order_id DESC
+    `;
+
+    const total_orders = latestOrders.filter(
+        x => x.menu !== 'EXTRA ORDER'
+    ).length;
+
+    const punched_orders = latestOrders.filter(
+        x => x.menu !== 'EXTRA ORDER' && x.status === true
+    ).length;
+
+    const pending_order_punch = latestOrders.filter(
+        x => x.menu !== 'EXTRA ORDER' && x.status === false
+    ).length;
+
+    const pending_extra_order_punch = latestOrders.filter(
+        x => x.menu === 'EXTRA ORDER' && x.status === false
+    ).length;
+
+    return {
+        total_orders,
+        punched_orders,
+        pending_order_punch,
+        pending_extra_order_punch,
+        totals:
+            `Total Orders: ${total_orders}` +
+            ` | Punched Orders: ${punched_orders}` +
+            ` | Pending Order Punch: ${pending_order_punch}` +
+            ` | Pending Extra Order Punch: ${pending_extra_order_punch}`
+    };
+};
+
+export const getMenuDetails = async (body, jwtUser) => {
+    try {
+
+        const dietTypeValue = getFirstDefined(body, ['diettype', 'diet_type',]);
+        const hinaiOrderIdValue = getFirstDefined(body, ['hinaiorderid', 'hinai_order_id',]);
+        const patientIdValue = getFirstDefined(body, ['patientid', 'patient_id',]);
+
+        const dietType = toIntValue(dietTypeValue, 'diettype');
+        const hinaiOrderId = toIntValue(hinaiOrderIdValue, 'hinaiorderid');
+        const patientId = toIntValue(patientIdValue, 'patientid');
+
+        if (!dietType || !hinaiOrderId || !patientId) {
+            throw new Error('diet type, hinai order id and patient id are required');
+        }
+
+        /*
+        ============================================================
+        LATEST ORDER
+        ============================================================
+        */
+        let latestPatientOrder = null;
+
+        if (dietType === 18894123) {
+
+            latestPatientOrder =
+                await prisma.patientOrder.findFirst({
+                    where: {
+                        patient_id: patientId,
+                        is_active: true,
+                    },
+                    orderBy: {
+                        created_at: 'desc',
+                    },
+                });
+
+        } else {
+
+            latestPatientOrder =
+                await prisma.patientOrder.findFirst({
+                    where: {
+                        patient_id: patientId,
+                        diet_type: {
+                            notIn: [18894123, 17129492, 17129493, 17129495,],
+                        },
+                        is_active: true,
+                    },
+                    orderBy: {
+                        created_at: 'desc',
+                    },
+                });
+        }
+
+        /*
+        ============================================================
+        MENU TIMES
+        ============================================================
+        */
+        const menuTimes = await prisma.menuTime.findMany({
+            where: {
+                is_active: true,
+            },
+            orderBy: {
+                description: 'asc',
+            },
+        });
+
+        /*
+        ============================================================
+        PATIENT ORDER DETAILS
+        ============================================================
+        */
+        let patientOrderDetails = [];
+
+        if (latestPatientOrder) {
+
+            patientOrderDetails =
+                await prisma.patientOrderDetail.findMany({
+                    where: {
+                        po_id: latestPatientOrder.id,
+                        is_active: true,
+                    },
+                });
+        }
+
+        /*
+        ============================================================
+        RESPONSE
+        ============================================================
+        */
+        const data = menuTimes.map((menu) => {
+
+            const detail = patientOrderDetails.find(
+                (d) => d.ptm_id === menu.id
+            );
+
+            return {
+                mid: menu.id,
+                description: menu.description,
+                ptmid: detail?.ptm_id || null,
+                remarks: detail?.remarks || '',
+                poid: latestPatientOrder?.id || null,
+                diet_remark:
+                    latestPatientOrder?.diet_remark || '',
+            };
+        });
+
+        return data;
+
+    } catch (error) {
+
+        console.error('getMenuDetails error:', error);
+
+        throw new Error(error.message);
+    }
+};
+
+export const getHinaiOrderDetails = async (body, jwtUser) => {
+    try {
+
+        /*
+        ===========================================================
+        REQUEST VALUES
+        ===========================================================
+        */
+        const patientId = Number(body.patient_id);
+        const hinaiOrderId = Number(body.hinai_order_id);
+
+        /*
+        ===========================================================
+        VALIDATION
+        ===========================================================
+        */
+        if (!patientId || !hinaiOrderId) {
+            throw new Error(
+                'patient_id and hinai_order_id are required'
+            );
+        }
+
+        /*
+        ===========================================================
+        SITE ID
+        ===========================================================
+        */
+        const mstId =
+            jwtUser?.mst_id ||
+            jwtUser?.site_id ||
+            jwtUser?.mstId;
+
+        /*
+        ===========================================================
+        QUERY
+        ===========================================================
+        */
+        const orderDetails =
+            await prisma.hinaiOrder.findFirst({
+                where: {
+                    patient_id: patientId,
+                    order_id: hinaiOrderId,
+                    ...(mstId && {
+                        mst_id: BigInt(mstId),
+                    }),
+                    is_active: true,
+                },
+                select: {
+                    mr_no: true,
+                    patient_id: true,
+                    patient_name: true,
+                    mobile_no: true,
+                    email: true,
+                    doctor: true,
+                    age_gender: true,
+                    bed_no: true,
+                    admission_no: true,
+                    admission_at: true,
+                    ward: true,
+                    nurse_remark: true,
+                    menu_detail: true,
+                    created_at: true,
+                },
+            });
+
+        // console.log(orderDetails);
+        /*
+        ===========================================================
+        NO DATA
+        ===========================================================
+        */
+        if (!orderDetails) {
+            return {
+                res1: 0,
+            };
+        }
+
+        
+        /*
+        ===========================================================
+        RESPONSE
+        ===========================================================
+        */
+        return {
+                    mrno: orderDetails.mr_no?.toString() || '',
+                    patient_id: orderDetails.patient_id,
+                    patient: orderDetails.patient_name || '',
+                    mobileno: orderDetails.mobile_no || '',
+                    email: orderDetails.email || '',
+                    doctor: orderDetails.doctor || '',
+                    agegender: orderDetails.age_gender || '',
+                    bed_no: orderDetails.bed_no || '',
+                    admno: orderDetails.admission_no || '',
+                    admissiondate: orderDetails.admission_at,
+                    scname: orderDetails.ward || '',
+                    nurseremark:
+                        orderDetails.nurse_remark?.toUpperCase() || '',
+                    name: orderDetails.menu_detail || '',
+                    admdate: orderDetails.admission_at,
+                    createdon: orderDetails.created_at,
+                };
+
+    } catch (error) {
+        console.error(
+            'getHinaiOrderDetails error:',
+            error
+        );
+
+        throw new Error(error.message);
+    }
+};
+
+export const getNursingRemarks = async (body, jwtUser) => {
+    let connection;
+
+    try {
+        const patientId = Number(body.patient_id || body.patientid);
+        const hinaiOrderId = Number(body.order_id || body.orderid);
+
+        if (!patientId || Number.isNaN(patientId)) {
+            throw new Error('patient id is required and must be numeric');
+        }
+
+        if (!hinaiOrderId || Number.isNaN(hinaiOrderId)) {
+            throw new Error('order id is required and must be numeric');
+        }
+
+        connection = await getOracleConnection();
+
+        const sql = `
+            select 
+                dl.patient as patient_id,
+                dl.id as hinaiorderid,
+                dl.otherspecification as nurse_remark
+            from dietlaterequest dl
+            where dl.patient = :patientId
+                and dl.approvalstatus <> 3
+                and dl.request_cancel_status <> 2
+                and dl.id = :hinaiOrderId
+
+            union
+
+            select 
+                dq.patient as patient_id,
+                dq.id as hinaiorderid,
+                dietReqCo.comments as nurse_remark
+            from DIETREQUESTDETAIL dq
+            left join DIET_REQUEST_DETAIL_COMMENTS dietReqCo
+                on dietReqCo.DIET_REQUEST_DETAIL_ID = dq.id
+            where dq.patient = :patientId
+                and dq.request_cancel_status <> 2
+                and dq.id = :hinaiOrderId
+        `;
+
+        const result = await connection.execute(
+            sql,
+            {
+                patientId,
+                hinaiOrderId,
+            },
+            {
+                outFormat: oracledb.OUT_FORMAT_OBJECT,
+            }
+        );
+
+        const data = (result.rows || []).map((row) => ({
+            patient_id: row.PATIENT_ID,
+            hinaiorder_id: row.HINAIORDERID,
+            nurse_remark: row.NURSE_REMARK,
+        }));
+
+        return data;
+
+    } catch (error) {
+        console.error('getNursingRemarks service error:', error);
+        throw error;
+    } finally {
+        if (connection) {
+            try {
+                await connection.close();
+            } catch (err) {
+                console.error('Oracle connection close error:', err);
+            }
+        }
+    }
 };
