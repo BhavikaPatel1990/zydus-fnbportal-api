@@ -27,7 +27,7 @@ model CurrentlyEditing {
 
 model DietType {
   id         String   @id @default(uuid())
-  diet_type_id Int
+  diet_type_id Int @unique
   diet_name  String
   from_time  DateTime
   to_time    DateTime
@@ -39,6 +39,10 @@ model DietType {
   updated_by String?
   deleted_by String?
   is_active  Boolean  @default(true)
+
+  patientOrders PatientOrder[] @relation("DietTypeToPatientOrder")
+
+  @@index([diet_type_id])
 }
 
 model HinaiOrder {
@@ -156,9 +160,11 @@ model PatientOrder {
 
   hinaiOrder HinaiOrder @relation("HinaiToPatientOrder", fields: [hinai_order_id], references: [order_id])
   patientOrderLiquids PatientOrderLiquid[] @relation("PoToLiquid")
+  dietTypeData DietType? @relation("DietTypeToPatientOrder", fields: [diet_type], references: [diet_type_id])
 
   @@index([patient_id])
   @@index([hinai_order_id])
+  @@index([diet_type])
 }
 
 model PatientOrderDetail {

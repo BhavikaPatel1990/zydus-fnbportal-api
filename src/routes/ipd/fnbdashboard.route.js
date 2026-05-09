@@ -20,4 +20,7 @@ router.post('/extra-orders/download', fnbDashboardController.downloadExtraOrders
 router.post('/liquid-data', fnbDashboardController.getLiquidData);
 router.post('/liquid-data/download', fnbDashboardController.downloadLiquidDataCsv);
 
+router.post("/search-patient", fnbDashboardController.searchPatient);
+router.post("/patient-order-ledger", fnbDashboardController.getPatientOrderLedger);
+
 export default router;
