@@ -134,3 +134,33 @@ export const downloadLiquidDataCsv = async (req, res) => {
         return response.serverError(res, error.message);
     }
 };
+
+export const searchPatient = async (req, res) => {
+  try {
+    const data = await fnbDashboardService.searchPatient(req.body);
+
+    return response.success(res, 'Patient search completed', data);
+
+  } catch (error) {
+    console.error("searchPatient Controller Error:", error);
+    return response.serverError(res, error.message);
+  }
+};
+
+export const getPatientOrderLedger = async (req, res) => {
+  try {
+
+    const patientOrderLedgerData = await fnbDashboardService.getPatientOrderLedger(req.body, req.user);
+
+    return response.success(res, 'Patient order ledger fetched successfully', patientOrderLedgerData);
+
+  } catch (error) {
+
+    console.error(
+      "Patient order ledger  Error:",
+      error
+    );
+
+    return response.serverError(res, error.message);
+  }
+};

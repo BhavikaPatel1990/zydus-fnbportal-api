@@ -1037,3 +1037,483 @@ export const downloadLiquidDataCsv = async (body, jwtUser) => {
 
     return rows.join('\n');
 };
+
+export const searchPatient = async (body) => {
+    try {
+
+        /*
+        ===========================================================
+        REQUEST VALUES
+        ===========================================================
+        */
+
+        let searchTerm = body.query || "";
+
+        /*
+        ===========================================================
+        VALIDATION
+        ===========================================================
+        */
+
+        searchTerm = searchTerm.trim();
+
+        if (!searchTerm) {
+        return [];
+        }
+
+        /*
+        ===========================================================
+        SEARCH QUERY
+        ===========================================================
+        */
+
+        const patients = await prisma.$queryRaw`
+        SELECT DISTINCT ON (mr_no, patient_name)
+            mr_no,
+            UPPER(patient_name) AS patient_name,
+            patient_id,
+            order_date
+        FROM "HinaiOrder"
+        WHERE
+            is_active = true
+            AND (
+            CAST(mr_no AS TEXT) ILIKE ${searchTerm + "%"}
+            OR UPPER(patient_name) ILIKE UPPER(${"%" + searchTerm + "%"})
+            OR (
+                CAST(mr_no AS TEXT) || ' ' || UPPER(patient_name)
+            ) ILIKE UPPER(${searchTerm + "%"})
+            )
+        ORDER BY
+            mr_no,
+            patient_name,
+            order_date DESC
+        LIMIT 20
+        `;
+
+        /*
+        ===========================================================
+        RESPONSE FORMAT
+        ===========================================================
+        */
+
+        if (!patients.length) {
+        return 0;
+        }
+
+        return patients.map((item) => ({
+        label: `${item.mr_no} | ${item.patient_name}`,
+        mr_no: item.mr_no.toString(),
+        patient_id: item.patient_id,
+        patient_name: item.patient_name
+        }));
+
+    } catch (error) {
+        console.error("searchPatient Service Error:", error);
+        throw error;
+    }
+};
+
+export const getPatientOrderLedger = async (body, jwtUser) => {
+  try {
+
+    /*
+    ===========================================================
+    REQUEST VALUES
+    ===========================================================
+    */
+
+    const mrn = body.mrn?.trim();
+
+    if (!mrn) {
+      throw new Error("MRN is required");
+    }
+
+    /*
+    ===========================================================
+    JWT VALUES
+    ===========================================================
+    */
+
+    const siteid = jwtUser.siteID;
+
+    const loginUsername = jwtUser.username;
+
+    /*
+    ===========================================================
+    GET ORDER DATA
+    ===========================================================
+    */
+
+    const orders = await prisma.hinaiOrder.findMany({
+
+      where: {
+        mst_id: BigInt(siteid),
+        mr_no: BigInt(mrn),
+        is_active: true
+      },
+
+      select: {
+
+        mst_id: true,
+
+        mr_no: true,
+
+        patient_id: true,
+
+        patient_name: true,
+
+        age_gender: true,
+
+        menu_detail: true,
+
+        admission_at: true,
+
+        bed_no: true,
+
+        ward: true,
+
+        doctor: true,
+
+        order_date: true,
+
+        is_diet_change: true,
+
+        is_transfer: true,
+
+        status: true,
+
+        patientOrders: {
+
+          where: {
+            is_active: true
+          },
+
+          select: {
+
+            id: true,
+
+            nursing_remark: true,
+
+            diet_remark: true,
+
+            created_at: true,
+
+            created_by: true,
+
+            diet_type: true,
+
+            dispatched: true,
+
+            is_cancelled: true,
+
+            liquid_hours: true
+          },
+
+          orderBy: [
+            {
+              is_cancelled: "asc"
+            },
+            {
+              dispatched: "asc"
+            },
+            {
+              created_at: "desc"
+            }
+          ]
+        }
+      },
+
+      orderBy: {
+        order_date: "desc"
+      }
+    });
+
+    /*
+    ===========================================================
+    NO DATA
+    ===========================================================
+    */
+
+    if (!orders.length) {
+      return 0;
+    }
+
+    /*
+    ===========================================================
+    GET DIET TYPES
+    ===========================================================
+    */
+
+    const dietTypeIds = [];
+
+    orders.forEach((order) => {
+
+      order.patientOrders.forEach((po) => {
+
+        if (po.diet_type !== null) {
+          dietTypeIds.push(po.diet_type);
+        }
+      });
+    });
+
+    /*
+    ===========================================================
+    FETCH DIET TYPES
+    ===========================================================
+    */
+
+    const dietTypes = await prisma.dietType.findMany({
+
+      where: {
+        diet_type_id: {
+          in: [...new Set(dietTypeIds)]
+        }
+      },
+
+      select: {
+        diet_type_id: true,
+        diet_name: true
+      }
+    });
+
+    /*
+    ===========================================================
+    CREATE DIET MAP
+    ===========================================================
+    */
+
+    const dietMap = {};
+
+    dietTypes.forEach((diet) => {
+
+      dietMap[diet.diet_type_id] =
+        diet.diet_name;
+    });
+
+    /*
+    ===========================================================
+    FINAL RESPONSE
+    ===========================================================
+    */
+
+    const response = [];
+
+    for (const ho of orders) {
+
+      /*
+      =======================================================
+      NO PATIENT ORDER
+      =======================================================
+      */
+
+      if (!ho.patientOrders.length) {
+
+        response.push({
+
+          siteid:
+            ho.mst_id?.toString(),
+
+          MRNO:
+            ho.mr_no?.toString(),
+
+          patientid:
+            ho.patient_id,
+
+          PATIENT:
+            ho.patient_name,
+
+          agegender:
+            ho.age_gender,
+
+          menudetail:
+            ho.menu_detail,
+
+          admissiondate:
+            ho.admission_at,
+
+          bedno:
+            ho.bed_no,
+
+          SCNAME:
+            ho.ward,
+
+          DOCTOR:
+            ho.doctor,
+
+          username:
+            loginUsername,
+
+          dietname:
+            null,
+
+          admdate:
+            ho.admission_at,
+
+          nursingRemark:
+            null,
+
+          dietRemark:
+            null,
+
+          HODATE:
+            ho.order_date,
+
+          punchdate:
+            null,
+
+          DIFF:
+            null,
+
+          diettype:
+            null,
+
+          dispatched:
+            null,
+
+          iscancelled:
+            null,
+
+          isdietchange:
+            ho.is_diet_change,
+
+          istransfer:
+            ho.is_transfer,
+
+          ostatus:
+            ho.status,
+
+          lqhours:
+            null
+        });
+
+      } else {
+
+        /*
+        =======================================================
+        PATIENT ORDER LOOP
+        =======================================================
+        */
+
+        for (const po of ho.patientOrders) {
+
+          /*
+          ===================================================
+          TIME DIFFERENCE
+          ===================================================
+          */
+
+          let diffMinutes = null;
+
+          if (
+            po.created_at &&
+            ho.order_date
+          ) {
+
+            diffMinutes = Math.floor(
+              (
+                new Date(po.created_at) -
+                new Date(ho.order_date)
+              ) / (1000 * 60)
+            );
+          }
+
+          response.push({
+
+            siteid:
+              ho.mst_id?.toString(),
+
+            MRNO:
+              ho.mr_no?.toString(),
+
+            patientid:
+              ho.patient_id,
+
+            PATIENT:
+              ho.patient_name,
+
+            agegender:
+              ho.age_gender,
+
+            menudetail:
+              ho.menu_detail,
+
+            admissiondate:
+              ho.admission_at,
+
+            bedno:
+              ho.bed_no,
+
+            SCNAME:
+              ho.ward,
+
+            DOCTOR:
+              ho.doctor,
+
+            username:
+              po.created_by ||
+              loginUsername,
+
+            dietname:
+              dietMap[po.diet_type] || null,
+
+            admdate:
+              ho.admission_at,
+
+            nursingRemark:
+              po.nursing_remark,
+
+            dietRemark:
+              po.diet_remark,
+
+            HODATE:
+              ho.order_date,
+
+            punchdate:
+              po.created_at,
+
+            DIFF:
+              diffMinutes,
+
+            diettype:
+              po.diet_type,
+
+            dispatched:
+              po.dispatched,
+
+            iscancelled:
+              po.is_cancelled,
+
+            isdietchange:
+              ho.is_diet_change,
+
+            istransfer:
+              ho.is_transfer,
+
+            ostatus:
+              ho.status,
+
+            lqhours:
+              po.liquid_hours
+          });
+        }
+      }
+    }
+
+    /*
+    ===========================================================
+    RETURN RESPONSE
+    ===========================================================
+    */
+
+    return response;
+
+  } catch (error) {
+
+    console.error(
+      "getOrderLedger Service Error:",
+      error
+    );
+
+    throw error;
+  }
+};
