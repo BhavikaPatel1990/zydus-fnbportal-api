@@ -5,6 +5,7 @@ import inpatientRoutes from './inpatient.route.js';
 import fnbDashboardRoutes from './fnbdashboard.route.js';
 
 import { authorize } from '../../middleware/authorize.js';
+import attachUserProfile from '../../middleware/attachUserProfile.js';
 import { activityLogger } from '../../middleware/activityLogger.js';
 
 const router = Router();
@@ -19,6 +20,7 @@ router.get('/health', (req, res) => {
 
 /* MIDDLEWARE */
 router.use(authorize);
+router.use(attachUserProfile);
 router.use(activityLogger('IPD'));
 
 /* ROUTES */
