@@ -49,6 +49,7 @@ app.use(cors({
 app.use((req, res, next) => {
     const lang = req.body.lang || 'en';
     res.setLocale(lang);
+    console.log(`[DEBUG] Incoming Request: ${req.method} ${req.originalUrl}`);
     next();
 });
 

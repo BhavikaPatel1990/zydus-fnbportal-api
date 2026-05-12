@@ -152,7 +152,7 @@ model PatientOrder {
 model PatientOrderDetail {
   id          String   @id @default(uuid())
   po_id       String
-  ptm_id      Int
+  ptm_id      String
   item_id     Int
   remarks     String
 
@@ -170,7 +170,7 @@ model PatientOrderDetail {
 model PatientOrderLiquid {
   id          String   @id @default(uuid())
   po_id       String
-  ptm_id      Int
+  ptm_id      String
   liquid_time Int
   remarks     String
 
@@ -181,6 +181,9 @@ model PatientOrderLiquid {
   updated_by  String?
   deleted_by  String?
   is_active   Boolean  @default(true)
+
+  patientOrder PatientOrder @relation("PoToLiquid", fields: [po_id], references: [id])
+  menuTime MenuTime? @relation( "MenuTimeToLiquid", fields: [ptm_id], references: [id] )
 
   @@index([po_id])
 }
