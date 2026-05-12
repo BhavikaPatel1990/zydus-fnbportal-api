@@ -5,12 +5,12 @@ export const createHinaiOrder = async (req, res) => {
     try {
         const data = await hinaiOrderService.createHinaiOrder(req.body, req.user);
         const message = data.created
-            ? 'Hinai order created successfully'
-            : 'Hinai order already exists, insert ignored';
+            ? 'HINAI order created successfully'
+            : 'HINAI order already exists, insert ignored';
 
         return response.success(res, message, data);
     } catch (error) {
-        console.error('createHinaiOrder error:', error.message);
+        console.error('HINAI order create error:', error.message);
         return response.serverError(res, error.message);
     }
 };
@@ -19,12 +19,12 @@ export const updateHinaiOrderTransfer = async (req, res) => {
     try {
         const data = await hinaiOrderService.markHinaiOrderTransfer(req.body, req.user);
         const message = data.updated
-            ? 'Hinai order transfer updated successfully'
-            : 'No hinai order found for transfer update';
+            ? 'HINAI order transfer updated successfully'
+            : 'No HINAI order found for transfer update';
 
         return response.success(res, message, data);
     } catch (error) {
-        console.error('updateHinaiOrderTransfer error:', error.message);
+        console.error('HINAI order transfer error:', error.message);
         return response.serverError(res, error.message);
     }
 };
@@ -33,12 +33,12 @@ export const updateHinaiOrderDischarge = async (req, res) => {
     try {
         const data = await hinaiOrderService.markHinaiOrderDischarge(req.body, req.user);
         const message = data.updated
-            ? 'Hinai order discharge updated successfully'
-            : 'No hinai order found for discharge update';
+            ? 'HINAI order discharge updated successfully'
+            : 'No HINAI order found for discharge update';
 
         return response.success(res, message, data);
     } catch (error) {
-        console.error('updateHinaiOrderDischarge error:', error.message);
+        console.error('HINAI order discharge error:', error.message);
         return response.serverError(res, error.message);
     }
 };
@@ -46,7 +46,7 @@ export const updateHinaiOrderDischarge = async (req, res) => {
 export const getHinaiOrders = async (req, res) => {
     try {
         const data = await hinaiOrderService.getHinaiOrders(req.body, req.user);
-        return response.success(res, 'Hinai orders fetched successfully', data);
+        return response.success(res, 'HINAI orders fetched successfully', data);
     } catch (error) {
         console.error('getHinaiOrders error:', error.message);
         return response.serverError(res, error.message);

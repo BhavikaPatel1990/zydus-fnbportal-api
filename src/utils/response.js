@@ -10,6 +10,13 @@ const DATETIME_FIELDS = [
     "deleted_at",
     "order_date",
     "delivery_date",
+    "ORDDATE",
+    "ADMDATE",
+    "approveddate",
+    "createdon",
+    "admdate",
+    "admissiondate",
+    "ORDTIME"
 ];
 
 const DATE_ONLY_FIELDS = [

@@ -1,5 +1,8 @@
 import prisma from '../../config/db.js';
 import axios from 'axios';
+import { getOracleConnection } from '../../config/oracleDb.js';
+import oracledb from 'oracledb';
+import { Prisma } from '@prisma/client';
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL?.replace(/\/$/, '');
 
@@ -158,34 +161,64 @@ const getSiteListApiUrl = () => {
         : `${AUTH_SERVICE_URL}/api/site/list`;
 };
 
-const resolveSiteMapping = async (siteValue) => {
-    if (siteValue === undefined) {
+const getMstIdFromSiteId = async (siteId) => {
+    if (siteId === undefined || siteId === null) {
         return null;
     }
 
-    const parsedSiteId = toIntValue(siteValue, 'site_id', { required: false });
-
-    if (parsedSiteId === null) {
-        return null;
-    }
+    const parsedSiteId = toIntValue(siteId, 'site_id', { required: false });
+    if (parsedSiteId === null) return null;
 
     const apiResponse = await axios.get(getSiteListApiUrl());
-    const siteList = Array.isArray(apiResponse.data?.data) ? apiResponse.data.data : [];
 
-    const siteRecordByExternalId = siteList.find(
+    const siteList = Array.isArray(apiResponse.data?.data)
+        ? apiResponse.data.data
+        : [];
+
+    const siteRecord = siteList.find(
         (site) => Number(site.site_id) === parsedSiteId
     );
-    const siteRecordByMstId = siteList.find(
-        (site) => Number(site.id) === parsedSiteId
-    );
-    const siteRecord = siteRecordByExternalId ?? siteRecordByMstId;
 
     if (!siteRecord) {
-        throw new Error(`No active mst_site mapping found for site_id ${parsedSiteId}`);
+        throw new Error(`No mst mapping found for site_id ${parsedSiteId}`);
     }
 
-    return BigInt(siteRecord.id);
+    return siteRecord.id; // mst_id
 };
+
+const getMstIdDirect = async (mstId) => {
+    if (mstId === undefined || mstId === null) {
+        return null;
+    }
+
+    const parsedMstId = toIntValue(mstId, 'mst_id', { required: false });
+    if (parsedMstId === null) return null;
+
+    const apiResponse = await axios.get(getSiteListApiUrl());
+
+    const siteList = Array.isArray(apiResponse.data?.data)
+        ? apiResponse.data.data
+        : [];
+
+    const siteRecord = siteList.find(
+        (site) => Number(site.id) === parsedMstId
+    );
+
+    if (!siteRecord) {
+        throw new Error(`Invalid mst_id ${parsedMstId}`);
+    }
+
+    return siteRecord.id;
+};
+
+const resolveSiteMapping = async (value, type = 'site_id') => {
+    if (type === 'mst_id') {
+        return await getMstIdDirect(value);
+    }
+
+    return await getMstIdFromSiteId(value);
+};
+
 
 const mapHinaiOrderPayload = async (payload) => {
     const patientId = getFirstDefined(payload, ['patient_id', 'PATIENT_ID']);
@@ -878,7 +911,7 @@ export const getHinaiOrdersOldAsRawQuery = async (body, jwtUser) => {
     const search = body.search || '';
     const offset = (page - 1) * limit;
 
-    const mstId = await resolveSiteMapping(siteIdParam);
+    const mstId = await resolveSiteMapping(siteIdParam, 'mst_id');
     if (!mstId) {
         throw new Error('Invalid site mapping');
     }
@@ -1732,7 +1765,6 @@ WHERE rn = 1
           email: row.EMAIL,
           nurse_remark: row.NURSEREMARK,
           approved_date: row.APPROVEDDATE ? new Date(row.APPROVEDDATE) : null,
-
           created_by: row.USERNAME || null,
           updated_by: row.USERNAME || null
         }
@@ -1833,7 +1865,6 @@ export const getHinaiOrderSummary = async (body, jwtUser) => {
     const siteIdParam =
         getFirstDefined(body, ['site_id', 'siteid', 'SITEID']) ||
         jwtUser?.siteID;
-
     if (!siteIdParam) {
         throw new Error('site id is required');
     }
@@ -2113,7 +2144,6 @@ export const getHinaiOrderDetails = async (body, jwtUser) => {
                 res1: 0,
             };
         }
-
 
         /*
         ===========================================================
