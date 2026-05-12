@@ -335,6 +335,166 @@ const getTodayRange = () => {
     return { start, end };
 };
 
+const toUpperTrimmed = (value) => {
+    if (value === undefined || value === null) return '';
+    return String(value).trim().toUpperCase();
+};
+
+const parsePipeValueList = (value) => {
+    if (value === undefined || value === null || value === '') {
+        return [];
+    }
+
+    if (Array.isArray(value)) {
+        return value.map((item) => String(item).trim());
+    }
+
+    return String(value)
+        .split('|')
+        .map((item) => item.trim());
+};
+
+const REGULAR_EXCLUDED_DIET_TYPES = [18894123, 17129492, 17129493, 17129495];
+
+const getOrderCategory = (dietType) =>
+    Number(dietType) === 18894123 ? 'extra' : 'regular';
+
+const mapPatientOrderItems = (body) => {
+    if (Array.isArray(body.items) && body.items.length) {
+        return body.items.map((item, index) => ({
+            ptm_id: toStringValue(
+                getFirstDefined(item, ['ptm_id', 'ptmid', 'menu_time_id', 'id']),
+                `items[${index}].ptm_id`
+            ),
+            remarks: toUpperTrimmed(
+                getFirstDefined(item, ['remarks', 'item_remark', 'itemRemark'])
+            ),
+        }));
+    }
+
+    const ptmIds = parsePipeValueList(getFirstDefined(body, ['ptitm', 'ptmids']));
+    const remarks = parsePipeValueList(getFirstDefined(body, ['ptrmrk', 'remarks']));
+
+    if (!ptmIds.length) {
+        return [];
+    }
+
+    return ptmIds.map((ptmId, index) => ({
+        ptm_id: toStringValue(ptmId, `ptitm[${index}]`),
+        remarks: toUpperTrimmed(remarks[index] || ''),
+    }));
+};
+
+const getLatestActivePatientOrder = async (patientId, dietType) => {
+    if (dietType === 18894123) {
+        return prisma.patientOrder.findFirst({
+            where: {
+                patient_id: patientId,
+                diet_type: 18894123,
+                is_active: true,
+            },
+            orderBy: [
+                { created_at: 'desc' },
+                { updated_at: 'desc' },
+            ],
+        });
+    }
+
+    return prisma.patientOrder.findFirst({
+        where: {
+            patient_id: patientId,
+            diet_type: {
+                notIn: REGULAR_EXCLUDED_DIET_TYPES,
+            },
+            is_active: true,
+        },
+        orderBy: [
+            { created_at: 'desc' },
+            { updated_at: 'desc' },
+        ],
+    });
+};
+
+const getPatientOrderMenuTimes = async (dietType) => {
+    const menuTimes = await prisma.menuTime.findMany({
+        where: {
+            is_active: true,
+        },
+        orderBy: {
+            description: 'asc',
+        },
+    });
+
+    return dietType === 18894123 ? menuTimes.slice(0, 1) : menuTimes;
+};
+
+const LIQUID_FORM_DIET_TYPES = [17129492, 17129493, 17129495];
+
+const getDefaultLiquidTimingCount = (hours) => {
+    const map = {
+        1: 19,
+        2: 10,
+        3: 7,
+        4: 5,
+        5: 4,
+        6: 4,
+        7: 3,
+        8: 3,
+        9: 3,
+        10: 2,
+        11: 2,
+        12: 2,
+    };
+
+    return map[hours] || 0;
+};
+
+const buildDefaultLiquidTimings = (hours) => {
+    const count = getDefaultLiquidTimingCount(hours);
+    if (!count) {
+        return [];
+    }
+
+    let offset = 0;
+
+    return Array.from({ length: count }, () => {
+        const liquidTime = 6 + offset;
+        offset += hours;
+
+        return {
+            liquid_time: liquidTime,
+            remarks: '',
+        };
+    });
+};
+
+const getLatestActiveLiquidOrder = async (patientId, liquidHours) => {
+    return prisma.patientOrder.findFirst({
+        where: {
+            patient_id: patientId,
+            liquid_hours: liquidHours,
+            diet_type: {
+                in: LIQUID_FORM_DIET_TYPES,
+            },
+            is_active: true,
+        },
+        orderBy: [
+            { created_at: 'desc' },
+            { updated_at: 'desc' },
+        ],
+        include: {
+            patientOrderLiquids: {
+                where: {
+                    is_active: true,
+                },
+                orderBy: {
+                    liquid_time: 'asc',
+                },
+            },
+        },
+    });
+};
+
 export const markHinaiOrderTransfer = async (body, jwtUser) => {
     const auditUserId = getAuditUserId(jwtUser);
     const patientId = toIntValue(
@@ -407,6 +567,337 @@ export const markHinaiOrderDischarge = async (body, jwtUser) => {
         count: result.count,
         admission_no: admissionNo,
         patient_id: patientId,
+    };
+};
+
+export const createPatientOrder = async (body, jwtUser) => {
+    const auditUserId = getAuditUserId(jwtUser);
+
+    const patientId = toIntValue(
+        getFirstDefined(body, ['patientid', 'patient_id', 'PATIENT_ID']),
+        'patientid'
+    );
+    const hinaiOrderId = toIntValue(
+        getFirstDefined(body, ['hnoid', 'hinaiorderid', 'hinai_order_id', 'order_id']),
+        'hnoid'
+    );
+    const existingPoId = getFirstDefined(body, ['poid', 'po_id']);
+    const dietType = toIntValue(
+        getFirstDefined(body, ['diettype', 'diet_type']),
+        'diettype'
+    );
+
+    const dietRemark = toUpperTrimmed(
+        getFirstDefined(body, ['dietremark', 'diet_remark'])
+    );
+    const nursingRemark = toUpperTrimmed(
+        getFirstDefined(body, ['nurseremark', 'nursingremark', 'nursing_remark'])
+    );
+    const items = mapPatientOrderItems(body);
+    const orderCategory = getOrderCategory(dietType);
+
+    if (!items.length) {
+        throw new Error('At least one patient order item is required');
+    }
+
+    const hinaiOrder = await prisma.hinaiOrder.findFirst({
+        where: {
+            order_id: hinaiOrderId,
+            patient_id: patientId,
+            is_active: true,
+        },
+        select: {
+            id: true,
+            mst_id: true,
+            order_id: true,
+            patient_id: true,
+        },
+    });
+
+    if (!hinaiOrder) {
+        throw new Error('HINAI order not found for the given patient');
+    }
+
+    if (!existingPoId) {
+        const duplicateWhere = {
+            patient_id: patientId,
+            hinai_order_id: hinaiOrderId,
+            is_active: true,
+            ...(orderCategory === 'extra'
+                ? {
+                      diet_type: 18894123,
+                  }
+                : {
+                      diet_type: {
+                          not: 18894123,
+                      },
+                  }),
+        };
+
+        const existingOrder = await prisma.patientOrder.findFirst({
+            where: duplicateWhere,
+            select: {
+                id: true,
+                hinai_order_id: true,
+                diet_type: true,
+            },
+        });
+
+        if (existingOrder) {
+            throw new Error(
+                `Patient order already exists for this hinai order and ${orderCategory} order type`
+            );
+        }
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+        let previousOrderId = null;
+
+        if (existingPoId) {
+            const previousOrder = await tx.patientOrder.findFirst({
+                where: {
+                    id: String(existingPoId),
+                    patient_id: patientId,
+                    is_active: true,
+                },
+                select: {
+                    id: true,
+                },
+            });
+
+            if (!previousOrder) {
+                throw new Error('Existing patient order not found for update');
+            }
+
+            previousOrderId = previousOrder.id;
+
+            await tx.patientOrder.update({
+                where: {
+                    id: previousOrder.id,
+                },
+                data: {
+                    is_active: false,
+                    updated_by: auditUserId ? String(auditUserId) : null,
+                },
+            });
+
+            await tx.patientOrderDetail.updateMany({
+                where: {
+                    po_id: previousOrder.id,
+                    is_active: true,
+                },
+                data: {
+                    is_active: false,
+                    updated_by: auditUserId ? String(auditUserId) : null,
+                },
+            });
+        }
+
+        const patientOrder = await tx.patientOrder.create({
+            data: {
+                patient_id: patientId,
+                diet_type: dietType,
+                nursing_remark: nursingRemark,
+                diet_remark: dietRemark,
+                dispatched: false,
+                hinai_order_id: hinaiOrderId,
+                is_cancelled: false,
+                liquid_hours: Number(body.lqhours || body.liquid_hours || 0),
+                mst_id: hinaiOrder.mst_id,
+                mail_flag: 0,
+                created_by: auditUserId ? String(auditUserId) : null,
+            },
+            select: {
+                id: true,
+                patient_id: true,
+                diet_type: true,
+                hinai_order_id: true,
+                created_at: true,
+            },
+        });
+
+        await tx.patientOrderDetail.createMany({
+            data: items.map((item) => ({
+                po_id: patientOrder.id,
+                ptm_id: item.ptm_id,
+                item_id: 0,
+                remarks: item.remarks,
+                created_by: auditUserId ? String(auditUserId) : null,
+            })),
+        });
+
+        await tx.hinaiOrder.update({
+            where: {
+                order_id: hinaiOrderId,
+            },
+            data: {
+                status: true,
+                updated_by: auditUserId ? String(auditUserId) : null,
+            },
+        });
+
+        // Release edit lock if page_id is provided
+        const pageId = getFirstDefined(body, ['page_id', 'pageid']);
+        if (pageId) {
+            await releasePageLock({ page_id: pageId, patient_id: patientId }, jwtUser);
+        }
+
+        return patientOrder;
+    });
+
+    return {
+        po_id: result.id,
+        patient_id: result.patient_id,
+        hinai_order_id: result.hinai_order_id,
+        diet_type: result.diet_type,
+        item_count: items.length,
+        nursing_remark: nursingRemark,
+        diet_remark: dietRemark,
+        created_at: result.created_at,
+        mode: existingPoId ? 'edit' : 'add',
+    };
+};
+
+export const getPatientOrderFormData = async (body, jwtUser) => {
+    const patientId = toIntValue(
+        getFirstDefined(body, ['patientid', 'patient_id', 'PATIENT_ID']),
+        'patientid'
+    );
+    const hinaiOrderId = toIntValue(
+        getFirstDefined(body, ['hinaiorderid', 'hnoid', 'hinai_order_id', 'order_id']),
+        'hinaiorderid'
+    );
+    const dietType = toIntValue(
+        getFirstDefined(body, ['diettype', 'diet_type']),
+        'diettype'
+    );
+    const poId = getFirstDefined(body, ['poid', 'po_id']);
+
+    const hinaiOrder = await prisma.hinaiOrder.findFirst({
+        where: {
+            patient_id: patientId,
+            order_id: hinaiOrderId,
+            is_active: true,
+        },
+        select: {
+            mr_no: true,
+            patient_id: true,
+            patient_name: true,
+            mobile_no: true,
+            email: true,
+            doctor: true,
+            age_gender: true,
+            bed_no: true,
+            admission_no: true,
+            admission_at: true,
+            ward: true,
+            nurse_remark: true,
+            menu_detail: true,
+            order_id: true,
+        },
+    });
+
+    if (!hinaiOrder) {
+        throw new Error('HINAI order not found');
+    }
+
+    let sourcePatientOrder = null;
+    let mode = 'add';
+
+    if (poId) {
+        sourcePatientOrder = await prisma.patientOrder.findFirst({
+            where: {
+                id: String(poId),
+                patient_id: patientId,
+            },
+            select: {
+                id: true,
+                diet_type: true,
+                nursing_remark: true,
+                diet_remark: true,
+                created_at: true,
+            },
+        });
+
+        if (!sourcePatientOrder) {
+            throw new Error('Patient order not found for edit');
+        }
+
+        mode = 'edit';
+    } else {
+        sourcePatientOrder = await getLatestActivePatientOrder(patientId, dietType);
+    }
+
+    const menuTimes = await getPatientOrderMenuTimes(dietType);
+
+    let details = [];
+    if (sourcePatientOrder?.id) {
+        details = await prisma.patientOrderDetail.findMany({
+            where: {
+                po_id: sourcePatientOrder.id,
+                is_active: true,
+            },
+            select: {
+                ptm_id: true,
+                remarks: true,
+            },
+        });
+    }
+
+    const detailMap = new Map(details.map((detail) => [detail.ptm_id, detail]));
+
+    let prefillNursingRemark = '';
+    try {
+        const nursingRemarks = await getNursingRemarks(
+            {
+                patient_id: patientId,
+                order_id: hinaiOrderId,
+            },
+            jwtUser
+        );
+
+        prefillNursingRemark = nursingRemarks?.[0]?.nurse_remark || '';
+    } catch (error) {
+        prefillNursingRemark = hinaiOrder.nurse_remark || '';
+    }
+
+    return {
+        mode,
+        patient: {
+            mrno: hinaiOrder.mr_no?.toString() || '',
+            patient_id: hinaiOrder.patient_id,
+            patient: hinaiOrder.patient_name || '',
+            mobileno: hinaiOrder.mobile_no || '',
+            email: hinaiOrder.email || '',
+            doctor: hinaiOrder.doctor || '',
+            agegender: hinaiOrder.age_gender || '',
+            bed_no: hinaiOrder.bed_no || '',
+            admissionno: hinaiOrder.admission_no || '',
+            admissiondate: hinaiOrder.admission_at,
+            ward: hinaiOrder.ward || '',
+            name: hinaiOrder.menu_detail || '',
+            hinaiorderid: hinaiOrder.order_id,
+        },
+        order: {
+            poid: sourcePatientOrder?.id || null,
+            diettype: dietType,
+            nursingRemark:
+                mode === 'edit'
+                    ? sourcePatientOrder?.nursing_remark || ''
+                    : toUpperTrimmed(prefillNursingRemark),
+            dietRemark: sourcePatientOrder?.diet_remark || '',
+        },
+        menu_items: menuTimes.map((menu) => {
+            const detail = detailMap.get(menu.id);
+
+            return {
+                mid: menu.id,
+                description: menu.description,
+                ptmid: detail?.ptm_id || '0',
+                checked: Boolean(detail?.ptm_id),
+                remarks: detail?.remarks || '',
+            };
+        }),
     };
 };
 
@@ -529,6 +1020,66 @@ export const getHinaiOrdersOldAsRawQuery = async (body, jwtUser) => {
     };
 };
 
+export const checkPageLock = async (body, jwtUser) => {
+    const pageId = toIntValue(getFirstDefined(body, ['page_id', 'pageid']), 'page_id');
+    const patientId = toStringValue(getFirstDefined(body, ['patient_id', 'patientid', 'poid']), 'patient_id');
+    const userId = String(getAuditUserId(jwtUser));
+
+    if (!userId) throw new Error('User identification required');
+
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60000);
+
+    const existingLock = await prisma.currentlyEditing.findFirst({
+        where: {
+            page_id: pageId,
+            po_id: patientId,
+            timestamp: {
+                gt: twoMinutesAgo,
+            },
+            is_active: true,
+        },
+    });
+
+    if (existingLock && existingLock.user_id !== userId) {
+        throw new Error('This page is already being edited by another user.');
+    }
+
+    // Delete any old locks for this page/patient to keep it clean
+    await prisma.currentlyEditing.deleteMany({
+        where: {
+            page_id: pageId,
+            po_id: patientId,
+        },
+    });
+
+    const lock = await prisma.currentlyEditing.create({
+        data: {
+            page_id: pageId,
+            po_id: patientId,
+            user_id: userId,
+            timestamp: new Date(),
+        },
+    });
+
+    return { success: true, lock };
+};
+
+export const releasePageLock = async (body, jwtUser) => {
+    const pageId = toIntValue(getFirstDefined(body, ['page_id', 'pageid']), 'page_id');
+    const patientId = toStringValue(getFirstDefined(body, ['patient_id', 'patientid', 'poid']), 'patient_id');
+    const userId = String(getAuditUserId(jwtUser));
+
+    await prisma.currentlyEditing.deleteMany({
+        where: {
+            page_id: pageId,
+            po_id: patientId,
+            user_id: userId,
+        },
+    });
+
+    return { success: true };
+};
+
 export const getHinaiOrders = async (body, jwtUser) => {
     const siteIdParam = getFirstDefined(body, ['site_id', 'SITEID', 'siteid']);
     const viewdata = getFirstDefined(body, ['viewdata']) || '0';
@@ -586,7 +1137,14 @@ export const getHinaiOrders = async (body, jwtUser) => {
         orderBy: [
             { patient_id: 'asc' },
             { order_id: 'desc' } // latest first
-        ]
+        ],
+        include: {
+            patientOrders: {
+                where: { is_active: true },
+                orderBy: { created_at: 'desc' },
+                take: 1
+            }
+        }
     });
 
     // 🔥 DISTINCT ON replacement (latest per patient)
@@ -609,29 +1167,450 @@ export const getHinaiOrders = async (body, jwtUser) => {
         page,
         limit,
         totalPages: Math.ceil(total / limit),
-        data: paginated.map(row => ({
-             patient_id: row.patient_id,
-            mrno: row.mr_no ? row.mr_no.toString() : null,
-            patient: row.patient_name,
-            bed_no: row.bed_no,
-            ward: row.ward,
-            scname: row.ward,
-            doctor: row.doctor,
-            menu: row.menu,
-            name: row.menu_detail,
-            order_date: row.order_date,
-            diff: Math.floor((Date.now() - new Date(row.order_date)) / 60000),
-            diet_type: row.diet_type,
-            hinaiorderid: row.order_id,
-            admission_date: row.admission_at,
-            nursing_user: row.nursing_user,
-            is_diet_change: row.is_diet_change,
-            is_transfer: row.is_transfer,
-            dietorder: [17129492,17129493,17129495].includes(row.diet_type)
-                ? 'liquid'
-                : 'regular',
-            approved_date: row.approved_date
-        }))
+        data: paginated.map(row => {
+            const po = row.patientOrders?.[0] || null;
+
+            return {
+                patient_id: row.patient_id,
+                mrno: row.mr_no ? row.mr_no.toString() : null,
+                patient: row.patient_name,
+                bed_no: row.bed_no,
+                ward: row.ward,
+                scname: row.ward,
+                doctor: row.doctor,
+                menu: row.menu,
+                name: row.menu_detail,
+                order_date: row.order_date,
+                diff: Math.floor((Date.now() - new Date(row.order_date)) / 60000),
+                diet_type: row.diet_type,
+                hinaiorderid: row.order_id,
+                admission_date: row.admission_at,
+                nursing_user: row.nursing_user,
+                is_diet_change: row.is_diet_change,
+                is_transfer: row.is_transfer,
+                dietorder: [17129492, 17129493, 17129495].includes(row.diet_type)
+                    ? 'liquid'
+                    : 'regular',
+                approved_date: row.approved_date,
+                // Additional fields from PHP implementation
+                POID: po?.id || null,
+                dispatched: po?.dispatched || false,
+                iscancelled: po?.is_cancelled || false,
+                lqhours: po?.liquid_hours || 0,
+                nursingRemark: po?.nursing_remark || row.nurse_remark || '',
+                punchdate: po?.created_at || null,
+                agegender: row.age_gender || '',
+                admissionno: row.admission_no || '',
+                ostatus: row.status,
+                email: row.email || '',
+                mobileno: row.mobile_no || '',
+                DIAGNO: row.diagnosis || ''
+            };
+        })
+    };
+};
+
+export const getPatientLiquidOrderFormData = async (body, jwtUser) => {
+    const patientId = toIntValue(
+        getFirstDefined(body, ['patientid', 'patient_id', 'PATIENT_ID']),
+        'patientid'
+    );
+    const hinaiOrderId = toIntValue(
+        getFirstDefined(body, ['hinaiorderid', 'hnoid', 'hinai_order_id', 'order_id']),
+        'hinaiorderid'
+    );
+    const dietType = toIntValue(
+        getFirstDefined(body, ['diettype', 'diet_type']),
+        'diettype'
+    );
+    const poId = getFirstDefined(body, ['poid', 'po_id']);
+
+    const hinaiOrder = await prisma.hinaiOrder.findFirst({
+        where: {
+            patient_id: patientId,
+            order_id: hinaiOrderId,
+            is_active: true,
+        },
+        select: {
+            mr_no: true,
+            patient_id: true,
+            patient_name: true,
+            mobile_no: true,
+            email: true,
+            doctor: true,
+            age_gender: true,
+            bed_no: true,
+            admission_no: true,
+            admission_at: true,
+            ward: true,
+            nurse_remark: true,
+            menu_detail: true,
+            order_id: true,
+        },
+    });
+
+    if (!hinaiOrder) {
+        throw new Error('HINAI order not found');
+    }
+
+    let sourcePatientOrder = null;
+    let timings = [];
+    let mode = 'add';
+
+    if (poId) {
+        sourcePatientOrder = await prisma.patientOrder.findFirst({
+            where: {
+                id: String(poId),
+                patient_id: patientId,
+            },
+            include: {
+                patientOrderLiquids: {
+                    where: {
+                        is_active: true,
+                    },
+                    orderBy: {
+                        liquid_time: 'asc',
+                    },
+                },
+            },
+        });
+
+        if (!sourcePatientOrder) {
+            throw new Error('Patient liquid order not found for edit');
+        }
+
+        timings = sourcePatientOrder.patientOrderLiquids.map((item) => ({
+            liquid_time: item.liquid_time,
+            remarks: item.remarks || '',
+        }));
+        mode = 'edit';
+    } else {
+        // Automatically find the latest active order if poId is not provided
+        sourcePatientOrder = await prisma.patientOrder.findFirst({
+            where: {
+                patient_id: patientId,
+                hinai_order_id: hinaiOrderId,
+                is_active: true,
+            },
+            include: {
+                patientOrderLiquids: {
+                    where: {
+                        is_active: true,
+                    },
+                    orderBy: {
+                        liquid_time: 'asc',
+                    },
+                },
+            },
+        });
+
+        if (sourcePatientOrder) {
+            timings = sourcePatientOrder.patientOrderLiquids.map((item) => ({
+                liquid_time: item.liquid_time,
+                remarks: item.remarks || '',
+            }));
+            mode = 'edit';
+        }
+    }
+
+    let prefillNursingRemark = '';
+    try {
+        const nursingRemarks = await getNursingRemarks(
+            {
+                patient_id: patientId,
+                order_id: hinaiOrderId,
+            },
+            jwtUser
+        );
+
+        prefillNursingRemark = nursingRemarks?.[0]?.nurse_remark || '';
+    } catch (error) {
+        prefillNursingRemark = hinaiOrder.nurse_remark || '';
+    }
+
+    let latestDietRemark = '';
+    const latestLiquidOrder = await prisma.patientOrder.findFirst({
+        where: {
+            patient_id: patientId,
+            diet_type: {
+                in: LIQUID_FORM_DIET_TYPES,
+            },
+            is_active: true,
+        },
+        orderBy: [
+            { created_at: 'desc' },
+            { updated_at: 'desc' },
+        ],
+        select: {
+            diet_remark: true,
+        },
+    });
+
+    latestDietRemark = latestLiquidOrder?.diet_remark || '';
+
+    return {
+        mode,
+        patient: {
+            mrno: hinaiOrder.mr_no?.toString() || '',
+            patient_id: hinaiOrder.patient_id,
+            patient: hinaiOrder.patient_name || '',
+            mobileno: hinaiOrder.mobile_no || '',
+            email: hinaiOrder.email || '',
+            doctor: hinaiOrder.doctor || '',
+            agegender: hinaiOrder.age_gender || '',
+            bed_no: hinaiOrder.bed_no || '',
+            admissionno: hinaiOrder.admission_no || '',
+            admissiondate: hinaiOrder.admission_at,
+            ward: hinaiOrder.ward || '',
+            name: hinaiOrder.menu_detail || '',
+            hinaiorderid: hinaiOrder.order_id,
+        },
+        order: {
+            poid: sourcePatientOrder?.id || null,
+            diettype: dietType,
+            liquid_hours: sourcePatientOrder?.liquid_hours || 0,
+            nursingRemark:
+                mode === 'edit'
+                    ? sourcePatientOrder?.nursing_remark || ''
+                    : toUpperTrimmed(prefillNursingRemark),
+            dietRemark:
+                mode === 'edit'
+                    ? sourcePatientOrder?.diet_remark || ''
+                    : latestDietRemark,
+        },
+        timings,
+    };
+};
+
+export const getPatientLiquidOrderTimings = async (body, jwtUser) => {
+    const patientId = toIntValue(
+        getFirstDefined(body, ['patientid', 'patient_id', 'PATIENT_ID']),
+        'patientid'
+    );
+    const liquidHours = toIntValue(
+        getFirstDefined(body, ['lqhours', 'liqhour', 'liquid_hours']),
+        'lqhours'
+    );
+
+    if (liquidHours > 12) {
+        throw new Error('Please do not add hours more than 12');
+    }
+
+    const latestLiquidOrder = await getLatestActiveLiquidOrder(
+        patientId,
+        liquidHours
+    );
+
+    if (latestLiquidOrder?.patientOrderLiquids?.length) {
+        return {
+            liquid_hours: latestLiquidOrder.liquid_hours,
+            poid: latestLiquidOrder.id,
+            timings: latestLiquidOrder.patientOrderLiquids.map((item) => ({
+                liquid_time: item.liquid_time,
+                remarks: item.remarks || '',
+            })),
+        };
+    }
+
+    return {
+        liquid_hours: liquidHours,
+        poid: null,
+        timings: buildDefaultLiquidTimings(liquidHours),
+    };
+};
+
+export const createPatientLiquidOrder = async (body, jwtUser) => {
+    const auditUserId = getAuditUserId(jwtUser);
+    const patientId = toIntValue(
+        getFirstDefined(body, ['patientid', 'patient_id', 'PATIENT_ID']),
+        'patientid'
+    );
+    const hinaiOrderId = toIntValue(
+        getFirstDefined(body, ['hnoid', 'hinaiorderid', 'hinai_order_id', 'order_id']),
+        'hnoid'
+    );
+    const dietType = toIntValue(
+        getFirstDefined(body, ['diettype', 'diet_type']),
+        'diettype'
+    );
+    const existingPoId = getFirstDefined(body, ['poid', 'po_id']);
+    const liquidHours = toIntValue(
+        getFirstDefined(body, ['liqhour', 'lqhours', 'liquid_hours']),
+        'liqhour'
+    );
+    const dietRemark = toUpperTrimmed(
+        getFirstDefined(body, ['dietremark', 'diet_remark'])
+    );
+    const nursingRemark = toUpperTrimmed(
+        getFirstDefined(body, ['nurseremark', 'nursingremark', 'nursing_remark'])
+    );
+
+    const timingValues = parsePipeValueList(
+        getFirstDefined(body, ['dtime', 'liquid_times'])
+    );
+    const timingRemarks = parsePipeValueList(
+        getFirstDefined(body, ['dtitm', 'liquid_remarks'])
+    );
+
+    const timings = Array.isArray(body.timings) && body.timings.length
+        ? body.timings.map((item, index) => ({
+              liquid_time: toIntValue(
+                  getFirstDefined(item, ['liquid_time', 'liqtime']),
+                  `timings[${index}].liquid_time`
+              ),
+              remarks: toUpperTrimmed(
+                  getFirstDefined(item, ['remarks', 'liquid_remark'])
+              ),
+          }))
+        : timingValues.map((time, index) => ({
+              liquid_time: toIntValue(time, `dtime[${index}]`),
+              remarks: toUpperTrimmed(timingRemarks[index] || ''),
+          }));
+
+    if (!timings.length) {
+        throw new Error('At least one liquid timing is required');
+    }
+
+    const hinaiOrder = await prisma.hinaiOrder.findFirst({
+        where: {
+            order_id: hinaiOrderId,
+            patient_id: patientId,
+            is_active: true,
+        },
+        select: {
+            mst_id: true,
+            order_id: true,
+            patient_id: true,
+        },
+    });
+
+    if (!hinaiOrder) {
+        throw new Error('HINAI order not found for the given patient');
+    }
+
+    if (!existingPoId) {
+        const duplicateOrder = await prisma.patientOrder.findFirst({
+            where: {
+                patient_id: patientId,
+                hinai_order_id: hinaiOrderId,
+                diet_type: dietType,
+                is_active: true,
+            },
+            select: {
+                id: true,
+            },
+        });
+
+        if (duplicateOrder) {
+            throw new Error(
+                'Patient liquid order already exists for this hinai order and diet type'
+            );
+        }
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+        if (existingPoId) {
+            const previousOrder = await tx.patientOrder.findFirst({
+                where: {
+                    id: String(existingPoId),
+                    patient_id: patientId,
+                    is_active: true,
+                },
+                select: {
+                    id: true,
+                },
+            });
+
+            if (!previousOrder) {
+                throw new Error('Existing patient liquid order not found for update');
+            }
+
+            await tx.patientOrder.update({
+                where: {
+                    id: previousOrder.id,
+                },
+                data: {
+                    is_active: false,
+                    updated_by: auditUserId ? String(auditUserId) : null,
+                },
+            });
+
+            await tx.patientOrderLiquid.updateMany({
+                where: {
+                    po_id: previousOrder.id,
+                    is_active: true,
+                },
+                data: {
+                    is_active: false,
+                    updated_by: auditUserId ? String(auditUserId) : null,
+                },
+            });
+        }
+
+        const patientOrder = await tx.patientOrder.create({
+            data: {
+                patient_id: patientId,
+                diet_type: dietType,
+                nursing_remark: nursingRemark,
+                diet_remark: dietRemark,
+                dispatched: false,
+                hinai_order_id: hinaiOrderId,
+                is_cancelled: false,
+                liquid_hours: liquidHours,
+                mst_id: hinaiOrder.mst_id,
+                mail_flag: 0,
+                created_by: auditUserId ? String(auditUserId) : null,
+            },
+            select: {
+                id: true,
+                patient_id: true,
+                diet_type: true,
+                hinai_order_id: true,
+                liquid_hours: true,
+                created_at: true,
+            },
+        });
+
+        await tx.patientOrderLiquid.createMany({
+            data: timings.map((item) => ({
+                po_id: patientOrder.id,
+                ptm_id: null,
+                liquid_time: item.liquid_time,
+                remarks: item.remarks,
+                created_by: auditUserId ? String(auditUserId) : null,
+            })),
+        });
+
+        await tx.hinaiOrder.update({
+            where: {
+                order_id: hinaiOrderId,
+            },
+            data: {
+                status: true,
+                updated_by: auditUserId ? String(auditUserId) : null,
+            },
+        });
+
+        // Release edit lock if page_id is provided
+        const pageId = getFirstDefined(body, ['page_id', 'pageid']);
+        if (pageId) {
+            await releasePageLock({ page_id: pageId, patient_id: patientId }, jwtUser);
+        }
+
+        return patientOrder;
+    });
+
+    return {
+        po_id: result.id,
+        patient_id: result.patient_id,
+        hinai_order_id: result.hinai_order_id,
+        diet_type: result.diet_type,
+        liquid_hours: result.liquid_hours,
+        timing_count: timings.length,
+        nursing_remark: nursingRemark,
+        diet_remark: dietRemark,
+        created_at: result.created_at,
+        mode: existingPoId ? 'edit' : 'add',
     };
 };
 
@@ -776,7 +1755,7 @@ WHERE rn = 1
           time_diff: Number(row.DIFF || 0),
           diet_type: Number(row.DIETTYPE),
           order_id: Number(row.HINAIORDERID),
-          status: true,
+          status: false,
           is_discharge: false,
           nursing_user: row.USERNAME,
           is_diet_change: Boolean(row.ISDIETCHANGED),
@@ -786,7 +1765,6 @@ WHERE rn = 1
           email: row.EMAIL,
           nurse_remark: row.NURSEREMARK,
           approved_date: row.APPROVEDDATE ? new Date(row.APPROVEDDATE) : null,
-          
           created_by: row.USERNAME || null,
           updated_by: row.USERNAME || null
         }
@@ -799,7 +1777,7 @@ WHERE rn = 1
     const dischargeResult = await connection.execute(
       `
       select pa.admissionno, pa.patientid
-      from patientadmission pa 
+      from patientadmission pa
       left join visit v on v.visitid=pa.visitid
       left join discharge d on d.visit=v.visitid
       where d.dateofdischarge>=SYSDATE - INTERVAL '1' HOUR
@@ -887,7 +1865,6 @@ export const getHinaiOrderSummary = async (body, jwtUser) => {
     const siteIdParam =
         getFirstDefined(body, ['site_id', 'siteid', 'SITEID']) ||
         jwtUser?.siteID;
-    
     if (!siteIdParam) {
         throw new Error('site id is required');
     }
@@ -1168,7 +2145,6 @@ export const getHinaiOrderDetails = async (body, jwtUser) => {
             };
         }
 
-        
         /*
         ===========================================================
         RESPONSE
@@ -1221,7 +2197,7 @@ export const getNursingRemarks = async (body, jwtUser) => {
         connection = await getOracleConnection();
 
         const sql = `
-            select 
+            select
                 dl.patient as patient_id,
                 dl.id as hinaiorderid,
                 dl.otherspecification as nurse_remark
@@ -1233,7 +2209,7 @@ export const getNursingRemarks = async (body, jwtUser) => {
 
             union
 
-            select 
+            select
                 dq.patient as patient_id,
                 dq.id as hinaiorderid,
                 dietReqCo.comments as nurse_remark
