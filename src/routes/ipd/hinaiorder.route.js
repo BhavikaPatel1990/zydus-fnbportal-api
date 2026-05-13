@@ -19,18 +19,26 @@ router.post('/order-details', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderC
 
 router.post('/nursing-remarks', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.getNursingRemarks);
 
-router.post('/patient-order/form', hinaiOrderController.getPatientOrderFormData);
+router.post('/patient-order/form', checkPermission('FNB_PORTAL', 'READ'),hinaiOrderController.getPatientOrderFormData);
 
-router.post('/patient-order', hinaiOrderController.createPatientOrder);
+router.post('/patient-order', checkPermission('FNB_PORTAL', 'READ'),hinaiOrderController.createPatientOrder);
 
-router.post('/patient-order-liquid/form', hinaiOrderController.getPatientLiquidOrderFormData);
+router.post('/patient-order-liquid/form',checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.getPatientLiquidOrderFormData);
 
-router.post('/patient-order-liquid/timings', hinaiOrderController.getPatientLiquidOrderTimings);
+router.post('/patient-order-liquid/timings',checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.getPatientLiquidOrderTimings);
 
-router.post('/patient-order-liquid', hinaiOrderController.createPatientLiquidOrder);
+router.post('/patient-order-liquid',checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.createPatientLiquidOrder);
 
-router.post('/check-lock', hinaiOrderController.checkPageLock);
+router.post('/check-lock', checkPermission('FNB_PORTAL', 'READ'),hinaiOrderController.checkPageLock);
 
-router.post('/release-lock', hinaiOrderController.releasePageLock);
+router.post('/release-lock',checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.releasePageLock);
+
+router.post('/update-diagnosis', checkPermission('FNB_PORTAL', 'UPDATE'), hinaiOrderController.updateDiagnosis);
+
+router.post('/dispatch', checkPermission('FNB_PORTAL', 'UPDATE'), hinaiOrderController.dispatchPatientOrder);
+
+router.post('/cancel', checkPermission('FNB_PORTAL', 'UPDATE'), hinaiOrderController.cancelPatientOrder);
+
+
 
 export default router;
