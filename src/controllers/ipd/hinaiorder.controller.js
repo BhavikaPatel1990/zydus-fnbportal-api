@@ -234,3 +234,41 @@ export const releasePageLock = async (req, res) => {
         return response.serverError(res, error.message);
     }
 };
+
+export const updateDiagnosis = async (req, res) => {
+    try {
+        const data = await hinaiOrderService.updateDiagnosis(req.body, req.user);
+        return response.success(res, 'Diagnosis updated successfully', data);
+    } catch (error) {
+        console.error('updateDiagnosis error:', error.message);
+        return response.serverError(res, error.message);
+    }
+};
+
+export const dispatchPatientOrder = async (req, res) => {
+    try {
+        const data = await hinaiOrderService.dispatchPatientOrder(
+            req.body,
+            req.user
+        );
+        return response.success(res, 'Order dispatched successfully', data);
+    } catch (error) {
+        console.error('dispatchPatientOrder error:', error.message);
+        return response.serverError(res, error.message);
+    }
+};
+
+export const cancelPatientOrder = async (req, res) => {
+    try {
+        const data = await hinaiOrderService.cancelPatientOrder(
+            req.body,
+            req.user
+        );
+        return response.success(res, 'Order cancelled successfully', data);
+    } catch (error) {
+        console.error('cancelPatientOrder error:', error.message);
+        return response.serverError(res, error.message);
+    }
+};
+
+

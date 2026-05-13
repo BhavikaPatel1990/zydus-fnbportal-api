@@ -2253,3 +2253,97 @@ export const getNursingRemarks = async (body, jwtUser) => {
         }
     }
 };
+
+export const updateDiagnosis = async (body, jwtUser) => {
+    const mrNo = toStringValue(
+        getFirstDefined(body, ['patient_mrno', 'mr_no', 'MRNO']),
+        'patient_mrno'
+    );
+    const patientId = toIntValue(
+        getFirstDefined(body, ['patient_id', 'PATIENT_ID']),
+        'patient_id'
+    );
+    const hinaiOrderId = toIntValue(
+        getFirstDefined(body, ['hinaiorder_id', 'order_id', 'HINAIORDERID']),
+        'hinaiorder_id'
+    );
+    const newDiagnosisValue = toStringValue(
+        getFirstDefined(body, [
+            'new_diagnosis_value',
+            'diagnosis',
+            'DIAGNOSIS',
+        ]),
+        'new_diagnosis_value'
+    );
+    const auditUserId = getAuditUserId(jwtUser);
+
+    if (!newDiagnosisValue) {
+        throw new Error('Diagnosis is required');
+    }
+
+    return await prisma.$transaction(async (tx) => {
+        // Create diagnosis record
+        const patientDiagnosis = await tx.patientDiagnosis.create({
+            data: {
+                mr_no: mrNo,
+                patient_id: patientId,
+                hinai_order_id: hinaiOrderId,
+                diagnosis: newDiagnosisValue,
+                created_by: auditUserId ? String(auditUserId) : null,
+            },
+        });
+
+        // Update latest diagnosis in HinaiOrder
+        await tx.hinaiOrder.updateMany({
+            where: {
+                order_id: hinaiOrderId,
+                patient_id: patientId,
+            },
+            data: {
+                diagnosis: newDiagnosisValue,
+                updated_by: auditUserId ? String(auditUserId) : null,
+            },
+        });
+
+        return patientDiagnosis;
+    });
+};
+
+export const dispatchPatientOrder = async (body, jwtUser) => {
+    const poId = toStringValue(
+        getFirstDefined(body, ['poid', 'po_id', 'POID']),
+        'poid'
+    );
+    const auditUserId = getAuditUserId(jwtUser);
+
+    const result = await prisma.patientOrder.update({
+        where: { id: poId },
+        data: {
+            dispatched: true,
+            dispatched_by: auditUserId ? Number(auditUserId) : null,
+            dispatched_at: new Date(),
+        },
+    });
+
+    return result;
+};
+
+export const cancelPatientOrder = async (body, jwtUser) => {
+    const poId = toStringValue(
+        getFirstDefined(body, ['poid', 'po_id', 'POID']),
+        'poid'
+    );
+    const auditUserId = getAuditUserId(jwtUser);
+
+    const result = await prisma.patientOrder.update({
+        where: { id: poId },
+        data: {
+            is_cancelled: true,
+            updated_by: auditUserId ? String(auditUserId) : null,
+        },
+    });
+
+    return result;
+};
+
+
