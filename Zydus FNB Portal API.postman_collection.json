@@ -1,0 +1,1936 @@
+{
+  "info": {
+    "_postman_id": "7a28c39f-ab53-4856-bc1e-e2ac4d572b9f",
+    "name": "Zydus FNB Portal API",
+    "description": "API collection for Zydus FNB Portal.\n\nModule-based routes:\n- Profile: `/api/profile/*`\n- Canteen: `/api/canteen/*`\n- IPD: `/api/ipd/*`\n\n**Note**: Login is handled by `zydus-api`. Paste the JWT from the shared login API into the `jwt_token` collection variable before calling FNB Portal endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "28174946",
+    "_collection_link": "https://go.postman.co/collection/28174946-7a28c39f-ab53-4856-bc1e-e2ac4d572b9f?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{fnb_url}}/api/profile",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "api",
+                "profile"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "IPD",
+      "item": [
+        {
+          "name": "Dashboard Menu",
+          "item": [
+            {
+              "name": "Diat Order Dashboard",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"site_id\": \"1\",          // Required: Hospital site ID\r\n  \"page\": 1,               // Optional: Page number (Default: 1)\r\n  \"limit\": 4,         // Optional: Records per page (Default: 10)\r\n  \"search\": \"\"      // Optional: Search by ward name\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/fnbdashboard/diet-order",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "fnbdashboard",
+                    "diet-order"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Diat Order Dashboard Download CSV",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n    \"site_id\": \"1\",\r\n    \"search\": \"\"      // Optional: Search by ward name\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/fnbdashboard/diet-order/download",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "fnbdashboard",
+                    "diet-order",
+                    "download"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Diet Sheet Dashboard",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"site_id\": \"1\",          // Required: Hospital site ID\r\n  \"page\": 1,               // Optional: Page number (Default: 1)\r\n  \"limit\": 4,         // Optional: Records per page (Default: 10)\r\n  \"search\": \"\"      // Optional: Search by ward name\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/fnbdashboard/diet-sheet",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "fnbdashboard",
+                    "diet-sheet"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Diet Sheet Dashboard Download CSV",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n    \"site_id\": \"1\",\r\n    \"search\": \"\"      // Optional: Search by ward name\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/fnbdashboard/diet-sheet/download",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "fnbdashboard",
+                    "diet-sheet",
+                    "download"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Diet Sheet Liquids Dashboard",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"site_id\": \"1\",          // Required: Hospital site ID\r\n  \"page\": 1,               // Optional: Page number (Default: 1)\r\n  \"limit\": 4,         // Optional: Records per page (Default: 10)\r\n  \"search\": \"\"      // Optional: Search by ward name\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/fnbdashboard/diet-sheet-liquids",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "fnbdashboard",
+                    "diet-sheet-liquids"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Diet Sheet Liquids Dashboard Download CSV",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n    \"site_id\": \"1\",\r\n    \"search\": \"\"      // Optional: Search by ward name\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/fnbdashboard/diet-sheet-liquids/download",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "fnbdashboard",
+                    "diet-sheet-liquids",
+                    "download"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Pending Diet Orders Dashboard",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"site_id\": 1\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/fnbdashboard/pending-diet-orders",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "fnbdashboard",
+                    "pending-diet-orders"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "extra orders Dashboard Download CSV",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"site_id\": 1,\r\n  \"sdate\": \"2026-05-01\",\r\n  \"edate\": \"2026-05-05\",\r\n  \"search\": \"ICU\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/fnbdashboard/extra-orders/download",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "fnbdashboard",
+                    "extra-orders",
+                    "download"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "extra orders Dashboard",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"site_id\": 1,\r\n  \"sdate\": \"2026-05-01\",\r\n  \"edate\": \"2026-05-05\",\r\n  \"search\": \"ICU\",\r\n  \"page\": 1,\r\n  \"limit\": 10\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/fnbdashboard/extra-orders",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "fnbdashboard",
+                    "extra-orders"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "liquid-data Download CSV",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"site_id\": 1,\r\n  \"fromdate\": \"2026-05-01\",\r\n  \"todate\": \"2026-05-05\",\r\n  \"search\": \"rahul\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/fnbdashboard/liquid-data/download",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "fnbdashboard",
+                    "liquid-data",
+                    "download"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "liquid-data",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"site_id\": 1,\r\n  \"fromdate\": \"01-05-2026\",\r\n  \"todate\": \"05-05-2026\",\r\n  \"search\": \"ICU\",\r\n  \"page\": 1,\r\n  \"limit\": 10\r\n}\r\n\r\n// Special Case Get ALL data (no pagination):\r\n// {\r\n//   \"site_id\": 1,\r\n//   \"from_date\": \"2026-05-01\",\r\n//   \"to_date\": \"2026-05-05\",\r\n//   \"limit\": -1\r\n// }",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/fnbdashboard/liquid-data",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "fnbdashboard",
+                    "liquid-data"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "order Ledger Search Patient",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"query\": \"10002017060958\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/fnbdashboard/search-patient",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "fnbdashboard",
+                    "search-patient"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "order Ledger Patient Order Details",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"mrn\": \"10002017060958\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/fnbdashboard/patient-order-details",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "fnbdashboard",
+                    "patient-order-details"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Nursing",
+          "item": [
+            {
+              "name": "Detail-patient-order-form",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"ordertype\": \"regular\",\r\n  \"hinaiorderid\": 62385745,\r\n  \"diettype\": 17129494,\r\n  \"patientid\": 129427\r\n}\r\n\r\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/hinaiorders/patient-order/form",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "hinaiorders",
+                    "patient-order",
+                    "form"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Create-patient-order",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"patientid\": 129427,\r\n  \"hnoid\": 62385745,\r\n  \"diettype\": 17129494,\r\n  \"dietremark\": \"LESS OIL TEST\",\r\n  \"nurseremark\": \"PATIENT CAN TAKE FULL DIETb TEST \",\r\n  \"items\": [\r\n    { \"ptm_id\": \"3d203e1b-31f7-45bc-a410-133373de5f3f\", \"remarks\": \"TEA TESt\" },\r\n    { \"ptm_id\": \"beac806c-e64b-4230-8518-57de7e2a5365\", \"remarks\": \"SOFT BREAKFAST TEST\" }\r\n  ]\r\n}\r\n\r\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/hinaiorders/patient-order",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "hinaiorders",
+                    "patient-order"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Patient-order-liquid-form",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"ordertype\": \"regular\",\r\n  \"hinaiorderid\": 62385057,\r\n  \"diettype\": 17129481,\r\n  \"patientid\": 164009\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/hinaiorders/patient-order-liquid/form",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "hinaiorders",
+                    "patient-order-liquid",
+                    "form"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Patient-order-liquid-timings",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"patientid\": 1340059,\r\n  \"lqhours\": 3\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/hinaiorders/patient-order-liquid/timings",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "hinaiorders",
+                    "patient-order-liquid",
+                    "timings"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Create-patient-order-liquid",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"patientid\": 164009,\r\n  \"hnoid\": 62385057,\r\n  \"diettype\": 17129481,\r\n  \"liqhour\": 3,\r\n  \"dietremark\": \"LIQUID DIET\",\r\n  \"nurseremark\": \"TAKE ORALLY\",\r\n  \"timings\": [\r\n    { \"liquid_time\": 6, \"remarks\": \"WATER\" },\r\n    { \"liquid_time\": 9, \"remarks\": \"JUICE\" },\r\n    { \"liquid_time\": 12, \"remarks\": \"SOUP\" }\r\n  ]\r\n}\r\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/hinaiorders/patient-order-liquid/",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "hinaiorders",
+                    "patient-order-liquid",
+                    ""
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "FNB Order",
+          "item": [
+            {
+              "name": "Update-Diagnosis",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"patient_mrno\": 10002023395610,\r\n  \"patient_id\": 1368864,\r\n  \"hinaiorder_id\": 62170671,\r\n  \"new_diagnosis_value\": \"test\"\r\n\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/hinaiorders/update-diagnosis",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "hinaiorders",
+                    "update-diagnosis"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Dispatch-Order",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"poid\": \"a1905b1a-5e39-4ef1-a5bb-753bb2d462ce\"\r\n\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/hinaiorders/dispatch",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "hinaiorders",
+                    "dispatch"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Cancel-Order",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"poid\": \"4df2f6e7-5720-46fa-89b0-6c9991681c8f\"\r\n\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/hinaiorders/cancel",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "hinaiorders",
+                    "cancel"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "FNB Clearance",
+          "item": [
+            {
+              "name": "Get-Wards",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"site_id\": 1 // Your site ID\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/hinaiorders/wards",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "hinaiorders",
+                    "wards"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Order-Menu-List",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"patientid\": 852196,\r\n  \"diettype\": 18894123,\r\n  \"poid\": 62306791,\r\n  \"ordertype\": \"regular\" // Options: \"regular\", \"extra\", or \"liquids\"\r\n}\r\n\r\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/hinaiorders/order-menu-list",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "hinaiorders",
+                    "order-menu-list"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Clearance",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"insert\": \"62385027\" // Comma-separated list of order IDs\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/hinaiorders/clearance",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "hinaiorders",
+                    "clearance"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Out-Order",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"hinaiorderid\": \"62385027\", // Single ID or comma-separated list\r\n  \"remarks\": \"Order picked up\"  // Optional\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/hinaiorders/out",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "hinaiorders",
+                    "out"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Export Today CSV",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{ \r\n    \"siteid\": 1, \r\n    \"item\": \"regular\" \r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/hinaiorders/export/orders",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "hinaiorders",
+                    "export",
+                    "orders"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Export History CSV",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{ \r\n    \"fromdate\": \"2026-05-14\", \r\n    \"todate\": \"2026-05-14\" \r\n}\r\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/hinaiorders/export/out-all",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "hinaiorders",
+                    "export",
+                    "out-all"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Individual Sticker",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{ \r\n    \"PATIENTID\": 56122, \r\n    \"diettype\": 17129494, \r\n    \"HINAIORDERID\": 62272312, \r\n    \"POID\": \"fb2d9ed4-9373-46a6-8f6c-5a4e86739680\",\r\n    \"menu_id\":\"599a463a-b8d7-4772-a94e-95312417f264\"\r\n    \r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/hinaiorders/print/sticker",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "hinaiorders",
+                    "print",
+                    "sticker"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Bulk Ward Stickers",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{ \r\n    \"ward\": \"ICU6A - 6F\", \r\n    \"item\": \"regular\" \r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/hinaiorders/print/bulk-stickers",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "hinaiorders",
+                    "print",
+                    "bulk-stickers"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Liquid Label Sheet",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{ \r\n    \"POID\": \"fb2d9ed4-9373-46a6-8f6c-5a4e86739680\" \r\n}\r\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/hinaiorders/print/liquid-stickers",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "hinaiorders",
+                    "print",
+                    "liquid-stickers"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Health",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{fnb_url}}/ipd/health",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "health"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GetHinadiOrderDetail",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"site_id\": 1,\r\n  \"viewdata\": \"today\", // today\r\n  \"ordertype\": \"ALL\", // extra\r\n  \"page\": 1,\r\n  \"limit\": 10,\r\n  \"search\": \"\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/list",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "list"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "GetHinadiOrderDetail Success Response",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n    \"site_id\": \"1\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/hinaiorders/list",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "hinaiorders",
+                    "list"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [
+                {
+                  "key": "X-Powered-By",
+                  "value": "Express"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Origin"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "5612"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"15ec-IZN4QJtMAftl547NJGZIqPkzxTQ\""
+                },
+                {
+                  "key": "Date",
+                  "value": "Wed, 06 May 2026 05:44:28 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": true,\n    \"message\": \"Hinai orders fetched successfully\",\n    \"data\": {\n        \"total\": 60,\n        \"page\": 1,\n        \"limit\": 10,\n        \"totalPages\": 6,\n        \"data\": [\n            {\n                \"PATIENT_ID\": 1362308,\n                \"MRNO\": \"10002026570345\",\n                \"PATIENT\": \"Mr VIKRAMBHAI PRATAPBHAI PRAJAPATI\",\n                \"BED_NO\": \"835\",\n                \"ward\": \"EXECUTIVE BEDS (TRIPLE SHARING)- 8F - B\",\n                \"bed_no\": \"835\",\n                \"SCNAME\": \"EXECUTIVE BEDS (TRIPLE SHARING)- 8F - B\",\n                \"DOCTOR\": \"Dr. DIPAK PATEL / Dr. RAVI CHAUHAN\",\n                \"MENU\": \"FULL DIET\",\n                \"NAME\": \"FULL DIET\",\n                \"ORDDATE\": \"06-05-2026 05:42\",\n                \"dd\": 0,\n                \"DIFF\": 332,\n                \"DIETTYPE\": 17129494,\n                \"admdt\": \"2026-05-03\",\n                \"HINAIORDERID\": 62095220,\n                \"ostatus\": true,\n                \"ADMDATE\": \"03-05-2026 10:50\",\n                \"nursing_user\": \"MANSI PATIL\",\n                \"is_diet_change\": false,\n                \"is_transfer\": false,\n                \"dietorder\": \"regular\",\n                \"approveddate\": \"06-05-2026 05:42\"\n            },\n            {\n                \"PATIENT_ID\": 981309,\n                \"MRNO\": \"10002023412009\",\n                \"PATIENT\": \"Mr NARESHBHAI HIRALAL SHAH\",\n                \"BED_NO\": \"1418\",\n                \"ward\": \"SUITES - 14F - CD\",\n                \"bed_no\": \"1418\",\n                \"SCNAME\": \"SUITES - 14F - CD\",\n                \"DOCTOR\": \"Dr. MANOJ K SINGH /DR. MUKESH RATHOD\",\n                \"MENU\": \"FULL DIET\",\n                \"NAME\": \"FULL DIET\",\n                \"ORDDATE\": \"06-05-2026 05:42\",\n                \"dd\": 0,\n                \"DIFF\": 332,\n                \"DIETTYPE\": 17129494,\n                \"admdt\": \"2026-04-28\",\n                \"HINAIORDERID\": 62095217,\n                \"ostatus\": true,\n                \"ADMDATE\": \"28-04-2026 13:47\",\n                \"nursing_user\": \"KHUSHALEE BAGDA\",\n                \"is_diet_change\": true,\n                \"is_transfer\": false,\n                \"dietorder\": \"regular\",\n                \"approveddate\": \"06-05-2026 05:42\"\n            },\n            {\n                \"PATIENT_ID\": 388837,\n                \"MRNO\": \"10002020239180\",\n                \"PATIENT\": \"Master YASHRAJ RAJUBHAI KHER\",\n                \"BED_NO\": \"1006\",\n                \"ward\": \"PREMIUM BEDS - 10F - AB\",\n                \"bed_no\": \"1006\",\n                \"SCNAME\": \"PREMIUM BEDS - 10F - AB\",\n                \"DOCTOR\": \"Dr. LAV SELARKA\",\n                \"MENU\": \"FULL DIET\",\n                \"NAME\": \"FULL DIET, LIQUIDS\",\n                \"ORDDATE\": \"06-05-2026 05:36\",\n                \"dd\": 0,\n                \"DIFF\": 337,\n                \"DIETTYPE\": 17129494,\n                \"admdt\": \"2026-05-06\",\n                \"HINAIORDERID\": 62095207,\n                \"ostatus\": true,\n                \"ADMDATE\": \"06-05-2026 04:56\",\n                \"nursing_user\": \"MONIKA MANISH JAIN\",\n                \"is_diet_change\": true,\n                \"is_transfer\": false,\n                \"dietorder\": \"regular\",\n                \"approveddate\": \"06-05-2026 05:36\"\n            },\n            {\n                \"PATIENT_ID\": 1331149,\n                \"MRNO\": \"10002026559058\",\n                \"PATIENT\": \"Mr KEDAR LAL LADDHA\",\n                \"BED_NO\": \"1110\",\n                \"ward\": \"PREMIUM BEDS - 11F - AB\",\n                \"bed_no\": \"1110\",\n                \"SCNAME\": \"PREMIUM BEDS - 11F - AB\",\n                \"DOCTOR\": \"Dr. NILAY MEHTA\",\n                \"MENU\": \"SOFT DIET\",\n                \"NAME\": \"LIQUIDS, SOFT DIET\",\n                \"ORDDATE\": \"06-05-2026 05:34\",\n                \"dd\": 0,\n                \"DIFF\": 340,\n                \"DIETTYPE\": 17129481,\n                \"admdt\": \"2026-05-02\",\n                \"HINAIORDERID\": 62095191,\n                \"ostatus\": true,\n                \"ADMDATE\": \"02-05-2026 15:27\",\n                \"nursing_user\": \"VISHMITA PRAJAPATI\",\n                \"is_diet_change\": true,\n                \"is_transfer\": false,\n                \"dietorder\": \"regular\",\n                \"approveddate\": \"06-05-2026 05:34\"\n            },\n            {\n                \"PATIENT_ID\": 1368188,\n                \"MRNO\": \"10002026572479\",\n                \"PATIENT\": \"Mr RATILAL K. PURABIA\",\n                \"BED_NO\": \"ICU3A_03\",\n                \"ward\": \"ICU 3A - 3F\",\n                \"bed_no\": \"ICU3A_03\",\n                \"SCNAME\": \"ICU 3A - 3F\",\n                \"DOCTOR\": \"Dr. KUNAL CHANDWAR\",\n                \"MENU\": \"SOFT DIET\",\n                \"NAME\": \"DIABETIC SALT RESTRICTED RENAL DIET, SOFT DIET, LIQUIDS\",\n                \"ORDDATE\": \"06-05-2026 05:32\",\n                \"dd\": 0,\n                \"DIFF\": 341,\n                \"DIETTYPE\": 17129481,\n                \"admdt\": \"2026-05-05\",\n                \"HINAIORDERID\": 62095186,\n                \"ostatus\": true,\n                \"ADMDATE\": \"05-05-2026 12:44\",\n                \"nursing_user\": \"DR.SAPANA SANTOKI\",\n                \"is_diet_change\": true,\n                \"is_transfer\": false,\n                \"dietorder\": \"regular\",\n                \"approveddate\": \"06-05-2026 05:32\"\n            },\n            {\n                \"PATIENT_ID\": 1281149,\n                \"MRNO\": \"10002025539934\",\n                \"PATIENT\": \"Mrs ASTHA DEAV DODA\",\n                \"BED_NO\": \"706\",\n                \"ward\": \"MOTHER CARE - 7F\",\n                \"bed_no\": \"706\",\n                \"SCNAME\": \"MOTHER CARE - 7F\",\n                \"DOCTOR\": \"Dr. RIDDHI J SHAH\",\n                \"MENU\": \"EXTRA ORDER\",\n                \"NAME\": \"EXTRA ORDER\",\n                \"ORDDATE\": \"06-05-2026 05:20\",\n                \"dd\": 0,\n                \"DIFF\": 353,\n                \"DIETTYPE\": 18894123,\n                \"admdt\": \"2026-05-04\",\n                \"HINAIORDERID\": 62095159,\n                \"ostatus\": true,\n                \"ADMDATE\": \"04-05-2026 11:12\",\n                \"nursing_user\": \"Hiral Ramesh Vankar\",\n                \"is_diet_change\": false,\n                \"is_transfer\": false,\n                \"dietorder\": \"regular\",\n                \"approveddate\": \"06-05-2026 05:20\"\n            },\n            {\n                \"PATIENT_ID\": 1356332,\n                \"MRNO\": \"10002026568133\",\n                \"PATIENT\": \"Mrs NIDHI GOYAL\",\n                \"BED_NO\": \"1324\",\n                \"ward\": \"PREMIUM BEDS - 13F - CD\",\n                \"bed_no\": \"1324\",\n                \"SCNAME\": \"PREMIUM BEDS - 13F - CD\",\n                \"DOCTOR\": \"Dr. FORAM VORA\",\n                \"MENU\": \"SOFT DIET\",\n                \"NAME\": \"SOFT DIET\",\n                \"ORDDATE\": \"06-05-2026 05:17\",\n                \"dd\": 0,\n                \"DIFF\": 357,\n                \"DIETTYPE\": 17129481,\n                \"admdt\": \"2026-05-05\",\n                \"HINAIORDERID\": 62095144,\n                \"ostatus\": true,\n                \"ADMDATE\": \"05-05-2026 00:16\",\n                \"nursing_user\": \"JENEY SAJIKUTTY\",\n                \"is_diet_change\": false,\n                \"is_transfer\": false,\n                \"dietorder\": \"regular\",\n                \"approveddate\": \"06-05-2026 05:17\"\n            },\n            {\n                \"PATIENT_ID\": 1365686,\n                \"MRNO\": \"10002026571530\",\n                \"PATIENT\": \"Daughter of PRIYANKA AMIT PATEL\",\n                \"BED_NO\": \"703\",\n                \"ward\": \"MOTHER CARE - 7F\",\n                \"bed_no\": \"703\",\n                \"SCNAME\": \"MOTHER CARE - 7F\",\n                \"DOCTOR\": \"Dr. ANITA SRINIVASAN\",\n                \"MENU\": \"EXTRA ORDER\",\n                \"NAME\": \"EXTRA ORDER, LIME WATER\",\n                \"ORDDATE\": \"06-05-2026 05:14\",\n                \"dd\": 0,\n                \"DIFF\": 360,\n                \"DIETTYPE\": 18894123,\n                \"admdt\": \"2026-05-05\",\n                \"HINAIORDERID\": 62095131,\n                \"ostatus\": true,\n                \"ADMDATE\": \"05-05-2026 09:29\",\n                \"nursing_user\": \"Hiral Ramesh Vankar\",\n                \"is_diet_change\": false,\n                \"is_transfer\": false,\n                \"dietorder\": \"regular\",\n                \"approveddate\": \"06-05-2026 05:14\"\n            },\n            {\n                \"PATIENT_ID\": 177855,\n                \"MRNO\": \"10002018122681\",\n                \"PATIENT\": \"Mr SATISHBHAI S. CHRISTIAN\",\n                \"BED_NO\": \"ICU7A_04\",\n                \"ward\": \"ICU7A - 7F\",\n                \"bed_no\": \"ICU7A_04\",\n                \"SCNAME\": \"ICU7A - 7F\",\n                \"DOCTOR\": \"Dr. CHINTAN DHEBAR\",\n                \"MENU\": \"TUBE FEEDING\",\n                \"NAME\": \"PEG FEED\",\n                \"ORDDATE\": \"06-05-2026 05:13\",\n                \"dd\": 0,\n                \"DIFF\": 360,\n                \"DIETTYPE\": 17129493,\n                \"admdt\": \"2026-04-27\",\n                \"HINAIORDERID\": 62095124,\n                \"ostatus\": true,\n                \"ADMDATE\": \"27-04-2026 07:03\",\n                \"nursing_user\": \"ANIL KUMAR\",\n                \"is_diet_change\": false,\n                \"is_transfer\": false,\n                \"dietorder\": \"liquid\",\n                \"approveddate\": \"06-05-2026 05:13\"\n            },\n            {\n                \"PATIENT_ID\": 1364804,\n                \"MRNO\": \"10002026571201\",\n                \"PATIENT\": \"Mr KHODABHAI JADAVBHAI BOGHARA\",\n                \"BED_NO\": \"1212\",\n                \"ward\": \"PREMIUM BEDS - 12F - AB\",\n                \"bed_no\": \"1212\",\n                \"SCNAME\": \"PREMIUM BEDS - 12F - AB\",\n                \"DOCTOR\": \"Dr. KAMLESH PATEL\",\n                \"MENU\": \"EXTRA ORDER\",\n                \"NAME\": \"EXTRA ORDER, LIME WATER\",\n                \"ORDDATE\": \"06-05-2026 05:13\",\n                \"dd\": 0,\n                \"DIFF\": 361,\n                \"DIETTYPE\": 18894123,\n                \"admdt\": \"2026-05-03\",\n                \"HINAIORDERID\": 62095115,\n                \"ostatus\": true,\n                \"ADMDATE\": \"03-05-2026 14:32\",\n                \"nursing_user\": \"PRAVEEN PRAJAPAT\",\n                \"is_diet_change\": false,\n                \"is_transfer\": false,\n                \"dietorder\": \"regular\",\n                \"approveddate\": \"06-05-2026 05:13\"\n            }\n        ]\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "order-summary",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"viewdata\": \"today\",\r\n    \"ordertype\": \"all\"\r\n}\r\n\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/order-summary",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "order-summary"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "menu-details",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \r\n\"patientid\": 56122, \r\n\"hinaiorderid\": 62272312, \r\n\"diettype\": 18894123 \r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/menu-details",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "menu-details"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "order-details",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \r\n    \"patient_id\": 56122, \r\n    \"hinai_order_id\": 62272312\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/order-details",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "order-details"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "nursing-remarks",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"patient_id\": 56122,\r\n    \"order_id\": 62272312\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/nursing-remarks",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "nursing-remarks"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh HINAI Order",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/refresh-orders",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "refresh-orders"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create HINAI Order",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"PATIENT_ID\": 1346560,\r\n  \"MRNO\": \"10002026563660\",\r\n  \"PATIENT\": \"Mrs SAKINABEN ZULFIKAR AGHARIYA\",\r\n  \"ADMISSIONNUMBER\": \"AD1000260401482\",\r\n  \"ADMDATE\": \"2026-04-21 15:02:00\",\r\n  \"BED_NO\": \"ICU6B_02\",\r\n  \"SCNAME\": \"ICU6D - 6F\",\r\n  \"DOCTOR\": \"Dr. RAJESH DESAI\",\r\n  \"MENU\": \"FULL DIET\",\r\n  \"NAME\": \"FULL DIET, SALT RESTRICTED DIET\",\r\n  \"ORDDATE\": \"2026-04-21 08:00:00\",\r\n  \"DIFF\": 1,\r\n  \"DIETTYPE\": 17129492,\r\n  \"HINAIORDERID\": 61639970,\r\n  \"APPROVEDDATE\": \"2026-04-21 08:01:52\",\r\n  \"SITEID\": 2,\r\n  \"USERNAME\": \"AJAY JANGID\",\r\n  \"ISDIETCHANGED\": 0,\r\n  \"NURSEREMARK\": \"0\",\r\n  \"DIAGNOSIS\": \"0\",\r\n  \"AGEGENDER\": \"78 Years/M\",\r\n  \"MOBILENO\": \"9377249099\",\r\n  \"EMAIL\": \"ARYAMNKESHD@GMAIL.COM\",\r\n  \"status\": true,\r\n  \"is_discharge\": false,\r\n  \"is_transfer\": false\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "inpatients viewlistcensus",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "siteID",
+                  "value": "1",
+                  "type": "text",
+                  "uuid": "e8ad099f-27be-4ce9-a706-825fa449d340"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/inpatients",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "inpatients"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "discharge",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"site_id\": \"1\",\r\n    \"viewdata\": \"0\",\r\n    \"ordertype\": \"1\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/discharge",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "discharge"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "transfer",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"PATIENT_ID\": 31572,\r\n  \"TOBED\": \"ICU6D_07\",\r\n  \"TOWARD\": \"ICU6D - 7F\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/transfer",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "transfer"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Edit lock check",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \r\n    \"page_id\": 1, \r\n    \"patient_id\": 56122 \r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/check-lock/",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "check-lock",
+                ""
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Unlock page",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \r\n    \"page_id\": 1, \r\n    \"patient_id\": 56122 \r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/release-lock/",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "release-lock",
+                ""
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Login",
+      "item": [
+        {
+          "name": "LoginWithHinai",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Response status code is 200\", function () {\r",
+                  "    pm.expect(pm.response.code).to.eql(200);\r",
+                  "});\r",
+                  "\r",
+                  "\r",
+                  "pm.test(\"Response time is less than 200ms\", function () {\r",
+                  "    pm.expect(pm.response.responseTime).to.be.below(200);\r",
+                  "});\r",
+                  "\r",
+                  "\r",
+                  "pm.test(\"Response is in valid XML format\", function () {\r",
+                  "    const responseText = pm.response.text();\r",
+                  "    pm.expect(responseText).to.not.be.null;\r",
+                  "    pm.expect(responseText).to.match(/^<\\?xml.*\\?>/); // Checks for XML declaration\r",
+                  "});\r",
+                  "\r",
+                  "\r",
+                  "pm.test(\"Validate the response schema against the expected structure\", function () {\r",
+                  "    const responseData = xml2Json(pm.response.text());\r",
+                  "    \r",
+                  "    pm.expect(responseData).to.be.an('object');\r",
+                  "    pm.expect(responseData).to.have.all.keys('user'); // Check for the existence of the root key 'user'\r",
+                  "    \r",
+                  "    // Assuming that 'user' should be an object with certain properties\r",
+                  "    pm.expect(responseData.user).to.be.an('object');\r",
+                  "    pm.expect(responseData.user).to.have.all.keys('email', 'age', 'name'); // Example properties of the user object\r",
+                  "});\r",
+                  "\r",
+                  "\r",
+                  "pm.test(\"Content-Type is text/xml\", function () {\r",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.eql(\"text/xml\");\r",
+                  "});\r",
+                  "var responseXML = xml2Json(pm.response.text());\r",
+                  "\r",
+                  "// Verify that the user object exists and has properties\r",
+                  "pm.test(\"User object exists and contains properties\", function () {\r",
+                  "    pm.expect(responseXML).to.have.property('user');\r",
+                  "    pm.expect(responseXML.user).to.have.all.keys('email', 'age', 'name');\r",
+                  "});\r",
+                  "\r",
+                  "// Check that the user object has a valid length for properties\r",
+                  "pm.test(\"User object properties length is greater than 0\", function () {\r",
+                  "    const user = responseXML.user;\r",
+                  "    pm.expect(user.email.length).to.be.greaterThan(0, \"Email should not be empty\");\r",
+                  "    pm.expect(user.name.length).to.be.greaterThan(0, \"Name should not be empty\");\r",
+                  "});\r",
+                  "var responseXML = xml2Json(pm.response.text());\r",
+                  "\r",
+                  "// Combine tests for status code, response time, and response body key\r",
+                  "pm.test(\"Response status code is 200, response time is less than 200ms, and user key exists\", function () {\r",
+                  "    pm.expect(pm.response.code).to.eql(200);\r",
+                  "    pm.expect(pm.response.responseTime).to.be.below(200);\r",
+                  "    pm.expect(responseXML).to.have.property('user');\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"userName\":\"12308014\",\r\n    \"password\":\"Action#123\",\r\n    \"siteId\": \"1\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "App Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{fnb_url}}",
+          "host": [
+            "{{fnb_url}}"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "fnb_url",
+      "value": "http://localhost:7001"
+    },
+    {
+      "key": "jwt_token",
+      "value": "YOUR_JWT_HERE"
+    }
+  ]
+}
