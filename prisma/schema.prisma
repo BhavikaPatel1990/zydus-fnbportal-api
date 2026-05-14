@@ -158,9 +158,10 @@ model PatientOrder {
   deleted_by String?
   is_active  Boolean  @default(true)
 
-  hinaiOrder HinaiOrder @relation("HinaiToPatientOrder", fields: [hinai_order_id], references: [order_id])
+  hinaiOrder          HinaiOrder           @relation("HinaiToPatientOrder", fields: [hinai_order_id], references: [order_id])
   patientOrderLiquids PatientOrderLiquid[] @relation("PoToLiquid")
-  dietTypeData DietType? @relation("DietTypeToPatientOrder", fields: [diet_type], references: [diet_type_id])
+  patientOrderDetails PatientOrderDetail[] @relation("PoToOrderDetail")
+  dietTypeData        DietType?            @relation("DietTypeToPatientOrder", fields: [diet_type], references: [diet_type_id])
 
   @@index([patient_id])
   @@index([hinai_order_id])
@@ -182,7 +183,8 @@ model PatientOrderDetail {
   deleted_by  String?
   is_active   Boolean  @default(true)
 
-  menuTime MenuTime @relation("MenuTimeToOrderDetail", fields: [ptm_id], references: [id])
+  menuTime   MenuTime  @relation("MenuTimeToOrderDetail", fields: [ptm_id], references: [id])
+  patientOrder PatientOrder @relation("PoToOrderDetail", fields: [po_id], references: [id])
 
   @@index([po_id])
   @@index([ptm_id])
@@ -204,10 +206,7 @@ model PatientOrderLiquid {
   is_active   Boolean  @default(true)
 
   patientOrder PatientOrder @relation("PoToLiquid", fields: [po_id], references: [id])
-  menuTime MenuTime @relation( "MenuTimeToLiquid", fields: [ptm_id], references: [id] )
-
-  patientOrder PatientOrder @relation("PoToLiquid", fields: [po_id], references: [id])
-  menuTime MenuTime? @relation( "MenuTimeToLiquid", fields: [ptm_id], references: [id] )
+  menuTime     MenuTime?    @relation("MenuTimeToLiquid", fields: [ptm_id], references: [id])
 
   @@index([po_id])
   @@index([ptm_id])

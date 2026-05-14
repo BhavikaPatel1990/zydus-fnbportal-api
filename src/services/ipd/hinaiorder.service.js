@@ -92,7 +92,7 @@ const toIntValue = (value, fieldName, { required = true } = {}) => {
 };
 
 const toBigIntValue = (value, fieldName, { required = true } = {}) => {
-    if (value === undefined) {
+    if (value === undefined || value === null || value === '') {
         if (required) {
             throw new Error(`${fieldName} is required`);
         }
@@ -102,7 +102,10 @@ const toBigIntValue = (value, fieldName, { required = true } = {}) => {
     try {
         return BigInt(value);
     } catch (error) {
-        throw new Error(`${fieldName} must be a valid bigint`);
+        if (required) {
+            throw new Error(`${fieldName} must be a valid bigint`);
+        }
+        return null;
     }
 };
 
