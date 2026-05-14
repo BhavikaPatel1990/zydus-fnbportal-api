@@ -114,7 +114,8 @@ export const downloadExtraOrdersCsv = async (req, res) => {
 export const getLiquidData = async (req, res) => {
     try {
         const data = await fnbDashboardService.getLiquidData(req.body, req.user);
-        return response.success(res, 'liquid data fetched', data);
+        return response.success(res, 'Liquid data fetched successfully', data);
+
     } catch (error) {
         console.error('getLiquidData error:', error.message);
         return response.serverError(res, error.message);
@@ -139,7 +140,8 @@ export const searchPatient = async (req, res) => {
   try {
     const data = await fnbDashboardService.searchPatient(req.body);
 
-    return response.success(res, 'Patient search completed', data);
+    return response.success(res, 'Patient search completed successfully', data);
+
 
   } catch (error) {
     console.error("searchPatient Controller Error:", error);

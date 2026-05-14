@@ -3,6 +3,12 @@ import axios from 'axios';
 import { getOracleConnection } from '../../config/oracleDb.js';
 import oracledb from 'oracledb';
 import { Prisma } from '@prisma/client';
+import { formatDateTime } from '../../utils/dateUtils.js';
+import authPrisma from '../../config/authDb.js';
+
+
+
+
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL?.replace(/\/$/, '');
 
@@ -211,7 +217,26 @@ const getMstIdDirect = async (mstId) => {
     return siteRecord.id;
 };
 
+const getUserMap = async (siteId) => {
+    try {
+        const users = await authPrisma.$queryRaw`
+            SELECT id, full_name as name, username FROM users
+        `;
+        const map = {};
+        users.forEach((u) => {
+            const id = String(u.id);
+            map[id] = u.name || u.username;
+        });
+        return map;
+    } catch (error) {
+        console.error('Error fetching user map from DB:', error.message);
+        return {};
+    }
+};
+
+
 const resolveSiteMapping = async (value, type = 'site_id') => {
+
     if (type === 'mst_id') {
         return await getMstIdDirect(value);
     }
@@ -574,25 +599,26 @@ export const createPatientOrder = async (body, jwtUser) => {
     const auditUserId = getAuditUserId(jwtUser);
 
     const patientId = toIntValue(
-        getFirstDefined(body, ['patientid', 'patient_id', 'PATIENT_ID']),
+        getFirstDefined(body, ['patientid', 'patient_id', 'PATIENTID', 'PATIENT_ID']),
         'patientid'
     );
     const hinaiOrderId = toIntValue(
-        getFirstDefined(body, ['hnoid', 'hinaiorderid', 'hinai_order_id', 'order_id']),
+        getFirstDefined(body, ['hnoid', 'hinaiorderid', 'hinai_order_id', 'order_id', 'HINAIORDERID']),
         'hnoid'
     );
-    const existingPoId = getFirstDefined(body, ['poid', 'po_id']);
+    const existingPoId = getFirstDefined(body, ['poid', 'po_id', 'POID']);
     const dietType = toIntValue(
         getFirstDefined(body, ['diettype', 'diet_type']),
         'diettype'
     );
 
     const dietRemark = toUpperTrimmed(
-        getFirstDefined(body, ['dietremark', 'diet_remark'])
+        getFirstDefined(body, ['dietremark', 'diet_remark', 'dietRemark'])
     );
     const nursingRemark = toUpperTrimmed(
-        getFirstDefined(body, ['nurseremark', 'nursingremark', 'nursing_remark'])
+        getFirstDefined(body, ['nurseremark', 'nursingremark', 'nursing_remark', 'nursingRemark'])
     );
+
     const items = mapPatientOrderItems(body);
     const orderCategory = getOrderCategory(dietType);
 
@@ -760,18 +786,19 @@ export const createPatientOrder = async (body, jwtUser) => {
 
 export const getPatientOrderFormData = async (body, jwtUser) => {
     const patientId = toIntValue(
-        getFirstDefined(body, ['patientid', 'patient_id', 'PATIENT_ID']),
+        getFirstDefined(body, ['patientid', 'patient_id', 'PATIENT_ID', 'PATIENTID']),
         'patientid'
     );
     const hinaiOrderId = toIntValue(
-        getFirstDefined(body, ['hinaiorderid', 'hnoid', 'hinai_order_id', 'order_id']),
+        getFirstDefined(body, ['hinaiorderid', 'hnoid', 'hinai_order_id', 'order_id', 'HINAIORDERID']),
         'hinaiorderid'
     );
     const dietType = toIntValue(
-        getFirstDefined(body, ['diettype', 'diet_type']),
+        getFirstDefined(body, ['diettype', 'diet_type', 'DIETTYPE']),
         'diettype'
     );
-    const poId = getFirstDefined(body, ['poid', 'po_id']);
+    const poId = getFirstDefined(body, ['poid', 'po_id', 'POID']);
+
 
     const hinaiOrder = await prisma.hinaiOrder.findFirst({
         where: {
@@ -1021,9 +1048,10 @@ export const getHinaiOrdersOldAsRawQuery = async (body, jwtUser) => {
 };
 
 export const checkPageLock = async (body, jwtUser) => {
-    const pageId = toIntValue(getFirstDefined(body, ['page_id', 'pageid']), 'page_id');
-    const patientId = toStringValue(getFirstDefined(body, ['patient_id', 'patientid', 'poid']), 'patient_id');
+    const pageId = toIntValue(getFirstDefined(body, ['page_id', 'pageid', 'PAGE_ID', 'PAGEID']), 'page_id');
+    const patientId = toStringValue(getFirstDefined(body, ['patient_id', 'patientid', 'poid', 'POID', 'mrno', 'MRNO']), 'patient_id');
     const userId = String(getAuditUserId(jwtUser));
+
 
     if (!userId) throw new Error('User identification required');
 
@@ -1182,6 +1210,8 @@ export const getHinaiOrders = async (body, jwtUser) => {
                 name: row.menu_detail,
                 order_date: row.order_date,
                 diff: Math.floor((Date.now() - new Date(row.order_date)) / 60000),
+
+
                 diet_type: row.diet_type,
                 hinaiorderid: row.order_id,
                 admission_date: row.admission_at,
@@ -1212,18 +1242,19 @@ export const getHinaiOrders = async (body, jwtUser) => {
 
 export const getPatientLiquidOrderFormData = async (body, jwtUser) => {
     const patientId = toIntValue(
-        getFirstDefined(body, ['patientid', 'patient_id', 'PATIENT_ID']),
+        getFirstDefined(body, ['patientid', 'patient_id', 'PATIENT_ID', 'PATIENTID']),
         'patientid'
     );
     const hinaiOrderId = toIntValue(
-        getFirstDefined(body, ['hinaiorderid', 'hnoid', 'hinai_order_id', 'order_id']),
+        getFirstDefined(body, ['hinaiorderid', 'hnoid', 'hinai_order_id', 'order_id', 'HINAIORDERID']),
         'hinaiorderid'
     );
     const dietType = toIntValue(
-        getFirstDefined(body, ['diettype', 'diet_type']),
+        getFirstDefined(body, ['diettype', 'diet_type', 'DIETTYPE']),
         'diettype'
     );
-    const poId = getFirstDefined(body, ['poid', 'po_id']);
+    const poId = getFirstDefined(body, ['poid', 'po_id', 'POID']);
+
 
     const hinaiOrder = await prisma.hinaiOrder.findFirst({
         where: {
@@ -1384,7 +1415,7 @@ export const getPatientLiquidOrderFormData = async (body, jwtUser) => {
 
 export const getPatientLiquidOrderTimings = async (body, jwtUser) => {
     const patientId = toIntValue(
-        getFirstDefined(body, ['patientid', 'patient_id', 'PATIENT_ID']),
+        getFirstDefined(body, ['patientid', 'patient_id', 'PATIENT_ID', 'PATIENTID']),
         'patientid'
     );
     const liquidHours = toIntValue(
@@ -2342,8 +2373,550 @@ export const cancelPatientOrder = async (body, jwtUser) => {
             updated_by: auditUserId ? String(auditUserId) : null,
         },
     });
+    return result;
+};
+
+export const outPatientOrder = async (body, jwtUser) => {
+    const auditUserId = getAuditUserId(jwtUser);
+    const hinaiOrderId = getFirstDefined(body, ['hinaiorderid', 'order_id', 'HINAIORDERID', 'outall']);
+    const remarks = toStringValue(getFirstDefined(body, ['remarks', 'remark', 'REMARKS']), 'remarks', { required: false });
+
+    const outTime = new Date().toLocaleString('en-GB', { hour12: false }).replace(',', ''); // Matching PHP format Y-m-d h:i:s or similar string
+
+    if (!hinaiOrderId) {
+        throw new Error('hinaiorderid or order_id is required');
+    }
+
+    const orderIds = parsePipeValueList(hinaiOrderId).map(id => toIntValue(id, 'order_id'));
+
+    const result = await prisma.hinaiOrder.updateMany({
+        where: {
+            order_id: { in: orderIds },
+            is_active: true
+        },
+        data: {
+            out_time: outTime,
+            out_by: auditUserId ? String(auditUserId) : null,
+            remarks: remarks || null,
+            updated_by: auditUserId ? String(auditUserId) : null,
+        }
+    });
+
+    return {
+        updated: result.count > 0,
+        count: result.count,
+        order_ids: orderIds
+    };
+};
+
+export const clearPatientOrders = async (body, jwtUser) => {
+    const auditUserId = getAuditUserId(jwtUser);
+    const hinaiOrderIds = getFirstDefined(body, ['insert', 'hinaiorderids', 'HINAIORDERID', 'order_id']);
+
+    const clearanceTime = new Date().toLocaleString('en-GB', { hour12: false }).replace(',', '');
+
+    if (!hinaiOrderIds) {
+        throw new Error('hinaiorderids or insert is required');
+    }
+
+    const orderIds = parsePipeValueList(hinaiOrderIds).map(id => toIntValue(id, 'order_id'));
+
+    const result = await prisma.hinaiOrder.updateMany({
+        where: {
+            order_id: { in: orderIds },
+            is_active: true
+        },
+        data: {
+            clearance: true,
+            clearance_time: clearanceTime,
+            clearance_by: auditUserId ? toBigIntValue(auditUserId, 'auditUserId', { required: false }) : null,
+            updated_by: auditUserId ? String(auditUserId) : null,
+        }
+    });
+
+    return {
+        updated: result.count > 0,
+        count: result.count,
+        order_ids: orderIds
+    };
+};
+
+export const getWards = async (body) => {
+    const siteId = toIntValue(getFirstDefined(body, ['site_id', 'siteid']), 'site_id');
+
+    const locations = await prisma.location.findMany({
+        where: {
+            mst_id: siteId,
+            is_active: true
+        },
+        select: {
+            name: true
+        },
+        orderBy: {
+            name: 'asc'
+        }
+    });
+
+    return locations.map(l => l.name);
+};
+
+export const getOrderMenuListWithPrintStatus = async (body) => {
+    const patientId = toIntValue(getFirstDefined(body, ['patientid', 'patient_id', 'PATIENTID', 'PATIENT_ID']), 'patientid');
+    const dietType = toIntValue(getFirstDefined(body, ['diettype', 'diet_type', 'DIETTYPE']), 'diettype');
+    const poId = toIntValue(getFirstDefined(body, ['poid', 'po_id', 'POID']), 'poid');
+    const orderType = getFirstDefined(body, ['ordertype', 'dietorder']) || 'regular';
+
+
+    let menuItems = [];
+
+    if (orderType === 'extra') {
+        const results = await prisma.$queryRaw`
+            SELECT DISTINCT m.description, m.id as mid, COALESCE(sp.print_done, false) as printed
+            FROM "PatientOrder" po
+            LEFT JOIN "PatientOrderDetail" pd ON pd.po_id = po.id
+            LEFT JOIN "MenuTime" m ON m.id = pd.ptm_id
+            LEFT JOIN "StickerPrintStatus" sp ON sp.patient_id = po.patient_id
+                AND sp.po_id = po.hinai_order_id
+                AND sp.menu_time_id = 1
+            WHERE po.patient_id = ${patientId} AND po.diet_type = ${dietType} AND po.hinai_order_id = ${poId} AND m.description = 'EM'
+            ORDER BY m.id
+        `;
+        menuItems = results;
+    } else if (orderType === 'regular') {
+        const results = await prisma.$queryRaw`
+            SELECT DISTINCT m.description, m.id as mid, COALESCE(sp.print_done, false) as printed
+            FROM "PatientOrder" po
+            LEFT JOIN "PatientOrderDetail" pd ON pd.po_id = po.id
+            LEFT JOIN "MenuTime" m ON m.id = pd.ptm_id
+            LEFT JOIN "StickerPrintStatus" sp ON sp.patient_id = po.patient_id
+                AND sp.po_id = po.hinai_order_id
+                AND sp.menu_time_id = (CASE m.description
+                    WHEN 'Breakfast' THEN 2
+                    WHEN 'MM' THEN 3
+                    WHEN 'Lunch' THEN 4
+                    WHEN '2PM' THEN 5
+                    WHEN 'EveTea' THEN 6
+                    WHEN '6PM' THEN 7
+                    WHEN 'Dinner' THEN 8
+                    ELSE 0 END)
+            WHERE po.patient_id = ${patientId} AND po.diet_type = ${dietType} AND po.hinai_order_id = ${poId}
+                AND m.description IN ('Breakfast', 'MM', 'Lunch', '2PM', 'EveTea', '6PM', 'Dinner')
+            ORDER BY m.id
+        `;
+        menuItems = results;
+    } else if (orderType === 'liquids') {
+        const results = await prisma.$queryRaw`
+            SELECT CAST(pd.liquid_time AS TEXT) as description, CAST(pd.id AS TEXT) as mid, COALESCE(sp.print_done, false) as printed
+            FROM "PatientOrder" po
+            LEFT JOIN "PatientOrderLiquid" pd ON pd.po_id = po.id
+            LEFT JOIN "StickerPrintStatus" sp ON sp.patient_id = po.patient_id
+                AND sp.po_id = po.hinai_order_id
+                AND sp.menu_time_id = pd.liquid_time
+            WHERE po.patient_id = ${patientId} AND po.hinai_order_id = ${poId}
+        `;
+        menuItems = results;
+    }
+
+    return menuItems;
+};
+
+const escapeCsvValue = (val) => {
+    if (val === null || val === undefined) return '';
+    const str = String(val);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+};
+
+export const downloadOrdersCsv = async (body, jwtUser) => {
+    const siteIdParam = getFirstDefined(body, ['site_id', 'SITEID', 'siteid']) || jwtUser?.siteID;
+    const itemType = body.item || 'regular';
+
+    const mstId = await resolveSiteMapping(siteIdParam, 'mst_id');
+    if (!mstId) throw new Error('Invalid site mapping');
+
+    const today = new Date();
+    const startOfDay = new Date(today);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(today);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    let dietTypeFilter = Prisma.sql`AND po.diet_type <> 18894123`;
+    let extraFields = Prisma.empty;
+
+    if (itemType === 'extra') {
+        dietTypeFilter = Prisma.sql`AND po.diet_type = 18894123`;
+        extraFields = Prisma.sql`,
+            LPAD(FLOOR(EXTRACT(EPOCH FROM (po.dispatched_at - ho.order_date)) / 3600)::text, 2, '0') || ':' || LPAD(FLOOR((EXTRACT(EPOCH FROM (po.dispatched_at - ho.order_date)) % 3600) / 60)::text, 2, '0') || ':' || LPAD(FLOOR(EXTRACT(EPOCH FROM (po.dispatched_at - ho.order_date)) % 60)::text, 2, '0') AS "OrdertoDispTAT",
+            CASE
+                WHEN COALESCE(po.dispatched, false) = true THEN 'Dispatched'
+                WHEN COALESCE(po.is_cancelled, false) = true THEN 'Cancelled'
+                WHEN COALESCE(po.dispatched, false) = false THEN 'Pending'
+                ELSE ''
+            END AS "Status"`;
+    }
+
+    const sql = Prisma.sql`
+        SELECT
+            ho.order_id AS "OrderID",
+            ho.mr_no AS "MRNO",
+            ho.patient_name AS "PatientName",
+            CONCAT(ho.bed_no, '/', ho.ward) AS "Bed-Ward",
+            ho.doctor AS "Doctor",
+            dt.diet_name AS "DietType",
+            string_agg(CONCAT(m.description, ': ', COALESCE(pd.remarks, '')), ', ') AS "MenuType:Remarks",
+            po.nursing_remark AS "NurseRemark",
+            po.diet_remark AS "DietitianRemark",
+            po.created_by AS "OrderPunchBy",
+            TO_CHAR(po.created_at, 'DD/MM/YYYY HH24:MI') AS "OrderPunchTime",
+            TO_CHAR(ho.order_date, 'DD/MM/YYYY HH24:MI') AS "HISOrderTime",
+            LPAD(FLOOR(EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) / 3600)::text, 2, '0') || ':' || LPAD(FLOOR((EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) % 3600) / 60)::text, 2, '0') || ':' || LPAD(FLOOR(EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) % 60)::text, 2, '0') AS "OrdertoPunchTAT"
+            ${extraFields}
+        FROM "MenuTime" m
+        LEFT JOIN "PatientOrderDetail" pd ON pd.ptm_id = m.id
+        LEFT JOIN "PatientOrder" po ON po.id = pd.po_id
+        LEFT JOIN "DietType" dt ON dt.diet_type_id = po.diet_type
+        LEFT JOIN "HinaiOrder" ho ON ho.order_id = po.hinai_order_id
+        WHERE po.is_active = true
+            AND po.mst_id = ${BigInt(mstId)}
+            AND po.created_at >= ${startOfDay}
+            AND po.created_at <= ${endOfDay}
+            ${dietTypeFilter}
+        GROUP BY
+            ho.order_id, ho.mr_no, ho.patient_name, ho.bed_no, ho.ward, ho.doctor,
+            dt.diet_name, po.nursing_remark, po.diet_remark, po.created_by, po.created_at, ho.order_date,
+            po.dispatched_at, po.dispatched, po.is_cancelled, m.id
+        ORDER BY ho.ward, ho.bed_no, m.id
+    `;
+
+    const results = await prisma.$queryRaw(sql);
+
+    if (!results.length) return null;
+
+    const userMap = await getUserMap(mstId);
+
+    const headers = Object.keys(results[0]);
+    const csvRows = [
+        headers.join(','),
+        ...results.map((row) => {
+            if (row['OrderPunchBy'] && userMap[String(row['OrderPunchBy'])]) {
+                row['OrderPunchBy'] = userMap[String(row['OrderPunchBy'])];
+            }
+            return headers.map((h) => escapeCsvValue(row[h])).join(',');
+        }),
+    ];
+
+    return csvRows.join('\n');
+};
+
+export const downloadOutAllOrdersCsv = async (body, jwtUser) => {
+    const fromRaw = getFirstDefined(body, ['fromdate', 'fromDate']);
+    const toRaw = getFirstDefined(body, ['todate', 'toDate']);
+
+    if (!fromRaw || !toRaw) throw new Error('fromdate and todate are required');
+
+    const fromDate = new Date(fromRaw);
+    const toDate = new Date(toRaw);
+    fromDate.setHours(0, 0, 0, 0);
+    toDate.setHours(23, 59, 59, 999);
+
+    const sql = Prisma.sql`
+        SELECT
+            ho.order_id AS "OrderID",
+            ho.mr_no AS "MRNO",
+            ho.patient_name AS "PatientName",
+            CONCAT(ho.bed_no, '/', ho.ward) AS "Bed-Ward",
+            ho.doctor AS "Doctor",
+            dt.diet_name AS "DietType",
+            string_agg(CONCAT(m.description, ': ', COALESCE(pd.remarks, '')), ', ') AS "MenuType:Remarks",
+            po.nursing_remark AS "NurseRemark",
+            po.diet_remark AS "DietitianRemark",
+            po.created_by AS "OrderPunchBy",
+            TO_CHAR(po.created_at, 'DD/MM/YYYY HH24:MI') AS "OrderPunchTime",
+            TO_CHAR(ho.order_date, 'DD/MM/YYYY HH24:MI') AS "HISOrderTime",
+            LPAD(FLOOR(EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) / 3600)::text, 2, '0') || ':' || LPAD(FLOOR((EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) % 3600) / 60)::text, 2, '0') || ':' || LPAD(FLOOR(EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) % 60)::text, 2, '0') AS "OrdertoPunchTAT",
+            TO_CHAR(TO_TIMESTAMP(ho.out_time, 'DD/MM/YYYY HH24:MI:SS'), 'DD/MM/YYYY HH24:MI') AS "OutTime",
+            LPAD(FLOOR(EXTRACT(EPOCH FROM (TO_TIMESTAMP(ho.out_time, 'DD/MM/YYYY HH24:MI:SS') - ho.order_date)) / 3600)::text, 2, '0') || ':' || LPAD(FLOOR((EXTRACT(EPOCH FROM (TO_TIMESTAMP(ho.out_time, 'DD/MM/YYYY HH24:MI:SS') - ho.order_date)) % 3600) / 60)::text, 2, '0') || ':' || LPAD(FLOOR(EXTRACT(EPOCH FROM (TO_TIMESTAMP(ho.out_time, 'DD/MM/YYYY HH24:MI:SS') - ho.order_date)) % 60)::text, 2, '0') AS "OrdertoOutTAT",
+
+            ho.out_by AS "OutBy"
+        FROM "MenuTime" m
+        LEFT JOIN "PatientOrderDetail" pd ON pd.ptm_id = m.id
+        LEFT JOIN "PatientOrder" po ON po.id = pd.po_id
+        LEFT JOIN "DietType" dt ON dt.diet_type_id = po.diet_type
+        LEFT JOIN "HinaiOrder" ho ON ho.order_id = po.hinai_order_id
+        WHERE po.is_active = true
+            AND ho.out_time IS NOT NULL
+            AND TO_TIMESTAMP(ho.out_time, 'DD/MM/YYYY HH24:MI:SS') >= ${fromDate}
+            AND TO_TIMESTAMP(ho.out_time, 'DD/MM/YYYY HH24:MI:SS') <= ${toDate}
+        GROUP BY
+            ho.order_id, ho.mr_no, ho.patient_name, ho.bed_no, ho.ward, ho.doctor,
+            dt.diet_name, po.nursing_remark, po.diet_remark, po.created_by, po.created_at, ho.order_date,
+            ho.out_time, ho.out_by, m.id
+        ORDER BY ho.ward, ho.bed_no, m.id
+    `;
+
+    const results = await prisma.$queryRaw(sql);
+
+    if (!results.length) return null;
+
+    const resolvedMstId = await resolveSiteMapping(jwtUser?.siteID || 1, 'mst_id');
+    const userMap = await getUserMap(resolvedMstId);
+
+    const headers = Object.keys(results[0]);
+    const csvRows = [
+        headers.join(','),
+        ...results.map((row) => {
+            if (row['OrderPunchBy'] && userMap[String(row['OrderPunchBy'])]) {
+                row['OrderPunchBy'] = userMap[String(row['OrderPunchBy'])];
+            }
+            if (row['OutBy'] && userMap[String(row['OutBy'])]) {
+                row['OutBy'] = userMap[String(row['OutBy'])];
+            }
+            return headers.map((h) => escapeCsvValue(row[h])).join(',');
+        }),
+    ];
+
+    return csvRows.join('\n');
+};
+
+export const getPatientStickerData = async (body, jwtUser) => {
+    const patientId = getFirstDefined(body, ['patient_id', 'PATIENTID', 'patientid']);
+    const orderId = getFirstDefined(body, ['po_id', 'HINAIORDERID', 'hinaiorderid', 'order_id']);
+    const menuId = getFirstDefined(body, ['menu_id', 'MENUID', 'menuid']);
+    const poid = getFirstDefined(body, ['poid', 'POID']);
+
+    const siteId = await resolveSiteMapping(body.site_id || jwtUser?.siteID, 'mst_id');
+
+    const poIdInt = orderId ? parseInt(orderId) : undefined;
+    const patientIdInt = patientId ? parseInt(patientId) : undefined;
+
+    const whereClause = {
+        mst_id: BigInt(siteId)
+    };
+
+    if (patientIdInt && !isNaN(patientIdInt)) whereClause.patient_id = patientIdInt;
+    if (poIdInt && !isNaN(poIdInt)) whereClause.order_id = poIdInt;
+
+    const patientOrderFilter = { is_active: true };
+    if (poid) {
+        patientOrderFilter.id = poid;
+    }
+
+    const order = await prisma.hinaiOrder.findFirst({
+        where: whereClause,
+        include: {
+            patientOrders: {
+                where: patientOrderFilter,
+                include: {
+                    dietTypeData: true,
+                    patientOrderDetails: {
+                        where: menuId ? { ptm_id: String(menuId) } : {},
+                        include: { menuTime: true }
+                    }
+                }
+            }
+        }
+    });
+
+    if (!order || !order.patientOrders.length) throw new Error('Order not found');
+
+    const po = order.patientOrders[0];
+    const details = po.patientOrderDetails;
+
+    if (!details.length) throw new Error('Menu detail not found for this sticker');
+
+    const data = {
+        mr_no: order.mr_no.toString(),
+        patient_name: order.patient_name,
+        doctor: order.doctor,
+        admission_no: order.admission_no,
+        bed_no: order.bed_no,
+        ward: order.ward,
+        diet_name: po.dietTypeData?.diet_name,
+        menu_description: details[0].menuTime?.description,
+        items: details.map(d => d.remarks ? `${d.menuTime.description}- ${d.remarks}` : d.menuTime.description).join(', '),
+        nursing_remark: po.nursing_remark,
+        diet_remark: po.diet_remark,
+        order_date: formatDateTime(order.approved_date || order.order_date)
+    };
+
+    // Mark as printed
+    await markStickerAsPrinted(patientIdInt, poIdInt, menu_id);
+
+    return data;
+};
+
+const markStickerAsPrinted = async (patientId, poId, menuId) => {
+    try {
+        const existing = await prisma.stickerPrintStatus.findFirst({
+            where: {
+                patient_id: patientId,
+                po_id: poId,
+                menu_time_id: 0 // Simplification for now
+            }
+        });
+
+        if (existing) {
+            await prisma.stickerPrintStatus.update({
+                where: { id: existing.id },
+                data: { print_done: true }
+            });
+        } else {
+            await prisma.stickerPrintStatus.create({
+                data: {
+                    patient_id: patientId,
+                    po_id: poId,
+                    menu_time_id: 0,
+                    print_done: true
+                }
+            });
+        }
+    } catch (e) {
+        console.error('Error marking sticker as printed:', e.message);
+    }
+};
+
+export const getBulkStickerData = async (body, jwtUser) => {
+    const siteId = await resolveSiteMapping(body.site_id || jwtUser?.siteID, 'mst_id');
+    const { menu_id, ward } = body;
+
+    const today = new Date();
+    const startOfDay = new Date(today);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(today);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const excludedDiets = [17154031, 17129492, 17129493, 18894123];
+
+    const whereClause = {
+        mst_id: BigInt(siteId),
+        is_active: true,
+        is_discharge: false,
+        status: true,
+        patientOrders: {
+            some: {
+                is_active: true,
+                created_at: { gte: startOfDay, lte: endOfDay },
+                diet_type: { notIn: excludedDiets },
+                patientOrderDetails: {
+                    some: { ptm_id: menu_id }
+                }
+            }
+        }
+    };
+
+    if (ward) whereClause.ward = ward;
+
+    const orders = await prisma.hinaiOrder.findMany({
+        where: whereClause,
+        include: {
+            patientOrders: {
+                where: {
+                    is_active: true,
+                    created_at: { gte: startOfDay, lte: endOfDay },
+                    diet_type: { notIn: excludedDiets }
+                },
+                orderBy: { created_at: 'desc' },
+                take: 1,
+                include: {
+                    dietTypeData: true,
+                    patientOrderDetails: {
+                        include: { menuTime: true }
+                    }
+                }
+            }
+        },
+        orderBy: [{ ward: 'asc' }, { bed_no: 'asc' }]
+    });
+
+    const result = [];
+    for (const order of orders) {
+        const po = order.patientOrders[0];
+        const details = po.patientOrderDetails.filter(d => d.ptm_id === menu_id);
+
+        if (details.length === 0) continue;
+
+        result.push({
+            mr_no: order.mr_no.toString(),
+            patient_name: order.patient_name,
+            doctor: order.doctor,
+            admission_no: order.admission_no,
+            bed_no: order.bed_no,
+            ward: order.ward,
+            diet_name: po.dietTypeData?.diet_name,
+            menu_description: details[0].menuTime?.description,
+            items: details.map(d => d.remarks ? `${d.menuTime.description}- ${d.remarks}` : d.menuTime.description).join(', '),
+            nursing_remark: po.nursing_remark,
+            diet_remark: po.diet_remark,
+            order_date: formatDateTime(order.approved_date || order.order_date)
+        });
+
+        await markStickerAsPrinted(order.patient_id, order.order_id, menu_id);
+    }
 
     return result;
 };
 
+export const getLiquidStickerData = async (body, jwtUser) => {
+    const siteId = await resolveSiteMapping(body.site_id || jwtUser?.siteID, 'mst_id');
+    const { menu_id } = body;
 
+    const today = new Date();
+    const startOfDay = new Date(today);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(today);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const whereClause = {
+        mst_id: BigInt(siteId),
+        is_active: true,
+        is_discharge: false,
+        patientOrders: {
+            some: {
+                is_active: true,
+                created_at: { gte: startOfDay, lte: endOfDay },
+                patientOrderLiquids: menu_id ? { some: { liquid_time: parseInt(menu_id) } } : { some: {} }
+            }
+        }
+    };
+
+    const orders = await prisma.hinaiOrder.findMany({
+        where: whereClause,
+        include: {
+            patientOrders: {
+                where: {
+                    is_active: true,
+                    created_at: { gte: startOfDay, lte: endOfDay }
+                },
+                orderBy: { created_at: 'desc' },
+                take: 1,
+                include: {
+                    patientOrderLiquids: menu_id ? { where: { liquid_time: parseInt(menu_id) } } : true
+                }
+            }
+        },
+        orderBy: [{ ward: 'asc' }, { bed_no: 'asc' }]
+    });
+
+    const result = [];
+    for (const order of orders) {
+        const po = order.patientOrders[0];
+        for (const liq of po.patientOrderLiquids) {
+            result.push({
+                mr_no: order.mr_no.toString(),
+                patient_name: order.patient_name,
+                bed_no: order.bed_no,
+                ward: order.ward,
+                menu_detail: order.menu_detail,
+                description: liq.liquid_time.toString(),
+                remarks: liq.remarks,
+                nursing_remark: po.nursing_remark,
+                diet_remark: po.diet_remark,
+                order_date: formatDateTime(order.order_date)
+            });
+        }
+    }
+
+    return result;
+};

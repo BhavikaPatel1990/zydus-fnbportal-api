@@ -13,6 +13,7 @@ router.post('/diet-sheet/download', checkPermission('FNB_PORTAL', 'READ'), fnbDa
 router.post('/diet-sheet-liquids', checkPermission('FNB_PORTAL', 'READ'), fnbDashboardController.getDietSheetLiquids);
 router.post('/diet-sheet-liquids/download', checkPermission('FNB_PORTAL', 'READ'), fnbDashboardController.downloadDietSheetLiquidsCsv);
 
+// Geting Live HINAI Query Data Display
 router.post('/pending-diet-orders', checkPermission('FNB_PORTAL', 'READ'), fnbDashboardController.getPendingDietOrders);
 
 router.post('/extra-orders', checkPermission('FNB_PORTAL', 'READ'), fnbDashboardController.getExtraOrders);
