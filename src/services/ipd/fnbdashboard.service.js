@@ -249,9 +249,17 @@ export const getDietSheet = async (body, jwtUser) => {
     const page = parseInt(body.page) || 1;
     const limit = parseInt(body.limit) || 10;
     const search = (body.search || '').toLowerCase();
+    const dietType = body.diet_type ? Number(body.diet_type) : undefined;
+    const locationId = body.location_id;
 
     const mstId = await resolveSiteMapping(siteIdParam);
     if (!mstId) throw new Error('Invalid site mapping');
+
+    let locationName = undefined;
+    if (locationId) {
+        const loc = await prisma.location.findUnique({ where: { id: locationId } });
+        locationName = loc?.name;
+    }
 
     const today = new Date();
     const start = new Date(today.setHours(0, 0, 0, 0));
@@ -262,7 +270,7 @@ export const getDietSheet = async (body, jwtUser) => {
         where: {
             mst_id: mstId,
             is_active: true,
-            diet_type: { not: 18894123 },
+            diet_type: dietType ? { equals: dietType, not: 18894123 } : { not: 18894123 },
             created_at: { gte: start, lte: end }
         },
         orderBy: { id: 'desc' }
@@ -286,7 +294,8 @@ export const getDietSheet = async (body, jwtUser) => {
             order_id: { in: hinaiIds },
             mst_id: mstId,
             is_discharge: false,
-            diet_type: { notIn: [17129492, 17129493, 17129495] }
+            diet_type: { notIn: [17129492, 17129493, 17129495] },
+            ward: locationName
         }
     });
 
@@ -311,8 +320,10 @@ export const getDietSheet = async (body, jwtUser) => {
     }
 
     // 5️⃣ Build response
-    let result = latestOrders.map(po => {
-        const ho = hinaiMap.get(po.hinai_order_id) || {};
+    let result = latestOrders
+        .filter(po => hinaiMap.has(po.hinai_order_id))
+        .map(po => {
+            const ho = hinaiMap.get(po.hinai_order_id);
         const remarks = detailMap[po.id] || {};
 
         return {
@@ -411,20 +422,29 @@ export const getDietSheetLiquids = async (body, jwtUser) => {
     const page = parseInt(body.page) || 1;
     const limit = parseInt(body.limit) || 10;
     const search = (body.search || '').toLowerCase();
+    const dietType = body.diet_type ? Number(body.diet_type) : undefined;
+    const locationId = body.location_id;
 
     const mstId = await resolveSiteMapping(siteIdParam);
     if (!mstId) throw new Error('Invalid site mapping');
 
+    let locationName = undefined;
+    if (locationId) {
+        const loc = await prisma.location.findUnique({ where: { id: locationId } });
+        locationName = loc?.name;
+    }
+
     const today = new Date();
     const start = new Date(today.setHours(0, 0, 0, 0));
     const end = new Date(today.setHours(23, 59, 59, 999));
+
 
     // 1️⃣ Latest patient orders (same logic)
     const patientOrders = await prisma.patientOrder.findMany({
         where: {
             mst_id: mstId,
             is_active: true,
-            diet_type: { not: 18894123 },
+            diet_type: dietType ? { equals: dietType, not: 18894123 } : { not: 18894123 },
             created_at: { gte: start, lte: end }
         },
         orderBy: { id: 'desc' }
@@ -447,7 +467,8 @@ export const getDietSheetLiquids = async (body, jwtUser) => {
             order_id: { in: hinaiIds },
             mst_id: mstId,
             is_discharge: false,
-            diet_type: { in: [17129492, 17129493, 17129495] }
+            diet_type: { in: [17129492, 17129493, 17129495] },
+            ward: locationName
         }
     });
 
@@ -1506,9 +1527,7 @@ export const getPatientOrderLedger = async (body, jwtUser) => {
     */
 
     return response;
-
   } catch (error) {
-
     console.error(
       "getOrderLedger Service Error:",
       error
@@ -1517,3 +1536,29 @@ export const getPatientOrderLedger = async (body, jwtUser) => {
     throw error;
   }
 };
+
+export const getDietTypes = async () => {
+    try {
+        const dietTypes = await prisma.dietType.findMany({
+            where: {
+                is_active: true,
+                deleted_at: null
+            },
+            select: {
+                diet_type_id: true,
+                diet_name: true
+            },
+            orderBy: {
+                diet_name: 'asc'
+            }
+        });
+
+        return dietTypes.map(d => ({
+            value: d.diet_type_id,
+            label: d.diet_name
+        }));
+    } catch (error) {
+        console.error('getDietTypes service error:', error);
+        throw error;
+    }
+};

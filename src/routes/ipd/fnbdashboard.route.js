@@ -24,5 +24,7 @@ router.post('/liquid-data/download', checkPermission('FNB_PORTAL', 'READ'), fnbD
 
 router.post("/search-patient", checkPermission('FNB_PORTAL', 'READ'), fnbDashboardController.searchPatient);
 router.post("/patient-order-ledger", checkPermission('FNB_PORTAL', 'READ'), fnbDashboardController.getPatientOrderLedger);
+router.get("/diet-types", checkPermission('FNB_PORTAL', 'READ'), fnbDashboardController.getDietTypes);
 
 export default router;
+

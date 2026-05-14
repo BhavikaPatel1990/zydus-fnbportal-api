@@ -166,3 +166,14 @@ export const getPatientOrderLedger = async (req, res) => {
     return response.serverError(res, error.message);
   }
 };
+
+export const getDietTypes = async (req, res) => {
+    try {
+        const data = await fnbDashboardService.getDietTypes();
+        return response.success(res, 'Diet types fetched successfully', data);
+    } catch (error) {
+        console.error('getDietTypes error:', error.message);
+        return response.serverError(res, error.message);
+    }
+};
+
