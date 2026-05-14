@@ -256,10 +256,15 @@ export const getDietSheet = async (body, jwtUser) => {
     if (!mstId) throw new Error('Invalid site mapping');
 
     let locationName = undefined;
-    if (locationId) {
-        const loc = await prisma.location.findUnique({ where: { id: locationId } });
-        locationName = loc?.name;
+    if (locationId && locationId !== 'all' && locationId !== '') {
+        try {
+            const loc = await prisma.location.findUnique({ where: { id: locationId } });
+            locationName = loc?.name;
+        } catch (error) {
+            console.error('location_id lookup error:', error.message);
+        }
     }
+
 
     const today = new Date();
     const start = new Date(today.setHours(0, 0, 0, 0));
@@ -429,10 +434,15 @@ export const getDietSheetLiquids = async (body, jwtUser) => {
     if (!mstId) throw new Error('Invalid site mapping');
 
     let locationName = undefined;
-    if (locationId) {
-        const loc = await prisma.location.findUnique({ where: { id: locationId } });
-        locationName = loc?.name;
+    if (locationId && locationId !== 'all' && locationId !== '') {
+        try {
+            const loc = await prisma.location.findUnique({ where: { id: locationId } });
+            locationName = loc?.name;
+        } catch (error) {
+            console.error('location_id lookup error:', error.message);
+        }
     }
+
 
     const today = new Date();
     const start = new Date(today.setHours(0, 0, 0, 0));
