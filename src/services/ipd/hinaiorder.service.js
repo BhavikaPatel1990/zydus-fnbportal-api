@@ -1115,6 +1115,8 @@ export const getHinaiOrders = async (body, jwtUser) => {
     const siteIdParam = getFirstDefined(body, ['site_id', 'SITEID', 'siteid']);
     const viewdata = getFirstDefined(body, ['viewdata']) || '0';
     const ordertype = getFirstDefined(body, ['ordertype']) || '0';
+    // listType: 'hinai' = all HIS orders (hinaiviewlist.php), 'ordered' = only with PatientOrder (viewlist.php)
+    const listType = getFirstDefined(body, ['listType', 'list_type']) || 'hinai';
 
     const page = parseInt(body.page) || 1;
     const limit = parseInt(body.limit) || 10;
@@ -1124,29 +1126,67 @@ export const getHinaiOrders = async (body, jwtUser) => {
     if (!mstId) throw new Error('Invalid site mapping');
 
     const today = new Date();
-    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+    const startOfDay = new Date(today);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(today);
+    endOfDay.setHours(23, 59, 59, 999);
 
     let where = {
         mst_id: mstId,
         is_discharge: false
     };
 
-    // order type filter
-    if (ordertype === 'extra') {
-        where.menu = 'EXTRA ORDER';
-        where.diet_type = 18894123;
-    } else if (ordertype === 'regular') {
-        where.menu = { not: 'EXTRA ORDER' };
-        where.diet_type = { not: 18894123 };
+    /*
+    ===========================================================
+    listType = 'ordered' (viewlist.php / viewlistpunch.php)
+    Filters on PatientOrder fields (diet_type, created_at)
+    Only shows HinaiOrders that have a matching PatientOrder
+    ===========================================================
+    */
+    if (listType === 'ordered') {
+        const poFilter = {
+            is_active: true,
+            mst_id: BigInt(mstId)
+        };
+
+        if (ordertype === 'extra') {
+            poFilter.diet_type = 18894123;
+        } else if (ordertype === 'regular') {
+            poFilter.diet_type = { not: 18894123 };
+        }
+
+        if (viewdata === 'today') {
+            poFilter.created_at = {
+                gte: startOfDay,
+                lte: endOfDay
+            };
+        }
+
+        where.patientOrders = { some: poFilter };
     }
 
-    // today filter
-    if (viewdata === 'today') {
-        where.order_date = {
-            gte: startOfDay,
-            lte: endOfDay
-        };
+    /*
+    ===========================================================
+    listType = 'hinai' (hinaiviewlist.php)
+    Filters on HinaiOrder fields directly (menu, diet_type, order_date)
+    Shows ALL HinaiOrders regardless of PatientOrder
+    ===========================================================
+    */
+    if (listType === 'hinai') {
+        if (ordertype === 'extra') {
+            where.menu = 'EXTRA ORDER';
+            where.diet_type = 18894123;
+        } else if (ordertype === 'regular') {
+            where.menu = { not: 'EXTRA ORDER' };
+            where.diet_type = { not: 18894123 };
+        }
+
+        if (viewdata === 'today') {
+            where.order_date = {
+                gte: startOfDay,
+                lte: endOfDay
+            };
+        }
     }
 
     // search
@@ -1162,36 +1202,61 @@ export const getHinaiOrders = async (body, jwtUser) => {
         ];
     }
 
-    // fetch ordered (IMPORTANT)
+    // Build include for patientOrders
+    const poIncludeWhere = listType === 'ordered'
+        ? { is_active: true, mst_id: BigInt(mstId) }
+        : { is_active: true };
+
+    // Add diet/date filters to include when listType is 'ordered'
+    if (listType === 'ordered') {
+        if (ordertype === 'extra') {
+            poIncludeWhere.diet_type = 18894123;
+        } else if (ordertype === 'regular') {
+            poIncludeWhere.diet_type = { not: 18894123 };
+        }
+        if (viewdata === 'today') {
+            poIncludeWhere.created_at = { gte: startOfDay, lte: endOfDay };
+        }
+    }
+
+    // fetch
     const rows = await prisma.hinaiOrder.findMany({
         where,
         orderBy: [
             { patient_id: 'asc' },
-            { order_id: 'desc' } // latest first
+            { order_id: 'desc' }
         ],
         include: {
             patientOrders: {
-                where: { is_active: true },
+                where: poIncludeWhere,
                 orderBy: { created_at: 'desc' },
-                take: 1
+                take: 1,
+                include: {
+                    dietTypeData: true
+                }
             }
         }
     });
 
     // 🔥 DISTINCT ON replacement (latest per patient)
     const map = new Map();
-
     for (const row of rows) {
+        // For 'ordered' mode, skip rows without a matching PatientOrder
+        if (listType === 'ordered' && !row.patientOrders?.length) continue;
         if (!map.has(row.patient_id)) {
             map.set(row.patient_id, row);
         }
     }
-
     const uniqueRows = Array.from(map.values());
+
+    // Resolve usernames (created_by → name)
+    const userMap = await getUserMap(mstId);
 
     // pagination AFTER grouping
     const total = uniqueRows.length;
     const paginated = uniqueRows.slice((page - 1) * limit, page * limit);
+
+    const todayStr = new Date().toISOString().slice(0, 10);
 
     return {
         total,
@@ -1200,44 +1265,87 @@ export const getHinaiOrders = async (body, jwtUser) => {
         totalPages: Math.ceil(total / limit),
         data: paginated.map(row => {
             const po = row.patientOrders?.[0] || null;
+            const createdBy = po?.created_by ? String(po.created_by) : null;
+            const username = createdBy && userMap[createdBy] ? userMap[createdBy] : (createdBy || '');
+            const admDt = row.admission_at
+                ? new Date(row.admission_at).toISOString().slice(0, 10)
+                : null;
+            const ordDate = row.order_date
+                ? new Date(row.order_date).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+                : '';
+            const approvedDate = row.approved_date
+                ? new Date(row.approved_date).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+                : '';
+            const admDate = row.admission_at
+                ? new Date(row.admission_at).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+                : '';
 
             return {
+                // Common fields
+                PATIENT_ID: row.patient_id,
                 patient_id: row.patient_id,
                 mrno: row.mr_no ? row.mr_no.toString() : null,
+                MRNO: row.mr_no ? row.mr_no.toString() : null,
                 patient: row.patient_name,
+                PATIENT: row.patient_name,
                 bed_no: row.bed_no,
+                bedno: row.bed_no,
+                BED_NO: row.bed_no,
                 ward: row.ward,
                 scname: row.ward,
+                SCNAME: row.ward,
                 doctor: row.doctor,
+                DOCTOR: row.doctor,
                 menu: row.menu,
+                MENU: row.menu,
                 name: row.menu_detail,
+                NAME: row.menu_detail,
                 order_date: row.order_date,
+                ORDDATE: ordDate,
                 diff: Math.floor((Date.now() - new Date(row.order_date)) / 60000),
 
-
                 diet_type: row.diet_type,
+                diettype: row.diet_type,
+                DIETTYPE: row.diet_type,
+                dietname: po?.dietTypeData?.diet_name || '',
+
                 hinaiorderid: row.order_id,
+                HINAIORDERID: row.order_id,
                 admission_date: row.admission_at,
+                admissiondate: row.admission_at,
+                ADMDATE: admDate,
+                admdt: admDt,
+                admdate: admDt,
+                approveddate: approvedDate,
+
+                nursinguser: row.nursing_user,
                 nursing_user: row.nursing_user,
+                isdietchange: row.is_diet_change ? 1 : 0,
                 is_diet_change: row.is_diet_change,
+                istransfer: row.is_transfer ? 1 : 0,
                 is_transfer: row.is_transfer,
                 dietorder: [17129492, 17129493, 17129495].includes(row.diet_type)
                     ? 'liquid'
                     : 'regular',
                 approved_date: row.approved_date,
-                // Additional fields from PHP implementation
+
+                // PatientOrder fields (available when order is punched)
                 POID: po?.id || null,
                 dispatched: po?.dispatched || false,
                 iscancelled: po?.is_cancelled || false,
                 lqhours: po?.liquid_hours || 0,
                 nursingRemark: po?.nursing_remark || row.nurse_remark || '',
                 punchdate: po?.created_at || null,
+                mail: po?.mail_flag ?? 0,
+                username,
+
                 agegender: row.age_gender || '',
                 admissionno: row.admission_no || '',
-                ostatus: row.status,
+                ostatus: row.status ? 1 : 0,
                 email: row.email || '',
                 mobileno: row.mobile_no || '',
-                DIAGNO: row.diagnosis || ''
+                DIAGNO: row.diagnosis || '',
+                siteid: row.mst_id ? Number(row.mst_id) : null
             };
         })
     };
@@ -2745,7 +2853,7 @@ export const getPatientStickerData = async (body, jwtUser) => {
     };
 
     // Mark as printed
-    await markStickerAsPrinted(patientIdInt, poIdInt, menu_id);
+    await markStickerAsPrinted(patientIdInt, poIdInt, menuId);
 
     return data;
 };
@@ -2782,7 +2890,9 @@ const markStickerAsPrinted = async (patientId, poId, menuId) => {
 
 export const getBulkStickerData = async (body, jwtUser) => {
     const siteId = await resolveSiteMapping(body.site_id || jwtUser?.siteID, 'mst_id');
-    const { menu_id, ward } = body;
+    const menuId = getFirstDefined(body, ['menu_id', 'MENUID', 'menuid']);
+    const ward = body.ward;
+    const itemType = body.item || 'regular';
 
     const today = new Date();
     const startOfDay = new Date(today);
@@ -2791,6 +2901,22 @@ export const getBulkStickerData = async (body, jwtUser) => {
     endOfDay.setHours(23, 59, 59, 999);
 
     const excludedDiets = [17154031, 17129492, 17129493, 18894123];
+    const patientOrderWhere = {
+        is_active: true,
+        created_at: { gte: startOfDay, lte: endOfDay }
+    };
+
+    if (itemType === 'extra') {
+        patientOrderWhere.diet_type = 18894123;
+    } else {
+        patientOrderWhere.diet_type = { notIn: excludedDiets };
+    }
+
+    if (menuId) {
+        patientOrderWhere.patientOrderDetails = {
+            some: { ptm_id: String(menuId) }
+        };
+    }
 
     const whereClause = {
         mst_id: BigInt(siteId),
@@ -2798,14 +2924,7 @@ export const getBulkStickerData = async (body, jwtUser) => {
         is_discharge: false,
         status: true,
         patientOrders: {
-            some: {
-                is_active: true,
-                created_at: { gte: startOfDay, lte: endOfDay },
-                diet_type: { notIn: excludedDiets },
-                patientOrderDetails: {
-                    some: { ptm_id: menu_id }
-                }
-            }
+            some: patientOrderWhere
         }
     };
 
@@ -2815,11 +2934,7 @@ export const getBulkStickerData = async (body, jwtUser) => {
         where: whereClause,
         include: {
             patientOrders: {
-                where: {
-                    is_active: true,
-                    created_at: { gte: startOfDay, lte: endOfDay },
-                    diet_type: { notIn: excludedDiets }
-                },
+                where: patientOrderWhere,
                 orderBy: { created_at: 'desc' },
                 take: 1,
                 include: {
@@ -2836,7 +2951,9 @@ export const getBulkStickerData = async (body, jwtUser) => {
     const result = [];
     for (const order of orders) {
         const po = order.patientOrders[0];
-        const details = po.patientOrderDetails.filter(d => d.ptm_id === menu_id);
+        const details = menuId
+            ? po.patientOrderDetails.filter(d => d.ptm_id === String(menuId))
+            : po.patientOrderDetails;
 
         if (details.length === 0) continue;
 
@@ -2855,7 +2972,7 @@ export const getBulkStickerData = async (body, jwtUser) => {
             order_date: formatDateTime(order.approved_date || order.order_date)
         });
 
-        await markStickerAsPrinted(order.patient_id, order.order_id, menu_id);
+        await markStickerAsPrinted(order.patient_id, order.order_id, menuId);
     }
 
     return result;

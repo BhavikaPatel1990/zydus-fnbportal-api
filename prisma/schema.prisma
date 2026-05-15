@@ -193,7 +193,7 @@ model PatientOrderDetail {
 model PatientOrderLiquid {
   id          String   @id @default(uuid())
   po_id       String
-  ptm_id      String
+  ptm_id      String?
   liquid_time Int
   remarks     String
 

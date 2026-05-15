@@ -44,8 +44,18 @@ export const generateBulkStickers = (stickersData, stream) => {
  * Common render logic for a single sticker page
  */
 function renderSticker(doc, data, startX, startY) {
+    const left = startX + 5;
+    const top = startY + 5;
+    const stickerWidth = 276;
+    const stickerHeight = 276;
+    const xLabel = startX + 15;
+    const xColon = startX + 72;
+    const xValue = startX + 80;
+    const defaultValueWidth = 181;
+    const topValueWidth = 125;
+
     // Outer Border
-    doc.rect(startX + 5, startY + 5, 276, 276).stroke();
+    doc.rect(left, top, stickerWidth, stickerHeight).stroke();
 
     // Logo
     try {
@@ -55,61 +65,65 @@ function renderSticker(doc, data, startX, startY) {
     }
 
     doc.fillColor('black');
-    
-    let y = startY + 20;
-    const xLabel = startX + 15;
-    const xValue = startX + 65;
-    const rowHeight = 14;
 
-    const addRow = (label, value, isBoldValue = false) => {
-        doc.fontSize(9).font('Helvetica-Bold').text(label, xLabel, y);
-        doc.text(':', xValue - 10, y);
-        doc.font(isBoldValue ? 'Helvetica-Bold' : 'Helvetica').text(value || '', xValue, y, { width: 170 });
-        y += rowHeight;
+    let y = startY + 20;
+
+    const addRow = (label, value, options = {}) => {
+        const {
+            fontSize = 9,
+            valueFontSize = fontSize,
+            isBoldValue = false,
+            valueWidth = defaultValueWidth,
+            gap = 3
+        } = options;
+
+        const safeValue = value || '-';
+        doc.fontSize(fontSize).font('Helvetica-Bold').text(label, xLabel, y, {
+            lineBreak: false
+        });
+        doc.text(':', xColon, y, { lineBreak: false });
+
+        const valueHeight = doc
+            .fontSize(valueFontSize)
+            .font(isBoldValue ? 'Helvetica-Bold' : 'Helvetica')
+            .heightOfString(safeValue, { width: valueWidth, align: 'left' });
+
+        doc.text(safeValue, xValue, y, {
+            width: valueWidth,
+            align: 'left'
+        });
+
+        y += Math.max(valueHeight, fontSize) + gap;
     };
 
-    addRow('MRN', data.mr_no);
-    addRow('NAME', data.patient_name);
-    addRow('DOCTOR', data.doctor);
-    addRow('ADM NO.', data.admission_no);
-    addRow('BED-WARD', `${data.bed_no} - ${data.ward}`);
+    addRow('MRN', data.mr_no, { isBoldValue: true, valueWidth: topValueWidth });
+    addRow('NAME', data.patient_name, { isBoldValue: true, valueWidth: topValueWidth });
+    addRow('DOCTOR', data.doctor, { isBoldValue: true, valueWidth: topValueWidth });
+    addRow('ADM NO.', data.admission_no, { isBoldValue: true, valueWidth: topValueWidth });
+    addRow('BED-WARD', `${data.bed_no || ''} - ${data.ward || ''}`, {
+        isBoldValue: true,
+        valueWidth: defaultValueWidth,
+        gap: 5
+    });
 
     // Horizontal Line
-    y += 2;
-    doc.moveTo(startX + 5, y).lineTo(startX + 281, y).stroke();
+    doc.moveTo(left, y).lineTo(left + stickerWidth, y).stroke();
     y += 8;
 
     addRow('DIET-TYPE', data.diet_name);
-    addRow('MENU', data.menu_description, true);
-    
-    doc.fontSize(9).font('Helvetica-Bold').text('ITEM', xLabel, y);
-    doc.text(':', xValue - 10, y);
-    doc.font('Helvetica').fontSize(8).text(data.items || '', xValue, y, { width: 180 });
-    
-    // Estimate items height (approx 10 points per line)
-    const itemsLines = Math.ceil((data.items?.length || 0) / 45) || 1;
-    y += Math.max(25, itemsLines * 10);
+    addRow('MENU', data.menu_description, { isBoldValue: true });
+    addRow('ITEM', data.items, { valueFontSize: 8, valueWidth: 180, gap: 6 });
 
     // Horizontal Line
-    doc.moveTo(startX + 5, y).lineTo(startX + 281, y).stroke();
+    doc.moveTo(left, y).lineTo(left + stickerWidth, y).stroke();
     y += 8;
 
-    doc.fontSize(8).font('Helvetica-Bold').text('NR RMK', xLabel, y);
-    doc.text(':', xValue - 10, y);
-    doc.font('Helvetica').text(data.nursing_remark || '-', xValue, y, { width: 180 });
-    y += 18;
+    addRow('NR RMK', data.nursing_remark, { fontSize: 8, valueFontSize: 8, valueWidth: 180 });
+    addRow('DT RMK', data.diet_remark, { fontSize: 8, valueFontSize: 8, valueWidth: 180 });
+    addRow('ORDER DATE', data.order_date, { gap: 0 });
 
-    doc.fontSize(8).font('Helvetica-Bold').text('DT RMK', xLabel, y);
-    doc.text(':', xValue - 10, y);
-    doc.font('Helvetica').text(data.diet_remark || '-', xValue, y, { width: 180 });
-    y += 18;
-
-    doc.fontSize(9).font('Helvetica-Bold').text('ORDER DATE', xLabel, y);
-    doc.text(':', xValue - 10, y);
-    doc.font('Helvetica').text(data.order_date || '', xValue, y);
-    
     // Bottom Border line
-    doc.moveTo(startX + 5, 281).lineTo(startX + 281, 281).stroke();
+    doc.moveTo(left, top + stickerHeight).lineTo(left + stickerWidth, top + stickerHeight).stroke();
 }
 
 /**

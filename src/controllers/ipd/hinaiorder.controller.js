@@ -380,6 +380,10 @@ export const printPatientSticker = async (req, res) => {
 export const printBulkStickers = async (req, res) => {
     try {
         const stickersData = await hinaiOrderService.getBulkStickerData(req.body, req.user);
+
+        if (!stickersData.length) {
+            return response.serverError(res, 'No records to display...');
+        }
         
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'inline; filename=bulk_stickers.pdf');
