@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 import hinaiOrderRoutes from './hinaiorder.route.js';
-import inpatientRoutes from './inpatient.route.js';
+import inpatientsListCensusRoutes from './inpatientsListCensusRoutes.route.js';
 import fnbDashboardRoutes from './fnbdashboard.route.js';
 
 import { authorize } from '../../middleware/authorize.js';
@@ -25,7 +25,7 @@ router.use(activityLogger('IPD'));
 
 /* ROUTES */
 router.use('/hinaiorders', hinaiOrderRoutes);
-router.use('/inpatients', inpatientRoutes);
 router.use('/fnbdashboard', fnbDashboardRoutes);
+router.use('/inpatient-list-census', inpatientsListCensusRoutes);
 
 export default router;
