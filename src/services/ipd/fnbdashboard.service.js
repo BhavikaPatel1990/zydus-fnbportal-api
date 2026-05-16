@@ -107,8 +107,23 @@ const formatDateTime = (date) => {
     return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
+const getSiteIdParam = (body) => getFirstDefined(body, ['site_id', 'SITEID', 'siteid']);
+
+const getDateRangeParams = (body) => ({
+    from_date: getFirstDefined(body, ['from_date', 'fromdate', 'fromDate', 'sdate']),
+    to_date: getFirstDefined(body, ['to_date', 'todate', 'toDate', 'edate']),
+});
+
+const buildPaginationResponse = ({ total, page, limit, data }) => ({
+    total,
+    page,
+    limit,
+    total_pages: Math.ceil(total / limit),
+    data,
+});
+
 export const getDietOrder = async (body, jwtUser) => {
-    const siteIdParam = getFirstDefined(body, ['site_id', 'SITEID', 'siteid']);
+    const siteIdParam = getSiteIdParam(body);
     const page = parseInt(body.page) || 1;
     const limit = parseInt(body.limit) || 10;
     const search = (body.search || '').toLowerCase();
@@ -158,14 +173,14 @@ export const getDietOrder = async (body, jwtUser) => {
         if (!wardMap.has(wardName)) {
             wardMap.set(wardName, {
                 ward: wardName,
-                NBM_Total: 0,
-                SD_Total: 0,
-                LIQD_Total: 0,
-                TUBEFEED_Total: 0,
-                FD_Total: 0,
-                TotalDietOrder: 0,
-                PunchOrdTotal: 0,
-                PendingPunchTotal: 0,
+                nbm_total: 0,
+                sd_total: 0,
+                liquid_total: 0,
+                tube_feed_total: 0,
+                full_diet_total: 0,
+                total_diet_order: 0,
+                punched_order_total: 0,
+                pending_punch_total: 0,
             });
         }
 
@@ -176,15 +191,15 @@ export const getDietOrder = async (body, jwtUser) => {
         const dietTypesTracked = [17154031, 17129481, 17129492, 17129493, 17129494];
         
         if (dietTypesTracked.includes(dietType)) {
-            stats.TotalDietOrder++;
-            if (isPunched) stats.PunchOrdTotal++;
-            else stats.PendingPunchTotal++;
+            stats.total_diet_order++;
+            if (isPunched) stats.punched_order_total++;
+            else stats.pending_punch_total++;
 
-            if (dietType === 17154031) stats.NBM_Total++;
-            else if (dietType === 17129481) stats.SD_Total++;
-            else if (dietType === 17129492) stats.LIQD_Total++;
-            else if (dietType === 17129493) stats.TUBEFEED_Total++;
-            else if (dietType === 17129494) stats.FD_Total++;
+            if (dietType === 17154031) stats.nbm_total++;
+            else if (dietType === 17129481) stats.sd_total++;
+            else if (dietType === 17129492) stats.liquid_total++;
+            else if (dietType === 17129493) stats.tube_feed_total++;
+            else if (dietType === 17129494) stats.full_diet_total++;
         }
     }
 
@@ -205,7 +220,7 @@ export const getDietOrder = async (body, jwtUser) => {
         total,
         page,
         limit,
-        totalPages: Math.ceil(total / limit),
+        total_pages: Math.ceil(total / limit),
         data: paginatedData,
     };
 };
@@ -230,14 +245,14 @@ export const downloadWardDietOrderCsv = async (body, jwtUser) => {
         headers.join(','),
         ...data.map(row => [
             row.ward,
-            row.NBM_Total,
-            row.SD_Total,
-            row.LIQD_Total,
-            row.TUBEFEED_Total,
-            row.FD_Total,
-            row.TotalDietOrder,
-            row.PunchOrdTotal,
-            row.PendingPunchTotal
+            row.nbm_total,
+            row.sd_total,
+            row.liquid_total,
+            row.tube_feed_total,
+            row.full_diet_total,
+            row.total_diet_order,
+            row.punched_order_total,
+            row.pending_punch_total
         ].map(escapeCsvValue).join(','))
     ];
 
@@ -245,7 +260,7 @@ export const downloadWardDietOrderCsv = async (body, jwtUser) => {
 };
 
 export const getDietSheet = async (body, jwtUser) => {
-    const siteIdParam = getFirstDefined(body, ['site_id', 'SITEID', 'siteid']);
+    const siteIdParam = getSiteIdParam(body);
     const page = parseInt(body.page) || 1;
     const limit = parseInt(body.limit) || 10;
     const search = (body.search || '').toLowerCase();
@@ -332,38 +347,38 @@ export const getDietSheet = async (body, jwtUser) => {
         const remarks = detailMap[po.id] || {};
 
         return {
-            mrno: ho.mr_no,
-            patientname: ho.patient_name,
-            bedno: ho.bed_no,
+            mr_no: ho.mr_no?.toString(),
+            patient_name: ho.patient_name,
+            bed_no: ho.bed_no,
             ward: ho.ward,
-            dietname: dietMap.get(po.diet_type) || '',
-            nursingremark: po.nursing_remark,
-            dietRemark: po.diet_remark,
+            diet_name: dietMap.get(po.diet_type) || '',
+            nursing_remark: po.nursing_remark,
+            diet_remark: po.diet_remark,
 
-            EM: remarks[1] || '',
-            BF: remarks[2] || '',
-            MM: remarks[3] || '',
-            Lunch: remarks[4] || '',
-            PM2: remarks[5] || '',
-            ET: remarks[6] || '',
-            PM6: remarks[7] || '',
-            Dinner: remarks[8] || '',
-            BT: remarks[9] || ''
+            em: remarks[1] || '',
+            breakfast: remarks[2] || '',
+            mid_morning: remarks[3] || '',
+            lunch: remarks[4] || '',
+            two_pm: remarks[5] || '',
+            evening_tea: remarks[6] || '',
+            six_pm: remarks[7] || '',
+            dinner: remarks[8] || '',
+            bed_time: remarks[9] || ''
         };
     });
 
     // 6️⃣ Search
     if (search) {
         result = result.filter(r =>
-            r.patientname?.toLowerCase().includes(search) ||
+            r.patient_name?.toLowerCase().includes(search) ||
             r.ward?.toLowerCase().includes(search) ||
-            r.bedno?.toLowerCase().includes(search)
+            r.bed_no?.toLowerCase().includes(search)
         );
     }
 
     // 7️⃣ Sort
     result.sort((a, b) => {
-        if (a.ward === b.ward) return a.bedno.localeCompare(b.bedno);
+        if (a.ward === b.ward) return a.bed_no.localeCompare(b.bed_no);
         return a.ward.localeCompare(b.ward);
     });
 
@@ -375,7 +390,7 @@ export const getDietSheet = async (body, jwtUser) => {
         total,
         page,
         limit,
-        totalPages: Math.ceil(total / limit),
+        total_pages: Math.ceil(total / limit),
         data: paginated
     };
 };
@@ -400,22 +415,22 @@ export const downloadDietSheetCsv = async (body, jwtUser) => {
     const rows = [
         headers.join(','),
         ...data.map(r => [
-            r.mrno,
-            r.patientname,
+            r.mr_no,
+            r.patient_name,
             r.ward,
-            r.bedno,
-            r.dietname,
-            r.nursingremark,
-            r.dietRemark,
-            r.EM,
-            r.BF,
-            r.MM,
-            r.Lunch,
-            r.PM2,
-            r.ET,
-            r.PM6,
-            r.Dinner,
-            r.BT
+            r.bed_no,
+            r.diet_name,
+            r.nursing_remark,
+            r.diet_remark,
+            r.em,
+            r.breakfast,
+            r.mid_morning,
+            r.lunch,
+            r.two_pm,
+            r.evening_tea,
+            r.six_pm,
+            r.dinner,
+            r.bed_time
         ].map(escape).join(','))
     ];
 
@@ -423,7 +438,7 @@ export const downloadDietSheetCsv = async (body, jwtUser) => {
 };
 
 export const getDietSheetLiquids = async (body, jwtUser) => {
-    const siteIdParam = getFirstDefined(body, ['site_id', 'SITEID', 'siteid']);
+    const siteIdParam = getSiteIdParam(body);
     const page = parseInt(body.page) || 1;
     const limit = parseInt(body.limit) || 10;
     const search = (body.search || '').toLowerCase();
@@ -495,28 +510,28 @@ export const getDietSheetLiquids = async (body, jwtUser) => {
             const ho = hinaiMap.get(po.hinai_order_id);
 
             return {
-                mrno: ho?.mr_no,
-                patientname: ho?.patient_name,
-                bedno: ho?.bed_no,
+                mr_no: ho?.mr_no?.toString(),
+                patient_name: ho?.patient_name,
+                bed_no: ho?.bed_no,
                 ward: ho?.ward,
-                dietname: dietMap.get(po.diet_type) || '',
-                nursingremark: po.nursing_remark,
-                dietRemark: po.diet_remark
+                diet_name: dietMap.get(po.diet_type) || '',
+                nursing_remark: po.nursing_remark,
+                diet_remark: po.diet_remark
             };
         });
 
     // 5️⃣ Search
     if (search) {
         result = result.filter(r =>
-            r.patientname?.toLowerCase().includes(search) ||
+            r.patient_name?.toLowerCase().includes(search) ||
             r.ward?.toLowerCase().includes(search) ||
-            r.bedno?.toLowerCase().includes(search)
+            r.bed_no?.toLowerCase().includes(search)
         );
     }
 
     // 6️⃣ Sort
     result.sort((a, b) => {
-        if (a.ward === b.ward) return a.bedno.localeCompare(b.bedno);
+        if (a.ward === b.ward) return a.bed_no.localeCompare(b.bed_no);
         return a.ward.localeCompare(b.ward);
     });
 
@@ -528,7 +543,7 @@ export const getDietSheetLiquids = async (body, jwtUser) => {
         total,
         page,
         limit,
-        totalPages: Math.ceil(total / limit),
+        total_pages: Math.ceil(total / limit),
         data: paginated
     };
 };
@@ -552,13 +567,13 @@ export const downloadDietSheetLiquidsCsv = async (body, jwtUser) => {
     const rows = [
         headers.join(','),
         ...data.map(r => [
-            r.mrno,
-            r.patientname,
+            r.mr_no,
+            r.patient_name,
             r.ward,
-            r.bedno,
-            r.dietname,
-            r.nursingremark,
-            r.dietRemark
+            r.bed_no,
+            r.diet_name,
+            r.nursing_remark,
+            r.diet_remark
         ].map(escape).join(','))
     ];
 
@@ -566,7 +581,7 @@ export const downloadDietSheetLiquidsCsv = async (body, jwtUser) => {
 };
 
 export const getPendingDietOrders = async (body, jwtUser) => {
-    const siteIdParam = getFirstDefined(body, ['site_id', 'SITEID', 'siteid']);
+    const siteIdParam = getSiteIdParam(body);
     const search = (body.search || '').toLowerCase();
 
     // ✅ KEEP mapping (used in your system elsewhere)
@@ -678,9 +693,20 @@ export const getPendingDietOrders = async (body, jwtUser) => {
             );
         }
 
+        const data = rows.map((row) => ({
+            ward: row.WARD || '',
+            bed_no: row.BED || '',
+            mr_no: row.MRN ? String(row.MRN) : '',
+            patient_name: row.PATIENT || '',
+            admission_date_only: row.ADATE || '',
+            admission_date: row.ADMDATE || '',
+            doctor: row.DOCTOR || '',
+            patient_id: row.PATIENT_ID || null,
+        }));
+
         return {
-            total: rows.length,
-            data: rows
+            total: data.length,
+            data
         };
 
     } catch (err) {
@@ -699,9 +725,8 @@ export const getPendingDietOrders = async (body, jwtUser) => {
 
 export const getExtraOrders = async (body, jwtUser) => {
     try {
-        const siteIdParam = getFirstDefined(body, ['site_id', 'SITEID', 'siteid']);
-        const sdateRaw = body.sdate;
-        const edateRaw = body.edate;
+        const siteIdParam = getSiteIdParam(body);
+        const { from_date: sdateRaw, to_date: edateRaw } = getDateRangeParams(body);
         const search = (body.search || '').trim();
 
         const page = parseInt(body.page) || 1;
@@ -714,7 +739,7 @@ export const getExtraOrders = async (body, jwtUser) => {
 
         // ✅ Date validation
         if (!sdateRaw || !edateRaw) {
-            throw new Error('sdate and edate are required');
+            throw new Error('from_date and to_date are required');
         }
 
         const sdate = new Date(sdateRaw);
@@ -802,8 +827,8 @@ export const getExtraOrders = async (body, jwtUser) => {
             const ho = po.hinaiOrder;
 
             return {
-                mrno: ho?.mr_no?.toString() || '',
-                patient: ho?.patient_name || '',
+                mr_no: ho?.mr_no?.toString() || '',
+                patient_name: ho?.patient_name || '',
                 age_gender: ho?.age_gender || '',
                 admission_no: ho?.admission_no || '',
                 ho_date: formatDate(ho?.order_date),
@@ -848,8 +873,8 @@ export const downloadExtraOrdersCsv = async (body, jwtUser) => {
 
         // ✅ CSV headers (snake_case)
         const headers = [
-            'mrno',
-            'patient',
+            'mr_no',
+            'patient_name',
             'age_gender',
             'admission_no',
             'ho_date',
@@ -895,9 +920,8 @@ export const downloadExtraOrdersCsv = async (body, jwtUser) => {
 
 export const getLiquidData = async (body, jwtUser) => {
     try {
-        const siteIdParam = getFirstDefined(body, ['site_id', 'SITEID', 'siteid']);
-        const fromRaw = body.fromdate;
-        const toRaw = body.todate;
+        const siteIdParam = getSiteIdParam(body);
+        const { from_date: fromRaw, to_date: toRaw } = getDateRangeParams(body);
         const search = (body.search || '').trim();
 
         const page = parseInt(body.page) || 1;
@@ -914,7 +938,7 @@ export const getLiquidData = async (body, jwtUser) => {
         if (!mstId) throw new Error('invalid site mapping');
 
         // ✅ date validation (dd-mm-yyyy input)
-        if (!fromRaw || !toRaw) throw new Error('fromdate and todate required');
+        if (!fromRaw || !toRaw) throw new Error('from_date and to_date are required');
 
         const parseDMY = (d) => {
             const [day, month, year] = d.split('-');
@@ -987,18 +1011,18 @@ export const getLiquidData = async (body, jwtUser) => {
             for (const liq of po.patientOrderLiquids) {
                 const row = {
                     ho_date: formatDateTime(ho?.order_date),
-                    id: po.id,
+                    po_id: po.id,
                     diet_remark: po.diet_remark,
                     nursing_remark: po.nursing_remark,
-                    mrno: ho?.mr_no?.toString(),
-                    patient: ho?.patient_name,
+                    mr_no: ho?.mr_no?.toString(),
+                    patient_name: ho?.patient_name,
                     bed_no: ho?.bed_no,
                     ward: ho?.ward,
-                    liq_time: liq?.liquid_time,
+                    liquid_time: liq?.liquid_time,
                     doctor: ho?.doctor,
                     admission_date: formatDateTime(ho?.admission_at),
                     remarks: liq?.remarks || '-',
-                    mid: liq?.id,
+                    liquid_detail_id: liq?.id,
                     username: po?.created_by,
                     admission_no: ho?.admission_no,
                     menu: ho?.menu,
@@ -1047,9 +1071,9 @@ export const downloadLiquidDataCsv = async (body, jwtUser) => {
     const data = result.data;
 
     const headers = [
-        'ho_date','id','diet_remark','nursing_remark','mrno','patient',
-        'bed_no','ward','liq_time','doctor','admission_date','remarks',
-        'mid','username','admission_no','menu','menu_detail','punch_date'
+        'ho_date','po_id','diet_remark','nursing_remark','mr_no','patient_name',
+        'bed_no','ward','liquid_time','doctor','admission_date','remarks',
+        'liquid_detail_id','username','admission_no','menu','menu_detail','punch_date'
     ];
 
     const escape = (v) => {
@@ -1078,7 +1102,7 @@ export const searchPatient = async (body) => {
         ===========================================================
         */
 
-        let searchTerm = body.query || "";
+        let searchTerm = body.search || body.query || "";
 
         /*
         ===========================================================
@@ -1128,7 +1152,7 @@ export const searchPatient = async (body) => {
         */
 
         if (!patients.length) {
-        return 0;
+        return [];
         }
 
         return patients.map((item) => ({
@@ -1153,10 +1177,10 @@ export const getPatientOrderLedger = async (body, jwtUser) => {
     ===========================================================
     */
 
-    const mrn = body.mrn?.trim();
+    const mrn = (body.mr_no || body.mrn || '').trim();
 
     if (!mrn) {
-      throw new Error("MRN is required");
+      throw new Error("mr_no is required");
     }
 
     /*
@@ -1165,7 +1189,7 @@ export const getPatientOrderLedger = async (body, jwtUser) => {
     ===========================================================
     */
 
-    const siteid = jwtUser.siteID;
+    const siteId = jwtUser.siteID;
 
     const loginUsername = jwtUser.username;
 
@@ -1178,7 +1202,7 @@ export const getPatientOrderLedger = async (body, jwtUser) => {
     const orders = await prisma.hinaiOrder.findMany({
 
       where: {
-        mst_id: BigInt(siteid),
+        mst_id: BigInt(siteId),
         mr_no: BigInt(mrn),
         is_active: true
       },
@@ -1266,7 +1290,7 @@ export const getPatientOrderLedger = async (body, jwtUser) => {
     */
 
     if (!orders.length) {
-      return 0;
+      return [];
     }
 
     /*
@@ -1341,79 +1365,76 @@ export const getPatientOrderLedger = async (body, jwtUser) => {
 
         response.push({
 
-          siteid:
+          site_id:
             ho.mst_id?.toString(),
 
-          MRNO:
+          mr_no:
             ho.mr_no?.toString(),
 
-          patientid:
+          patient_id:
             ho.patient_id,
 
-          PATIENT:
+          patient_name:
             ho.patient_name,
 
-          agegender:
+          age_gender:
             ho.age_gender,
 
-          menudetail:
+          menu_detail:
             ho.menu_detail,
 
-          admissiondate:
+          admission_date:
             ho.admission_at,
 
-          bedno:
+          bed_no:
             ho.bed_no,
 
-          SCNAME:
+          ward:
             ho.ward,
 
-          DOCTOR:
+          doctor:
             ho.doctor,
 
           username:
             loginUsername,
 
-          dietname:
+          diet_name:
             null,
 
-          admdate:
-            ho.admission_at,
-
-          nursingRemark:
+          nursing_remark:
             null,
 
-          dietRemark:
+          diet_remark:
             null,
 
-          HODATE:
+          ho_date:
             ho.order_date,
 
-          punchdate:
+          punch_date:
             null,
 
-          DIFF:
+          diff:
             null,
 
-          diettype:
+          diet_type:
             null,
 
           dispatched:
             null,
 
-          iscancelled:
+          is_cancelled:
             null,
 
-          isdietchange:
+          is_diet_change:
             ho.is_diet_change,
 
-          istransfer:
+          is_transfer:
             ho.is_transfer,
 
-          ostatus:
+          order_status:
             ho.status,
 
-          lqhours:
+          liquid_hours:
             null
         });
 
@@ -1450,80 +1471,77 @@ export const getPatientOrderLedger = async (body, jwtUser) => {
 
           response.push({
 
-            siteid:
+            site_id:
               ho.mst_id?.toString(),
 
-            MRNO:
+            mr_no:
               ho.mr_no?.toString(),
 
-            patientid:
+            patient_id:
               ho.patient_id,
 
-            PATIENT:
+            patient_name:
               ho.patient_name,
 
-            agegender:
+            age_gender:
               ho.age_gender,
 
-            menudetail:
+            menu_detail:
               ho.menu_detail,
 
-            admissiondate:
+            admission_date:
               ho.admission_at,
 
-            bedno:
+            bed_no:
               ho.bed_no,
 
-            SCNAME:
+            ward:
               ho.ward,
 
-            DOCTOR:
+            doctor:
               ho.doctor,
 
             username:
               po.created_by ||
               loginUsername,
 
-            dietname:
+            diet_name:
               dietMap[po.diet_type] || null,
 
-            admdate:
-              ho.admission_at,
-
-            nursingRemark:
+            nursing_remark:
               po.nursing_remark,
 
-            dietRemark:
+            diet_remark:
               po.diet_remark,
 
-            HODATE:
+            ho_date:
               ho.order_date,
 
-            punchdate:
+            punch_date:
               po.created_at,
 
-            DIFF:
+            diff:
               diffMinutes,
 
-            diettype:
+            diet_type:
               po.diet_type,
 
             dispatched:
               po.dispatched,
 
-            iscancelled:
+            is_cancelled:
               po.is_cancelled,
 
-            isdietchange:
+            is_diet_change:
               ho.is_diet_change,
 
-            istransfer:
+            is_transfer:
               ho.is_transfer,
 
-            ostatus:
+            order_status:
               ho.status,
 
-            lqhours:
+            liquid_hours:
               po.liquid_hours
           });
         }
@@ -1571,4 +1589,4 @@ export const getDietTypes = async () => {
         console.error('getDietTypes service error:', error);
         throw error;
     }
-};
+};

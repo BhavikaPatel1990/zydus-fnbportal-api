@@ -594,7 +594,7 @@ const mapPatientOrderItems = (body) => {
         }));
     }
 
-    const ptmIds = parsePipeValueList(getFirstDefined(body, ['menu_ids', 'ptitm', 'ptmids']));
+    const ptmIds = parsePipeValueList(getFirstDefined(body, ['menu_ids']));
     const remarks = parsePipeValueList(getFirstDefined(body, ['ptrmrk', 'remarks']));
 
     if (!ptmIds.length) {
@@ -720,7 +720,7 @@ const getLatestActiveLiquidOrder = async (patientId, liquidHours) => {
 export const markHinaiOrderTransfer = async (body, jwtUser) => {
     const auditUserId = getAuditUserId(jwtUser);
     const patientId = toIntValue(
-        getFirstDefined(body, ['patient_id', 'PATIENT_ID']),
+        getFirstDefined(body, ['patient_id']),
         'patient_id'
     );
     const bedNo = toStringValue(
@@ -768,7 +768,7 @@ export const markHinaiOrderDischarge = async (body, jwtUser) => {
         'admission_no'
     );
     const patientId = toIntValue(
-        getFirstDefined(body, ['patient_id', 'PATIENTID', 'PATIENT_ID']),
+        getFirstDefined(body, ['patient_id']),
         'patient_id'
     );
 
@@ -795,26 +795,13 @@ export const markHinaiOrderDischarge = async (body, jwtUser) => {
 export const createPatientOrder = async (body, jwtUser) => {
     const auditUserId = getAuditUserId(jwtUser);
 
-    const patientId = toIntValue(
-        getFirstDefined(body, ['patient_id', 'patientid', 'PATIENTID', 'PATIENT_ID']),
-        'patient_id'
-    );
-    const hinaiOrderId = toIntValue(
-        getFirstDefined(body, ['hinai_order_id', 'hnoid', 'hinaiorderid', 'order_id', 'HINAIORDERID']),
-        'hinai_order_id'
-    );
-    const existingPoId = getFirstDefined(body, ['po_id', 'poid', 'POID']);
-    const dietType = toIntValue(
-        getFirstDefined(body, ['diet_type', 'diettype']),
-        'diet_type'
-    );
+    const patientId = toIntValue(getFirstDefined(body, ['patient_id']), 'patient_id');
+    const hinaiOrderId = toIntValue(getFirstDefined(body, ['hinai_order_id']), 'hinai_order_id');
+    const existingPoId = getFirstDefined(body, ['po_id']);
+    const dietType = toIntValue(getFirstDefined(body, ['diet_type']), 'diet_type');
 
-    const dietRemark = toUpperTrimmed(
-        getFirstDefined(body, ['dietremark', 'diet_remark', 'dietRemark'])
-    );
-    const nursingRemark = toUpperTrimmed(
-        getFirstDefined(body, ['nurseremark', 'nursingremark', 'nursing_remark', 'nursingRemark'])
-    );
+    const dietRemark = toUpperTrimmed(getFirstDefined(body, ['diet_remark']));
+    const nursingRemark = toUpperTrimmed(getFirstDefined(body, ['nursing_remark']));
 
     const items = mapPatientOrderItems(body);
     const orderCategory = getOrderCategory(dietType);
@@ -925,7 +912,7 @@ export const createPatientOrder = async (body, jwtUser) => {
                 dispatched: false,
                 hinai_order_id: hinaiOrderId,
                 is_cancelled: false,
-                liquid_hours: Number(body.lqhours || body.liquid_hours || 0),
+                liquid_hours: Number(body.liquid_hours || 0),
                 mst_id: hinaiOrder.mst_id,
                 mail_flag: 0,
                 created_by: auditUserId ? String(auditUserId) : null,
@@ -960,7 +947,7 @@ export const createPatientOrder = async (body, jwtUser) => {
         });
 
         // Release edit lock if page_id is provided
-        const pageId = getFirstDefined(body, ['page_id', 'pageid']);
+        const pageId = getFirstDefined(body, ['page_id']);
         if (pageId) {
             await releasePageLock({ page_id: pageId, patient_id: patientId }, jwtUser);
         }
@@ -982,19 +969,10 @@ export const createPatientOrder = async (body, jwtUser) => {
 };
 
 export const getPatientOrderFormData = async (body, jwtUser) => {
-    const patientId = toIntValue(
-        getFirstDefined(body, ['patient_id', 'patientid', 'PATIENT_ID', 'PATIENTID']),
-        'patient_id'
-    );
-    const hinaiOrderId = toIntValue(
-        getFirstDefined(body, ['hinai_order_id', 'hinaiorderid', 'hnoid', 'order_id', 'HINAIORDERID']),
-        'hinai_order_id'
-    );
-    const dietType = toIntValue(
-        getFirstDefined(body, ['diet_type', 'diettype', 'DIETTYPE']),
-        'diet_type'
-    );
-    const poId = getFirstDefined(body, ['po_id', 'poid', 'POID']);
+    const patientId = toIntValue(getFirstDefined(body, ['patient_id']), 'patient_id');
+    const hinaiOrderId = toIntValue(getFirstDefined(body, ['hinai_order_id']), 'hinai_order_id');
+    const dietType = toIntValue(getFirstDefined(body, ['diet_type']), 'diet_type');
+    const poId = getFirstDefined(body, ['po_id']);
 
 
     const hinaiOrder = await prisma.hinaiOrder.findFirst({
@@ -1112,9 +1090,9 @@ export const getPatientOrderFormData = async (body, jwtUser) => {
 };
 
 export const getHinaiOrdersOldAsRawQuery = async (body, jwtUser) => {
-    const siteIdParam = getFirstDefined(body, ['site_id', 'SITEID', 'siteid']);
-    const viewdata = getFirstDefined(body, ['view_data', 'viewdata']) || '0';
-    const ordertype = getFirstDefined(body, ['order_type', 'ordertype']) || '0';
+    const siteIdParam = getFirstDefined(body, ['site_id']);
+    const viewdata = getFirstDefined(body, ['view_data']) || '0';
+    const ordertype = getFirstDefined(body, ['order_type']) || '0';
 
     const page = parseInt(body.page) || 1;
     const limit = parseInt(body.limit) || 10;
@@ -1226,8 +1204,8 @@ export const getHinaiOrdersOldAsRawQuery = async (body, jwtUser) => {
 };
 
 export const checkPageLock = async (body, jwtUser) => {
-    const pageId = toIntValue(getFirstDefined(body, ['page_id', 'pageid', 'PAGE_ID', 'PAGEID']), 'page_id');
-    const patientId = toStringValue(getFirstDefined(body, ['patient_id', 'patientid', 'poid', 'POID', 'mrno', 'MRNO']), 'patient_id');
+    const pageId = toIntValue(getFirstDefined(body, ['page_id']), 'page_id');
+    const patientId = toStringValue(getFirstDefined(body, ['patient_id']), 'patient_id');
     const userId = String(getAuditUserId(jwtUser));
 
 
@@ -1271,8 +1249,8 @@ export const checkPageLock = async (body, jwtUser) => {
 };
 
 export const releasePageLock = async (body, jwtUser) => {
-    const pageId = toIntValue(getFirstDefined(body, ['page_id', 'pageid']), 'page_id');
-    const patientId = toStringValue(getFirstDefined(body, ['patient_id', 'patientid', 'poid']), 'patient_id');
+    const pageId = toIntValue(getFirstDefined(body, ['page_id']), 'page_id');
+    const patientId = toStringValue(getFirstDefined(body, ['patient_id']), 'patient_id');
     const userId = String(getAuditUserId(jwtUser));
 
     await prisma.currentlyEditing.deleteMany({
@@ -1287,11 +1265,11 @@ export const releasePageLock = async (body, jwtUser) => {
 };
 
 export const getHinaiOrders = async (body, jwtUser) => {
-    const siteIdParam = getFirstDefined(body, ['site_id', 'SITEID', 'siteid']);
-    const viewdata = getFirstDefined(body, ['view_data', 'viewdata']) || '0';
-    const ordertype = getFirstDefined(body, ['order_type', 'ordertype']) || '0';
+    const siteIdParam = getFirstDefined(body, ['site_id']);
+    const viewdata = getFirstDefined(body, ['view_data']) || '0';
+    const ordertype = getFirstDefined(body, ['order_type']) || '0';
     // listType: 'hinai' = all HIS orders (hinaiviewlist.php), 'ordered' = only with PatientOrder (viewlist.php)
-    const listType = getFirstDefined(body, ['listType', 'list_type']) || 'hinai';
+    const listType = getFirstDefined(body, ['list_type']) || 'hinai';
 
     const page = parseInt(body.page) || 1;
     const limit = parseInt(body.limit) || 10;
@@ -1469,19 +1447,10 @@ export const getHinaiOrders = async (body, jwtUser) => {
 };
 
 export const getPatientLiquidOrderFormData = async (body, jwtUser) => {
-    const patientId = toIntValue(
-        getFirstDefined(body, ['patient_id', 'patientid', 'PATIENT_ID', 'PATIENTID']),
-        'patient_id'
-    );
-    const hinaiOrderId = toIntValue(
-        getFirstDefined(body, ['hinai_order_id', 'hinaiorderid', 'hnoid', 'order_id', 'HINAIORDERID']),
-        'hinai_order_id'
-    );
-    const dietType = toIntValue(
-        getFirstDefined(body, ['diet_type', 'diettype', 'DIETTYPE']),
-        'diet_type'
-    );
-    const poId = getFirstDefined(body, ['po_id', 'poid', 'POID']);
+    const patientId = toIntValue(getFirstDefined(body, ['patient_id']), 'patient_id');
+    const hinaiOrderId = toIntValue(getFirstDefined(body, ['hinai_order_id']), 'hinai_order_id');
+    const dietType = toIntValue(getFirstDefined(body, ['diet_type']), 'diet_type');
+    const poId = getFirstDefined(body, ['po_id']);
 
 
     const hinaiOrder = await prisma.hinaiOrder.findFirst({
@@ -1628,14 +1597,8 @@ export const getPatientLiquidOrderFormData = async (body, jwtUser) => {
 };
 
 export const getPatientLiquidOrderTimings = async (body, jwtUser) => {
-    const patientId = toIntValue(
-        getFirstDefined(body, ['patient_id', 'patientid', 'PATIENT_ID', 'PATIENTID']),
-        'patient_id'
-    );
-    const liquidHours = toIntValue(
-        getFirstDefined(body, ['liquid_hours', 'lqhours', 'liqhour']),
-        'liquid_hours'
-    );
+    const patientId = toIntValue(getFirstDefined(body, ['patient_id']), 'patient_id');
+    const liquidHours = toIntValue(getFirstDefined(body, ['liquid_hours']), 'liquid_hours');
 
     if (liquidHours > 12) {
         throw new Error('Please do not add hours more than 12');
@@ -1666,49 +1629,31 @@ export const getPatientLiquidOrderTimings = async (body, jwtUser) => {
 
 export const createPatientLiquidOrder = async (body, jwtUser) => {
     const auditUserId = getAuditUserId(jwtUser);
-    const patientId = toIntValue(
-        getFirstDefined(body, ['patient_id', 'patientid', 'PATIENT_ID']),
-        'patient_id'
-    );
-    const hinaiOrderId = toIntValue(
-        getFirstDefined(body, ['hinai_order_id', 'hnoid', 'hinaiorderid', 'order_id']),
-        'hinai_order_id'
-    );
-    const dietType = toIntValue(
-        getFirstDefined(body, ['diet_type', 'diettype']),
-        'diet_type'
-    );
-    const existingPoId = getFirstDefined(body, ['po_id', 'poid']);
-    const liquidHours = toIntValue(
-        getFirstDefined(body, ['liquid_hours', 'liqhour', 'lqhours']),
-        'liquid_hours'
-    );
-    const dietRemark = toUpperTrimmed(
-        getFirstDefined(body, ['dietremark', 'diet_remark'])
-    );
-    const nursingRemark = toUpperTrimmed(
-        getFirstDefined(body, ['nurseremark', 'nursingremark', 'nursing_remark'])
-    );
+    const patientId = toIntValue(getFirstDefined(body, ['patient_id']), 'patient_id');
+    const hinaiOrderId = toIntValue(getFirstDefined(body, ['hinai_order_id']), 'hinai_order_id');
+    const dietType = toIntValue(getFirstDefined(body, ['diet_type']), 'diet_type');
+    const existingPoId = getFirstDefined(body, ['po_id']);
+    const liquidHours = toIntValue(getFirstDefined(body, ['liquid_hours']), 'liquid_hours');
+    const dietRemark = toUpperTrimmed(getFirstDefined(body, ['diet_remark']));
+    const nursingRemark = toUpperTrimmed(getFirstDefined(body, ['nursing_remark']));
 
     const timingValues = parsePipeValueList(
-        getFirstDefined(body, ['dtime', 'liquid_times'])
+        getFirstDefined(body, ['liquid_times'])
     );
     const timingRemarks = parsePipeValueList(
-        getFirstDefined(body, ['dtitm', 'liquid_remarks'])
+        getFirstDefined(body, ['liquid_remarks'])
     );
 
     const timings = Array.isArray(body.timings) && body.timings.length
         ? body.timings.map((item, index) => ({
               liquid_time: toIntValue(
-                  getFirstDefined(item, ['liquid_time', 'liqtime']),
+                  getFirstDefined(item, ['liquid_time']),
                   `timings[${index}].liquid_time`
               ),
-              remarks: toUpperTrimmed(
-                  getFirstDefined(item, ['remarks', 'liquid_remark'])
-              ),
+              remarks: toUpperTrimmed(getFirstDefined(item, ['remarks'])),
           }))
         : timingValues.map((time, index) => ({
-              liquid_time: toIntValue(time, `dtime[${index}]`),
+              liquid_time: toIntValue(time, `liquid_times[${index}]`),
               remarks: toUpperTrimmed(timingRemarks[index] || ''),
           }));
 
@@ -1837,7 +1782,7 @@ export const createPatientLiquidOrder = async (body, jwtUser) => {
         });
 
         // Release edit lock if page_id is provided
-        const pageId = getFirstDefined(body, ['page_id', 'pageid']);
+        const pageId = getFirstDefined(body, ['page_id']);
         if (pageId) {
             await releasePageLock({ page_id: pageId, patient_id: patientId }, jwtUser);
         }
@@ -2108,14 +2053,14 @@ WHERE rn = 1
 export const getHinaiOrderSummary = async (body, jwtUser) => {
 
     const siteIdParam =
-        getFirstDefined(body, ['site_id', 'siteid', 'SITEID']) ||
+        getFirstDefined(body, ['site_id']) ||
         jwtUser?.siteID;
     if (!siteIdParam) {
         throw new Error('site id is required');
     }
 
-    const viewdata = body.viewdata || 'today';
-    const ordertype = body.ordertype || 'all';
+    const viewdata = body.view_data || 'today';
+    const ordertype = body.order_type || 'all';
 
     const mstId = await resolveSiteMapping(siteIdParam, 'mst_id');
 
@@ -2200,13 +2145,13 @@ export const getHinaiOrderSummary = async (body, jwtUser) => {
 export const getMenuDetails = async (body, jwtUser) => {
     try {
 
-        const dietTypeValue = getFirstDefined(body, ['diettype', 'diet_type',]);
-        const hinaiOrderIdValue = getFirstDefined(body, ['hinaiorderid', 'hinai_order_id',]);
-        const patientIdValue = getFirstDefined(body, ['patientid', 'patient_id',]);
+        const dietTypeValue = getFirstDefined(body, ['diet_type']);
+        const hinaiOrderIdValue = getFirstDefined(body, ['hinai_order_id']);
+        const patientIdValue = getFirstDefined(body, ['patient_id']);
 
-        const dietType = toIntValue(dietTypeValue, 'diettype');
-        const hinaiOrderId = toIntValue(hinaiOrderIdValue, 'hinaiorderid');
-        const patientId = toIntValue(patientIdValue, 'patientid');
+        const dietType = toIntValue(dietTypeValue, 'diet_type');
+        const hinaiOrderId = toIntValue(hinaiOrderIdValue, 'hinai_order_id');
+        const patientId = toIntValue(patientIdValue, 'patient_id');
 
         if (!dietType || !hinaiOrderId || !patientId) {
             throw new Error('diet type, hinai order id and patient id are required');
@@ -2413,8 +2358,8 @@ export const getNursingRemarks = async (body, jwtUser) => {
     let connection;
 
     try {
-        const patientId = Number(body.patient_id || body.patientid);
-        const hinaiOrderId = Number(body.order_id || body.orderid);
+        const patientId = Number(body.patient_id);
+        const hinaiOrderId = Number(body.hinai_order_id);
 
         if (!patientId || Number.isNaN(patientId)) {
             throw new Error('patient id is required and must be numeric');
@@ -2486,22 +2431,21 @@ export const getNursingRemarks = async (body, jwtUser) => {
 
 export const updateDiagnosis = async (body, jwtUser) => {
     const mrNo = toStringValue(
-        getFirstDefined(body, ['patient_mrno', 'mr_no', 'MRNO']),
-        'patient_mrno'
+        getFirstDefined(body, ['mr_no']),
+        'mr_no'
     );
     const patientId = toIntValue(
-        getFirstDefined(body, ['patient_id', 'PATIENT_ID']),
+        getFirstDefined(body, ['patient_id']),
         'patient_id'
     );
     const hinaiOrderId = toIntValue(
-        getFirstDefined(body, ['hinaiorder_id', 'order_id', 'HINAIORDERID']),
-        'hinaiorder_id'
+        getFirstDefined(body, ['hinai_order_id']),
+        'hinai_order_id'
     );
     const newDiagnosisValue = toStringValue(
         getFirstDefined(body, [
             'new_diagnosis_value',
             'diagnosis',
-            'DIAGNOSIS',
         ]),
         'new_diagnosis_value'
     );
@@ -2541,8 +2485,8 @@ export const updateDiagnosis = async (body, jwtUser) => {
 
 export const dispatchPatientOrder = async (body, jwtUser) => {
     const poId = toStringValue(
-        getFirstDefined(body, ['poid', 'po_id', 'POID']),
-        'poid'
+        getFirstDefined(body, ['po_id']),
+        'po_id'
     );
     const auditUserId = getAuditUserId(jwtUser);
 
@@ -2560,8 +2504,8 @@ export const dispatchPatientOrder = async (body, jwtUser) => {
 
 export const cancelPatientOrder = async (body, jwtUser) => {
     const poId = toStringValue(
-        getFirstDefined(body, ['poid', 'po_id', 'POID']),
-        'poid'
+        getFirstDefined(body, ['po_id']),
+        'po_id'
     );
     const auditUserId = getAuditUserId(jwtUser);
 
@@ -2577,13 +2521,13 @@ export const cancelPatientOrder = async (body, jwtUser) => {
 
 export const outPatientOrder = async (body, jwtUser) => {
     const auditUserId = getAuditUserId(jwtUser);
-    const hinaiOrderId = getFirstDefined(body, ['hinaiorderid', 'order_id', 'HINAIORDERID', 'outall']);
-    const remarks = toStringValue(getFirstDefined(body, ['remarks', 'remark', 'REMARKS']), 'remarks', { required: false });
+    const hinaiOrderId = getFirstDefined(body, ['hinai_order_id']);
+    const remarks = toStringValue(getFirstDefined(body, ['remarks']), 'remarks', { required: false });
 
     const outTime = new Date().toLocaleString('en-GB', { hour12: false }).replace(',', ''); // Matching PHP format Y-m-d h:i:s or similar string
 
     if (!hinaiOrderId) {
-        throw new Error('hinaiorderid or order_id is required');
+        throw new Error('hinai_order_id is required');
     }
 
     const orderIds = parsePipeValueList(hinaiOrderId).map(id => toIntValue(id, 'order_id'));
@@ -2610,12 +2554,12 @@ export const outPatientOrder = async (body, jwtUser) => {
 
 export const clearPatientOrders = async (body, jwtUser) => {
     const auditUserId = getAuditUserId(jwtUser);
-    const hinaiOrderIds = getFirstDefined(body, ['insert', 'hinaiorderids', 'HINAIORDERID', 'order_id']);
+    const hinaiOrderIds = getFirstDefined(body, ['hinai_order_ids']);
 
     const clearanceTime = new Date().toLocaleString('en-GB', { hour12: false }).replace(',', '');
 
     if (!hinaiOrderIds) {
-        throw new Error('hinaiorderids or insert is required');
+        throw new Error('hinai_order_ids is required');
     }
 
     const orderIds = parsePipeValueList(hinaiOrderIds).map(id => toIntValue(id, 'order_id'));
@@ -2641,7 +2585,7 @@ export const clearPatientOrders = async (body, jwtUser) => {
 };
 
 export const getWards = async (body) => {
-    const siteId = toIntValue(getFirstDefined(body, ['site_id', 'siteid']), 'site_id');
+    const siteId = toIntValue(getFirstDefined(body, ['site_id']), 'site_id');
 
     const locations = await prisma.location.findMany({
         where: {
@@ -2660,10 +2604,10 @@ export const getWards = async (body) => {
 };
 
 export const getOrderMenuListWithPrintStatus = async (body) => {
-    const patientId = toIntValue(getFirstDefined(body, ['patientid', 'patient_id', 'PATIENTID', 'PATIENT_ID']), 'patientid');
-    const dietType = toIntValue(getFirstDefined(body, ['diettype', 'diet_type', 'DIETTYPE']), 'diettype');
-    const poId = toIntValue(getFirstDefined(body, ['poid', 'po_id', 'POID']), 'poid');
-    const orderType = getFirstDefined(body, ['ordertype', 'dietorder']) || 'regular';
+    const patientId = toIntValue(getFirstDefined(body, ['patient_id']), 'patient_id');
+    const dietType = toIntValue(getFirstDefined(body, ['diet_type']), 'diet_type');
+    const poId = toIntValue(getFirstDefined(body, ['hinai_order_id']), 'hinai_order_id');
+    const orderType = getFirstDefined(body, ['order_type']) || 'regular';
 
 
     let menuItems = [];
@@ -2735,8 +2679,8 @@ const escapeCsvValue = (val) => {
 };
 
 export const downloadOrdersCsv = async (body, jwtUser) => {
-    const siteIdParam = getFirstDefined(body, ['site_id', 'SITEID', 'siteid']) || jwtUser?.siteID;
-    const itemType = body.item || 'regular';
+    const siteIdParam = getFirstDefined(body, ['site_id']) || jwtUser?.siteID;
+    const itemType = body.item || body.order_type || 'regular';
 
     const mstId = await resolveSiteMapping(siteIdParam, 'mst_id');
     if (!mstId) throw new Error('Invalid site mapping');
@@ -2816,10 +2760,10 @@ export const downloadOrdersCsv = async (body, jwtUser) => {
 };
 
 export const downloadOutAllOrdersCsv = async (body, jwtUser) => {
-    const fromRaw = getFirstDefined(body, ['fromdate', 'fromDate']);
-    const toRaw = getFirstDefined(body, ['todate', 'toDate']);
+    const fromRaw = getFirstDefined(body, ['from_date']);
+    const toRaw = getFirstDefined(body, ['to_date']);
 
-    if (!fromRaw || !toRaw) throw new Error('fromdate and todate are required');
+    if (!fromRaw || !toRaw) throw new Error('from_date and to_date are required');
 
     const fromDate = new Date(fromRaw);
     const toDate = new Date(toRaw);
@@ -2886,12 +2830,12 @@ export const downloadOutAllOrdersCsv = async (body, jwtUser) => {
 };
 
 export const getPatientStickerData = async (body, jwtUser) => {
-    const patientId = getFirstDefined(body, ['patient_id', 'PATIENTID', 'patientid']);
-    const orderId = getFirstDefined(body, ['po_id', 'HINAIORDERID', 'hinaiorderid', 'order_id']);
-    const menuId = getFirstDefined(body, ['menu_id', 'MENUID', 'menuid']);
-    const poid = getFirstDefined(body, ['poid', 'POID']);
+    const patientId = getFirstDefined(body, ['patient_id']);
+    const orderId = getFirstDefined(body, ['hinai_order_id']);
+    const menuId = getFirstDefined(body, ['menu_id']);
+    const poid = getFirstDefined(body, ['po_id']);
 
-    const siteId = await resolveSiteMapping(body.site_id || jwtUser?.siteID, 'mst_id');
+    const siteId = await resolveSiteMapping(getFirstDefined(body, ['site_id']) || jwtUser?.siteID, 'mst_id');
 
     const poIdInt = orderId ? parseInt(orderId) : undefined;
     const patientIdInt = patientId ? parseInt(patientId) : undefined;
@@ -2983,10 +2927,10 @@ const markStickerAsPrinted = async (patientId, poId, menuId) => {
 };
 
 export const getBulkStickerData = async (body, jwtUser) => {
-    const siteId = await resolveSiteMapping(body.site_id || jwtUser?.siteID, 'mst_id');
-    const menuId = getFirstDefined(body, ['menu_id', 'MENUID', 'menuid']);
+    const siteId = await resolveSiteMapping(getFirstDefined(body, ['site_id']) || jwtUser?.siteID, 'mst_id');
+    const menuId = getFirstDefined(body, ['menu_id']);
     const ward = body.ward;
-    const itemType = body.item || 'regular';
+    const itemType = body.item || body.order_type || 'regular';
     const menuSelection = resolveStickerMenuSelection(menuId, itemType);
 
     const today = new Date();
@@ -3084,8 +3028,8 @@ export const getBulkStickerData = async (body, jwtUser) => {
 };
 
 export const getLiquidStickerData = async (body, jwtUser) => {
-    const siteId = await resolveSiteMapping(getFirstDefined(body, ['site_id', 'SITEID', 'siteid']) || jwtUser?.siteID, 'mst_id');
-    const menuId = getFirstDefined(body, ['menu_id', 'MENUID', 'menuid']);
+    const siteId = await resolveSiteMapping(getFirstDefined(body, ['site_id']) || jwtUser?.siteID, 'mst_id');
+    const menuId = getFirstDefined(body, ['menu_id']);
 
     const today = new Date();
     const startOfDay = new Date(today);
