@@ -323,7 +323,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\r\n  \"site_id\": 1,\r\n  \"sdate\": \"2026-05-01\",\r\n  \"edate\": \"2026-05-05\",\r\n  \"search\": \"ICU\"\r\n}",
+                  "raw": "{\r\n  \"site_id\": 1,\r\n  \"from_date\": \"2026-05-16\",\r\n  \"to_date\": \"2026-05-16\",\r\n  \"search\": \"\"\r\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -362,7 +362,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\r\n  \"site_id\": 1,\r\n  \"sdate\": \"2026-05-01\",\r\n  \"edate\": \"2026-05-05\",\r\n  \"search\": \"ICU\",\r\n  \"page\": 1,\r\n  \"limit\": 10\r\n}",
+                  "raw": "{\r\n  \"site_id\": 1,\r\n  \"from_date\": \"2026-05-16\",\r\n  \"to_date\": \"2026-05-16\",\r\n  \"page\": 1,\r\n  \"limit\": 20,\r\n  \"search\": \"\"\r\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -400,7 +400,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\r\n  \"site_id\": 1,\r\n  \"fromdate\": \"2026-05-01\",\r\n  \"todate\": \"2026-05-05\",\r\n  \"search\": \"rahul\"\r\n}",
+                  "raw": "{\r\n  \"site_id\": 1,\r\n  \"from_date\": \"16-05-2026\",\r\n  \"to_date\": \"16-05-2026\",\r\n  \"search\": \"\"\r\n}\r\n\r\n",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -439,7 +439,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\r\n  \"site_id\": 1,\r\n  \"fromdate\": \"01-05-2026\",\r\n  \"todate\": \"05-05-2026\",\r\n  \"search\": \"ICU\",\r\n  \"page\": 1,\r\n  \"limit\": 10\r\n}\r\n\r\n// Special Case Get ALL data (no pagination):\r\n// {\r\n//   \"site_id\": 1,\r\n//   \"from_date\": \"2026-05-01\",\r\n//   \"to_date\": \"2026-05-05\",\r\n//   \"limit\": -1\r\n// }",
+                  "raw": "{\r\n  \"site_id\": 1,\r\n  \"from_date\": \"16-05-2026\",\r\n  \"to_date\": \"16-05-2026\",\r\n  \"page\": 1,\r\n  \"limit\": 20,\r\n  \"search\": \"\"\r\n}\r\n\r\n// Special Case Get ALL data (no pagination):\r\n// {\r\n//   \"site_id\": 1,\r\n//   \"from_date\": \"2026-05-01\",\r\n//   \"to_date\": \"2026-05-05\",\r\n//   \"limit\": -1\r\n// }",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -535,6 +535,47 @@
                 }
               },
               "response": []
+            },
+            {
+              "name": "Diet Types",
+              "protocolProfileBehavior": {
+                "disableBodyPruning": true
+              },
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/fnbdashboard/diet-types",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "fnbdashboard",
+                    "diet-types"
+                  ]
+                }
+              },
+              "response": []
             }
           ]
         },
@@ -558,7 +599,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\r\n  \"ordertype\": \"regular\",\r\n  \"hinaiorderid\": 62385745,\r\n  \"diettype\": 17129494,\r\n  \"patientid\": 129427\r\n}\r\n\r\n",
+                  "raw": "{\r\n  \"patient_id\": 1364794,\r\n  \"hinai_order_id\": 62425697,\r\n  \"diet_type\": 17129481,\r\n  \"po_id\": \"0b1e3bfc-668d-42b8-bf17-ade76b16f430\"\r\n}\r\n\r\n",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -597,7 +638,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\r\n  \"patientid\": 129427,\r\n  \"hnoid\": 62385745,\r\n  \"diettype\": 17129494,\r\n  \"dietremark\": \"LESS OIL TEST\",\r\n  \"nurseremark\": \"PATIENT CAN TAKE FULL DIETb TEST \",\r\n  \"items\": [\r\n    { \"ptm_id\": \"3d203e1b-31f7-45bc-a410-133373de5f3f\", \"remarks\": \"TEA TESt\" },\r\n    { \"ptm_id\": \"beac806c-e64b-4230-8518-57de7e2a5365\", \"remarks\": \"SOFT BREAKFAST TEST\" }\r\n  ]\r\n}\r\n\r\n",
+                  "raw": "{\r\n  \"patient_id\": 56122,\r\n  \"hinai_order_id\": 62271717,\r\n  \"diet_type\": 17129494,\r\n  \"diet_remark\": \"LESS OIL\",\r\n  \"nursing_remark\": \"PATIENT CAN TAKE FULL DIET\",\r\n  \"items\": [\r\n    {\r\n      \"menu_id\": \"3d203e1b-31f7-45bc-a410-133373de5f3f\",\r\n      \"remarks\": \"TEA TEST DDSF\"\r\n    }\r\n  ]\r\n}\r\n \r\n\r\n\r\n",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -635,7 +676,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\r\n  \"ordertype\": \"regular\",\r\n  \"hinaiorderid\": 62385057,\r\n  \"diettype\": 17129481,\r\n  \"patientid\": 164009\r\n}",
+                  "raw": "{\r\n  \"patient_id\": 1364794,\r\n  \"hinai_order_id\": 62425697,\r\n  \"diet_type\": 17129493,\r\n  \"po_id\": \"0b1e3bfc-668d-42b8-bf17-ade76b16f430\"\r\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -674,7 +715,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\r\n  \"patientid\": 1340059,\r\n  \"lqhours\": 3\r\n}",
+                  "raw": "{\r\n  \"patient_id\": 1364794,\r\n  \"liquid_hours\": 12\r\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -713,7 +754,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\r\n  \"patientid\": 164009,\r\n  \"hnoid\": 62385057,\r\n  \"diettype\": 17129481,\r\n  \"liqhour\": 3,\r\n  \"dietremark\": \"LIQUID DIET\",\r\n  \"nurseremark\": \"TAKE ORALLY\",\r\n  \"timings\": [\r\n    { \"liquid_time\": 6, \"remarks\": \"WATER\" },\r\n    { \"liquid_time\": 9, \"remarks\": \"JUICE\" },\r\n    { \"liquid_time\": 12, \"remarks\": \"SOUP\" }\r\n  ]\r\n}\r\n",
+                  "raw": "{\r\n  \"patientid\": 1329539,\r\n  \"hnoid\": 62463787,\r\n  \"diettype\": 17129493,\r\n  \"liqhour\": 12,\r\n  \"dietremark\": \"LIQUID DIET\",\r\n  \"nurseremark\": \"TAKE ORALLY\",\r\n  \"timings\": [\r\n    { \"liquid_time\": 6, \"remarks\": \"WATER\" },\r\n    { \"liquid_time\": 18, \"remarks\": \"JUICE\" }\r\n  ]\r\n}\r\n",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -757,7 +798,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\r\n  \"patient_mrno\": 10002023395610,\r\n  \"patient_id\": 1368864,\r\n  \"hinaiorder_id\": 62170671,\r\n  \"new_diagnosis_value\": \"test\"\r\n\r\n}",
+                  "raw": "{\r\n  \"patient_id\": 1364794,\r\n  \"mr_no\": \"10002026571197\",\r\n  \"hinai_order_id\": 62425697,\r\n  \"new_diagnosis_value\": \"UPDATED DIAGNOSIS\"\r\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -795,7 +836,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\r\n  \"poid\": \"a1905b1a-5e39-4ef1-a5bb-753bb2d462ce\"\r\n\r\n}",
+                  "raw": "{\r\n  \"po_id\": \"0b1e3bfc-668d-42b8-bf17-ade76b16f430\"\r\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -833,7 +874,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\r\n  \"poid\": \"4df2f6e7-5720-46fa-89b0-6c9991681c8f\"\r\n\r\n}",
+                  "raw": "{\r\n  \"po_id\": \"0b1e3bfc-668d-42b8-bf17-ade76b16f430\"\r\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -876,7 +917,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\r\n  \"site_id\": 1 // Your site ID\r\n}",
+                  "raw": "{\r\n  \"site_id\": 1\r\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -914,7 +955,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\r\n  \"patientid\": 852196,\r\n  \"diettype\": 18894123,\r\n  \"poid\": 62306791,\r\n  \"ordertype\": \"regular\" // Options: \"regular\", \"extra\", or \"liquids\"\r\n}\r\n\r\n",
+                  "raw": "{\r\n  \"patient_id\": 1364794,\r\n  \"diet_type\": 17129481,\r\n  \"hinai_order_id\": 62425697,\r\n  \"order_type\": \"regular\"\r\n}\r\n\r\n",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -952,7 +993,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\r\n  \"insert\": \"62385027\" // Comma-separated list of order IDs\r\n}",
+                  "raw": "{\r\n  \"hinai_order_ids\": \"62425697|62425698\"\r\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -990,7 +1031,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\r\n  \"hinaiorderid\": \"62385027\", // Single ID or comma-separated list\r\n  \"remarks\": \"Order picked up\"  // Optional\r\n}",
+                  "raw": "{\r\n  \"hinai_order_id\": \"62425697|62425698\",\r\n  \"remarks\": \"OUT DONE\"\r\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -1028,7 +1069,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{ \r\n    \"siteid\": 1, \r\n    \"item\": \"regular\" \r\n}",
+                  "raw": "{\r\n  \"site_id\": 1,\r\n  \"item\": \"regular\"\r\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -1067,7 +1108,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{ \r\n    \"fromdate\": \"2026-05-14\", \r\n    \"todate\": \"2026-05-14\" \r\n}\r\n",
+                  "raw": "{\r\n  \"site_id\": 1,\r\n  \"from_date\": \"2026-05-16\",\r\n  \"to_date\": \"2026-05-16\"\r\n}\r\n",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -1106,7 +1147,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{ \r\n    \"PATIENTID\": 56122, \r\n    \"diettype\": 17129494, \r\n    \"HINAIORDERID\": 62272312, \r\n    \"POID\": \"fb2d9ed4-9373-46a6-8f6c-5a4e86739680\",\r\n    \"menu_id\":\"599a463a-b8d7-4772-a94e-95312417f264\"\r\n    \r\n}",
+                  "raw": "{\r\n  \"patient_id\": 56122,\r\n  \"hinai_order_id\": 62271717,\r\n  \"diet_type\": 17129494,\r\n  \"menu_id\": \"3d203e1b-31f7-45bc-a410-133373de5f3f\"\r\n}\r\n\r\n",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -1145,7 +1186,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{ \r\n    \"ward\": \"ICU6A - 6F\", \r\n    \"item\": \"regular\" \r\n}",
+                  "raw": "{\r\n  \"site_id\": 1,\r\n  \"item\": \"regular\",\r\n  \"menu_id\": \"3d203e1b-31f7-45bc-a410-133373de5f3f\"\r\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -1184,7 +1225,7 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{ \r\n    \"POID\": \"fb2d9ed4-9373-46a6-8f6c-5a4e86739680\" \r\n}\r\n",
+                  "raw": "\r\n{\r\n  \"site_id\": 1,\r\n  \"menu_id\": 12\r\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -1201,6 +1242,45 @@
                     "hinaiorders",
                     "print",
                     "liquid-stickers"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "All Stickers",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"site_id\": 1,\r\n  \"item\": \"regular\",\r\n  \"menu_id\": 7\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{fnb_url}}/ipd/hinaiorders/print/all-stickers",
+                  "host": [
+                    "{{fnb_url}}"
+                  ],
+                  "path": [
+                    "ipd",
+                    "hinaiorders",
+                    "print",
+                    "all-stickers"
                   ]
                 }
               },
@@ -1253,7 +1333,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\r\n  \"site_id\": 1,\r\n  \"viewdata\": \"today\", // today\r\n  \"ordertype\": \"ALL\", // extra\r\n  \"page\": 1,\r\n  \"limit\": 10,\r\n  \"search\": \"\"\r\n}",
+              "raw": "{\r\n  \"site_id\": 1,\r\n  \"view_data\": \"today\", \r\n  \"order_type\": \"regular\", // extra /all\r\n  \"list_type\": \"ordered\", // ordered/hinai\r\n  \"page\": 1,\r\n  \"limit\": 20,\r\n  \"search\": \"\"\r\n}\r\n\r\n",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1358,7 +1438,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\r\n    \"viewdata\": \"today\",\r\n    \"ordertype\": \"all\"\r\n}\r\n\r\n",
+              "raw": "{\r\n  \"site_id\":1,\r\n  \"view_data\": \"today\",\r\n  \"order_type\": \"all\"\r\n}\r\n\r\n",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1396,7 +1476,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{ \r\n\"patientid\": 56122, \r\n\"hinaiorderid\": 62272312, \r\n\"diettype\": 18894123 \r\n}",
+              "raw": "{\r\n  \"patient_id\": 1364794,\r\n  \"hinai_order_id\": 62425697,\r\n  \"diet_type\": 17129481\r\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1434,7 +1514,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{ \r\n    \"patient_id\": 56122, \r\n    \"hinai_order_id\": 62272312\r\n}\r\n",
+              "raw": "{\r\n  \"patient_id\": 1364794,\r\n  \"hinai_order_id\": 62425697\r\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1472,7 +1552,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\r\n    \"patient_id\": 56122,\r\n    \"order_id\": 62272312\r\n}",
+              "raw": "{\r\n  \"patient_id\": 1364794,\r\n  \"hinai_order_id\": 62425697\r\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1627,7 +1707,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\r\n    \"site_id\": \"1\",\r\n    \"viewdata\": \"0\",\r\n    \"ordertype\": \"1\"\r\n}",
+              "raw": "{\r\n  \"patient_id\": 1364794,\r\n  \"admission_no\": \"AD1000260401778\"\r\n}\r\n\r\n",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1665,7 +1745,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\r\n  \"PATIENT_ID\": 31572,\r\n  \"TOBED\": \"ICU6D_07\",\r\n  \"TOWARD\": \"ICU6D - 7F\"\r\n}",
+              "raw": "{\r\n  \"patient_id\": 1364794,\r\n  \"bed_no\": \"1032\",\r\n  \"ward\": \"PREMIUM BEDS - 10F - CD\"\r\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1703,7 +1783,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{ \r\n    \"page_id\": 1, \r\n    \"patient_id\": 56122 \r\n}\r\n",
+              "raw": "{\r\n  \"page_id\": 1,\r\n  \"patient_id\": 1364794\r\n}\r\n",
               "options": {
                 "raw": {
                   "language": "json"
