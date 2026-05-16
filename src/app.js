@@ -17,7 +17,9 @@ const app = express();
 const PORT = process.env.PORT || 7001;
 const BASE_PATH = process.env.BASE_PATH || '/fnb-api';
 const API_BASE_PATH = `${BASE_PATH}/api`;
-const allowedOrigins = [process.env.FRONT_END_URL].filter(Boolean);
+const allowedOrigins = process.env.FRONT_END_URL
+    ?.split(',')
+    .map(origin => origin.trim());
 
 // Session setup
 app.use(session({ secret: 'fnb-portal-api', resave: false, saveUninitialized: true }));
@@ -36,16 +38,22 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // CORS
-// app.use(cors({
-//     origin: [process.env.FRONT_END_URL, process.env.BACKEND_END_URL],
-//     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-//     allowedHeaders: ['Content-Type', 'Authorization', 'Access-Control-Allow-Methods'],
-// }));
 app.use(cors({
-    origin: allowedOrigins,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Access-Control-Allow-Methods'],
+    origin: function (origin, callback) {
+
+        if (!origin) {
+            return callback(null, true);
+        }
+
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true
 }));
+
 app.use((req, res, next) => {
     const lang = req.body.lang || 'en';
     res.setLocale(lang);
