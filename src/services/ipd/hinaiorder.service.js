@@ -1091,8 +1091,9 @@ export const getPatientOrderFormData = async (body, jwtUser) => {
 
 export const getHinaiOrdersOldAsRawQuery = async (body, jwtUser) => {
     const siteIdParam = getFirstDefined(body, ['site_id']);
-    const viewdata = getFirstDefined(body, ['view_data']) || '0';
-    const ordertype = getFirstDefined(body, ['order_type']) || '0';
+    const viewdata = getFirstDefined(body, ['view_data', 'viewdata']) || '0';
+    const ordertype = getFirstDefined(body, ['order_type', 'ordertype']) || '0';
+    const location = getFirstDefined(body, ['location']) || '';
 
     const page = parseInt(body.page) || 1;
     const limit = parseInt(body.limit) || 10;
@@ -1108,6 +1109,28 @@ export const getHinaiOrdersOldAsRawQuery = async (body, jwtUser) => {
     let whereConditions = [`mst_id = $1`, `is_discharge = false`];
     let subqueryWhere = [`mst_id = $1`];
     let params = [mstId];
+
+    if (location && location !== 'all' && location !== '0') {
+        let locationName = location;
+        try {
+            const loc = await prisma.location.findFirst({
+                where: {
+                    OR: [
+                        { id: location },
+                        { name: location }
+                    ],
+                    is_active: true
+                }
+            });
+            if (loc) {
+                locationName = loc.name;
+            }
+        } catch (err) {
+            console.error('Location lookup error in getHinaiOrdersOldAsRawQuery:', err.message);
+        }
+        params.push(`%${locationName}%`);
+        whereConditions.push(`h.ward ILIKE $${params.length}`);
+    }
 
     if (ordertype === 'extra') {
         whereConditions.push(`menu = 'EXTRA ORDER'`);
@@ -1266,10 +1289,11 @@ export const releasePageLock = async (body, jwtUser) => {
 
 export const getHinaiOrders = async (body, jwtUser) => {
     const siteIdParam = getFirstDefined(body, ['site_id']);
-    const viewdata = getFirstDefined(body, ['view_data']) || '0';
-    const ordertype = getFirstDefined(body, ['order_type']) || '0';
+    const viewdata = getFirstDefined(body, ['view_data', 'viewdata']) || '0';
+    const ordertype = getFirstDefined(body, ['order_type', 'ordertype']) || '0';
     // listType: 'hinai' = all HIS orders (hinaiviewlist.php), 'ordered' = only with PatientOrder (viewlist.php)
     const listType = getFirstDefined(body, ['list_type']) || 'hinai';
+    const location = getFirstDefined(body, ['location']) || '';
 
     const page = parseInt(body.page) || 1;
     const limit = parseInt(body.limit) || 10;
@@ -1288,6 +1312,28 @@ export const getHinaiOrders = async (body, jwtUser) => {
         mst_id: mstId,
         is_discharge: false
     };
+
+    if (location && location !== 'all' && location !== '0') {
+        let locationName = location;
+        try {
+            const loc = await prisma.location.findFirst({
+                where: {
+                    OR: [
+                        { id: location },
+                        { name: location }
+                    ],
+                    is_active: true
+                }
+            });
+            if (loc) {
+                locationName = loc.name;
+            }
+        } catch (err) {
+            console.error('Location lookup error in getHinaiOrders:', err.message);
+        }
+
+        where.ward = { contains: locationName, mode: 'insensitive' };
+    }
 
     /*
     ===========================================================
