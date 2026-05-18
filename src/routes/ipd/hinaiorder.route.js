@@ -59,5 +59,8 @@ router.post('/print/bulk-stickers', checkPermission('FNB_PORTAL', 'READ'), hinai
 router.post('/print/all-stickers', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.printBulkStickers);
 router.post('/print/liquid-stickers', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.printLiquidStickers);
 
+
+router.post('/has-new-order',checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.hasNewOrder);
+
 export default router;
 

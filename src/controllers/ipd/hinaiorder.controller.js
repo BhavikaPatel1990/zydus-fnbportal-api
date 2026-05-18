@@ -414,3 +414,21 @@ export const printLiquidStickers = async (req, res) => {
 };
 
 
+export const hasNewOrder = async (req,res) => {
+    try {
+
+        const data = await hinaiOrderService.checkLatestHinaiOrders(req.body, req.user);
+
+        return response.success(res, 'Latest order status fetched successfully', data);
+
+    } catch (error) {
+
+        console.error(
+            'has New Order controller error:',
+            error
+        );
+
+        return response.serverError(res, error.message || 'Failed to fetch order status');
+    }
+};
+

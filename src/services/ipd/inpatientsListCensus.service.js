@@ -47,6 +47,7 @@ export const getInpatientsListCensus = async (siteId) => {
       WHERE ip.ADMITTED_SITE = :siteId 
         AND d.dateofdischarge IS NULL 
         AND ip.visit_patientstatus <> 1122
+        ORDER BY b.bed_no ASC
     `;
 
     const result = await connection.execute(
@@ -54,7 +55,7 @@ export const getInpatientsListCensus = async (siteId) => {
       { siteId: siteId },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-
+  
     // Convert all response keys to snake_case lowercase
     return result.rows.map(toSnakeCase);
   } catch (err) {
