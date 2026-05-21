@@ -212,7 +212,32 @@ export const getDietOrder = async (body, jwtUser) => {
     // 5. Sort by ward name
     wardList.sort((a, b) => a.ward.localeCompare(b.ward));
 
-    // 6. Paginate
+    // 6. Compute aggregated totals across ALL wards (before pagination)
+    const aggregated_totals = wardList.reduce(
+        (acc, ward) => {
+            acc.nbm_total += ward.nbm_total;
+            acc.sd_total += ward.sd_total;
+            acc.liquid_total += ward.liquid_total;
+            acc.tube_feed_total += ward.tube_feed_total;
+            acc.full_diet_total += ward.full_diet_total;
+            acc.total_diet_order += ward.total_diet_order;
+            acc.punched_order_total += ward.punched_order_total;
+            acc.pending_punch_total += ward.pending_punch_total;
+            return acc;
+        },
+        {
+            nbm_total: 0,
+            sd_total: 0,
+            liquid_total: 0,
+            tube_feed_total: 0,
+            full_diet_total: 0,
+            total_diet_order: 0,
+            punched_order_total: 0,
+            pending_punch_total: 0,
+        }
+    );
+
+    // 7. Paginate
     const total = wardList.length;
     const paginatedData = wardList.slice((page - 1) * limit, page * limit);
 
@@ -221,6 +246,7 @@ export const getDietOrder = async (body, jwtUser) => {
         page,
         limit,
         total_pages: Math.ceil(total / limit),
+        aggregated_totals,
         data: paginatedData,
     };
 };
@@ -228,6 +254,7 @@ export const getDietOrder = async (body, jwtUser) => {
 export const downloadWardDietOrderCsv = async (body, jwtUser) => {
     const summary = await getDietOrder({ ...body, page: 1, limit: 1000000 }, jwtUser);
     const data = summary.data;
+    const totals = summary.aggregated_totals;
 
     // Generate CSV content
     const headers = ['Ward', 'NBM Total', 'SD Total', 'LIQD Total', 'TUBEFEED Total', 'FD Total', 'Total Diet Order', 'Punch Ord Total', 'Pending Punch Total'];
@@ -255,6 +282,21 @@ export const downloadWardDietOrderCsv = async (body, jwtUser) => {
             row.pending_punch_total
         ].map(escapeCsvValue).join(','))
     ];
+
+    // Add Total Aggregated View row at the bottom
+    csvRows.push(
+        [
+            'TOTAL AGGREGATED VIEW',
+            totals.nbm_total,
+            totals.sd_total,
+            totals.liquid_total,
+            totals.tube_feed_total,
+            totals.full_diet_total,
+            totals.total_diet_order,
+            totals.punched_order_total,
+            totals.pending_punch_total
+        ].map(escapeCsvValue).join(',')
+    );
 
     return csvRows.join('\n');
 };
