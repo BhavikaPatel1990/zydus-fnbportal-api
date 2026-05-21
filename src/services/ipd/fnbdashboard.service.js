@@ -191,7 +191,7 @@ export const getDietOrder = async (body, jwtUser) => {
         const isPunched = order.status === true;
 
         const dietTypesTracked = [17154031, 17129481, 17129492, 17129493, 17129494];
-        
+
         if (dietTypesTracked.includes(dietType)) {
             stats.total_diet_order++;
             if (isPunched) stats.punched_order_total++;
@@ -233,7 +233,7 @@ export const downloadWardDietOrderCsv = async (body, jwtUser) => {
 
     // Generate CSV content
     const headers = ['Ward', 'NBM Total', 'SD Total', 'LIQD Total', 'TUBEFEED Total', 'FD Total', 'Total Diet Order', 'Punch Ord Total', 'Pending Punch Total'];
-    
+
     const escapeCsvValue = (val) => {
         if (val === null || val === undefined) return '';
         const str = String(val);
@@ -346,28 +346,28 @@ export const getDietSheet = async (body, jwtUser) => {
         .filter(po => hinaiMap.has(po.hinai_order_id))
         .map(po => {
             const ho = hinaiMap.get(po.hinai_order_id);
-        const remarks = detailMap[po.id] || {};
+            const remarks = detailMap[po.id] || {};
 
-        return {
-            mr_no: ho.mr_no?.toString(),
-            patient_name: ho.patient_name,
-            bed_no: ho.bed_no,
-            ward: ho.ward,
-            diet_name: dietMap.get(po.diet_type) || '',
-            nursing_remark: po.nursing_remark,
-            diet_remark: po.diet_remark,
+            return {
+                mr_no: ho.mr_no?.toString(),
+                patient_name: ho.patient_name,
+                bed_no: ho.bed_no,
+                ward: ho.ward,
+                diet_name: dietMap.get(po.diet_type) || '',
+                nursing_remark: po.nursing_remark,
+                diet_remark: po.diet_remark,
 
-            em: remarks[1] || '',
-            breakfast: remarks[2] || '',
-            mid_morning: remarks[3] || '',
-            lunch: remarks[4] || '',
-            two_pm: remarks[5] || '',
-            evening_tea: remarks[6] || '',
-            six_pm: remarks[7] || '',
-            dinner: remarks[8] || '',
-            bed_time: remarks[9] || ''
-        };
-    });
+                em: remarks[1] || '',
+                breakfast: remarks[2] || '',
+                mid_morning: remarks[3] || '',
+                lunch: remarks[4] || '',
+                two_pm: remarks[5] || '',
+                evening_tea: remarks[6] || '',
+                six_pm: remarks[7] || '',
+                dinner: remarks[8] || '',
+                bed_time: remarks[9] || ''
+            };
+        });
 
     // 6️⃣ Search
     if (search) {
@@ -757,22 +757,22 @@ export const getExtraOrders = async (body, jwtUser) => {
         // ✅ Search filter
         const searchFilter = search
             ? {
-                  OR: [
-                      { nursing_remark: { contains: search, mode: 'insensitive' } },
-                      { diet_remark: { contains: search, mode: 'insensitive' } },
-                      {
-                          hinaiOrder: {
-                              OR: [
-                                  { patient_name: { contains: search, mode: 'insensitive' } },
-                                  { doctor: { contains: search, mode: 'insensitive' } },
-                                  { ward: { contains: search, mode: 'insensitive' } },
-                                  { bed_no: { contains: search, mode: 'insensitive' } },
-                                  { admission_no: { contains: search, mode: 'insensitive' } }
-                              ]
-                          }
-                      }
-                  ]
-              }
+                OR: [
+                    { nursing_remark: { contains: search, mode: 'insensitive' } },
+                    { diet_remark: { contains: search, mode: 'insensitive' } },
+                    {
+                        hinaiOrder: {
+                            OR: [
+                                { patient_name: { contains: search, mode: 'insensitive' } },
+                                { doctor: { contains: search, mode: 'insensitive' } },
+                                { ward: { contains: search, mode: 'insensitive' } },
+                                { bed_no: { contains: search, mode: 'insensitive' } },
+                                { admission_no: { contains: search, mode: 'insensitive' } }
+                            ]
+                        }
+                    }
+                ]
+            }
             : {};
 
         // ✅ Count
@@ -1073,9 +1073,9 @@ export const downloadLiquidDataCsv = async (body, jwtUser) => {
     const data = result.data;
 
     const headers = [
-        'ho_date','po_id','diet_remark','nursing_remark','mr_no','patient_name',
-        'bed_no','ward','liquid_time','doctor','admission_date','remarks',
-        'liquid_detail_id','username','admission_no','menu','menu_detail','punch_date'
+        'ho_date', 'po_id', 'diet_remark', 'nursing_remark', 'mr_no', 'patient_name',
+        'bed_no', 'ward', 'liquid_time', 'doctor', 'admission_date', 'remarks',
+        'liquid_detail_id', 'username', 'admission_no', 'menu', 'menu_detail', 'punch_date'
     ];
 
     const escape = (v) => {
@@ -1115,7 +1115,7 @@ export const searchPatient = async (body) => {
         searchTerm = searchTerm.trim();
 
         if (!searchTerm) {
-        return [];
+            return [];
         }
 
         /*
@@ -1154,14 +1154,14 @@ export const searchPatient = async (body) => {
         */
 
         if (!patients.length) {
-        return [];
+            return [];
         }
 
         return patients.map((item) => ({
-        label: `${item.mr_no} | ${item.patient_name}`,
-        mr_no: item.mr_no.toString(),
-        patient_id: item.patient_id,
-        patient_name: item.patient_name
+            label: `${item.mr_no} | ${item.patient_name}`,
+            mr_no: item.mr_no.toString(),
+            patient_id: item.patient_id,
+            patient_name: item.patient_name
         }));
 
     } catch (error) {
@@ -1171,425 +1171,425 @@ export const searchPatient = async (body) => {
 };
 
 export const getPatientOrderLedger = async (body, jwtUser) => {
-  try {
+    try {
 
-    /*
-    ===========================================================
-    REQUEST VALUES
-    ===========================================================
-    */
+        /*
+        ===========================================================
+        REQUEST VALUES
+        ===========================================================
+        */
 
-    const mrn = (body.mr_no || body.mrn || '').trim();
+        const mrn = (body.mr_no || body.mrn || '').trim();
 
-    if (!mrn) {
-      throw new Error("mr_no is required");
-    }
+        if (!mrn) {
+            throw new Error("mr_no is required");
+        }
 
-    /*
-    ===========================================================
-    JWT VALUES
-    ===========================================================
-    */
+        /*
+        ===========================================================
+        JWT VALUES
+        ===========================================================
+        */
 
-    const siteId = jwtUser.siteID;
+        const siteId = jwtUser.siteID;
 
-    /*
-    ===========================================================
-    GET ORDER DATA
-    ===========================================================
-    */
+        /*
+        ===========================================================
+        GET ORDER DATA
+        ===========================================================
+        */
 
-    const orders = await prisma.hinaiOrder.findMany({
+        const orders = await prisma.hinaiOrder.findMany({
 
-      where: {
-        mst_id: BigInt(siteId),
-        mr_no: BigInt(mrn),
-        is_active: true
-      },
-
-      select: {
-
-        mst_id: true,
-
-        mr_no: true,
-
-        patient_id: true,
-
-        patient_name: true,
-
-        age_gender: true,
-
-        menu_detail: true,
-
-        admission_at: true,
-
-        bed_no: true,
-
-        ward: true,
-
-        doctor: true,
-
-        order_date: true,
-
-        is_diet_change: true,
-
-        is_transfer: true,
-
-        status: true,
-
-        patientOrders: {
-
-          where: {
-            is_active: true
-          },
-
-          select: {
-
-            id: true,
-
-            nursing_remark: true,
-
-            diet_remark: true,
-
-            created_at: true,
-
-            created_by: true,
-
-            diet_type: true,
-
-            dispatched: true,
-
-            is_cancelled: true,
-
-            liquid_hours: true
-          },
-
-          orderBy: [
-            {
-              is_cancelled: "asc"
+            where: {
+                mst_id: BigInt(siteId),
+                mr_no: BigInt(mrn),
+                is_active: true
             },
-            {
-              dispatched: "asc"
+
+            select: {
+
+                mst_id: true,
+
+                mr_no: true,
+
+                patient_id: true,
+
+                patient_name: true,
+
+                age_gender: true,
+
+                menu_detail: true,
+
+                admission_at: true,
+
+                bed_no: true,
+
+                ward: true,
+
+                doctor: true,
+
+                order_date: true,
+
+                is_diet_change: true,
+
+                is_transfer: true,
+
+                status: true,
+
+                patientOrders: {
+
+                    where: {
+                        is_active: true
+                    },
+
+                    select: {
+
+                        id: true,
+
+                        nursing_remark: true,
+
+                        diet_remark: true,
+
+                        created_at: true,
+
+                        created_by: true,
+
+                        diet_type: true,
+
+                        dispatched: true,
+
+                        is_cancelled: true,
+
+                        liquid_hours: true
+                    },
+
+                    orderBy: [
+                        {
+                            is_cancelled: "asc"
+                        },
+                        {
+                            dispatched: "asc"
+                        },
+                        {
+                            created_at: "desc"
+                        }
+                    ]
+                }
             },
-            {
-              created_at: "desc"
+
+            orderBy: {
+                order_date: "desc"
             }
-          ]
+        });
+
+        /*
+        ===========================================================
+        NO DATA
+        ===========================================================
+        */
+
+        if (!orders.length) {
+            return [];
         }
-      },
 
-      orderBy: {
-        order_date: "desc"
-      }
-    });
+        /*
+        ===========================================================
+        GET DIET TYPES
+        ===========================================================
+        */
 
-    /*
-    ===========================================================
-    NO DATA
-    ===========================================================
-    */
+        const dietTypeIds = [];
+        const createdByUserIds = [];
 
-    if (!orders.length) {
-      return [];
-    }
+        orders.forEach((order) => {
 
-    /*
-    ===========================================================
-    GET DIET TYPES
-    ===========================================================
-    */
+            order.patientOrders.forEach((po) => {
 
-    const dietTypeIds = [];
-    const createdByUserIds = [];
+                if (po.diet_type !== null) {
+                    dietTypeIds.push(po.diet_type);
+                }
+                if (po.created_by) {
+                    createdByUserIds.push(po.created_by);
+                }
+            });
+        });
 
-    orders.forEach((order) => {
+        /*
+        ===========================================================
+        FETCH DIET TYPES
+        ===========================================================
+        */
 
-      order.patientOrders.forEach((po) => {
+        const dietTypes = await prisma.dietType.findMany({
 
-        if (po.diet_type !== null) {
-          dietTypeIds.push(po.diet_type);
-        }
-        if (po.created_by) {
-          createdByUserIds.push(po.created_by);
-        }
-      });
-    });
+            where: {
+                diet_type_id: {
+                    in: [...new Set(dietTypeIds)]
+                }
+            },
 
-    /*
-    ===========================================================
-    FETCH DIET TYPES
-    ===========================================================
-    */
+            select: {
+                diet_type_id: true,
+                diet_name: true
+            }
+        });
 
-    const dietTypes = await prisma.dietType.findMany({
+        /*
+        ===========================================================
+        CREATE DIET MAP
+        ===========================================================
+        */
 
-      where: {
-        diet_type_id: {
-          in: [...new Set(dietTypeIds)]
-        }
-      },
+        const dietMap = {};
 
-      select: {
-        diet_type_id: true,
-        diet_name: true
-      }
-    });
+        dietTypes.forEach((diet) => {
 
-    /*
-    ===========================================================
-    CREATE DIET MAP
-    ===========================================================
-    */
+            dietMap[diet.diet_type_id] =
+                diet.diet_name;
+        });
 
-    const dietMap = {};
+        /*
+        ===========================================================
+        FETCH USERS FROM ZYDUSAPP DATABASE
+        ===========================================================
+        */
 
-    dietTypes.forEach((diet) => {
+        const uniqueUserIds = [...new Set(createdByUserIds)];
+        const userMap = {};
 
-      dietMap[diet.diet_type_id] =
-        diet.diet_name;
-    });
-
-    /*
-    ===========================================================
-    FETCH USERS FROM ZYDUSAPP DATABASE
-    ===========================================================
-    */
-
-    const uniqueUserIds = [...new Set(createdByUserIds)];
-    const userMap = {};
-
-    if (uniqueUserIds.length > 0) {
-      try {
-        const users = await authPrisma.$queryRaw`
+        if (uniqueUserIds.length > 0) {
+            try {
+                const users = await authPrisma.$queryRaw`
           SELECT id::text, username, full_name FROM users
           WHERE id::text IN (${Prisma.join(uniqueUserIds)})
         `;
-        users.forEach((u) => {
-        //   console.log("u",u);
-          userMap[u.id] = u.username || u.full_name || '';
-        });
-      } catch (error) {
-        console.error("Error fetching users from zydusapp database:", error);
-      }
-    }
-
-    /*
-    ===========================================================
-    FINAL RESPONSE
-    ===========================================================
-    */
-
-    const response = [];
-
-    for (const ho of orders) {
-
-      /*
-      =======================================================
-      NO PATIENT ORDER
-      =======================================================
-      */
-
-      if (!ho.patientOrders.length) {
-
-        response.push({
-
-          site_id:
-            ho.mst_id?.toString(),
-
-          mr_no:
-            ho.mr_no?.toString(),
-
-          patient_id:
-            ho.patient_id,
-
-          patient_name:
-            ho.patient_name,
-
-          age_gender:
-            ho.age_gender,
-
-          menu_detail:
-            ho.menu_detail,
-
-          admission_date:
-            ho.admission_at,
-
-          bed_no:
-            ho.bed_no,
-
-          ward:
-            ho.ward,
-
-          doctor:
-            ho.doctor,
-
-          username:
-            "",
-
-          diet_name:
-            null,
-
-          nursing_remark:
-            null,
-
-          diet_remark:
-            null,
-
-          ho_date:
-            ho.order_date,
-
-          punch_date:
-            null,
-
-          diff:
-            null,
-
-          diet_type:
-            null,
-
-          dispatched:
-            null,
-
-          is_cancelled:
-            null,
-
-          is_diet_change:
-            ho.is_diet_change,
-
-          is_transfer:
-            ho.is_transfer,
-
-          order_status:
-            ho.status,
-
-          liquid_hours:
-            null
-        });
-
-      } else {
+                users.forEach((u) => {
+                    //   console.log("u",u);
+                    userMap[u.id] = u.username || u.full_name || '';
+                });
+            } catch (error) {
+                console.error("Error fetching users from zydusapp database:", error);
+            }
+        }
 
         /*
-        =======================================================
-        PATIENT ORDER LOOP
-        =======================================================
+        ===========================================================
+        FINAL RESPONSE
+        ===========================================================
         */
 
-        for (const po of ho.patientOrders) {
+        const response = [];
 
-          /*
-          ===================================================
-          TIME DIFFERENCE
-          ===================================================
-          */
+        for (const ho of orders) {
 
-          let diffMinutes = null;
+            /*
+            =======================================================
+            NO PATIENT ORDER
+            =======================================================
+            */
 
-          if (
-            po.created_at &&
-            ho.order_date
-          ) {
+            if (!ho.patientOrders.length) {
 
-            diffMinutes = Math.floor(
-              (
-                new Date(po.created_at) -
-                new Date(ho.order_date)
-              ) / (1000 * 60)
-            );
-          }
+                response.push({
 
-          response.push({
+                    site_id:
+                        ho.mst_id?.toString(),
 
-            site_id:
-              ho.mst_id?.toString(),
+                    mr_no:
+                        ho.mr_no?.toString(),
 
-            mr_no:
-              ho.mr_no?.toString(),
+                    patient_id:
+                        ho.patient_id,
 
-            patient_id:
-              ho.patient_id,
+                    patient_name:
+                        ho.patient_name,
 
-            patient_name:
-              ho.patient_name,
+                    age_gender:
+                        ho.age_gender,
 
-            age_gender:
-              ho.age_gender,
+                    menu_detail:
+                        ho.menu_detail,
 
-            menu_detail:
-              ho.menu_detail,
+                    admission_date:
+                        ho.admission_at,
 
-            admission_date:
-              ho.admission_at,
+                    bed_no:
+                        ho.bed_no,
 
-            bed_no:
-              ho.bed_no,
+                    ward:
+                        ho.ward,
 
-            ward:
-              ho.ward,
+                    doctor:
+                        ho.doctor,
 
-            doctor:
-              ho.doctor,
+                    username:
+                        "",
 
-            username:
-              userMap[po.created_by] || "",
+                    diet_name:
+                        null,
 
-            diet_name:
-              dietMap[po.diet_type] || null,
+                    nursing_remark:
+                        null,
 
-            nursing_remark:
-              po.nursing_remark,
+                    diet_remark:
+                        null,
 
-            diet_remark:
-              po.diet_remark,
+                    ho_date:
+                        ho.order_date,
 
-            ho_date:
-              ho.order_date,
+                    punch_date:
+                        null,
 
-            punch_date:
-              po.created_at,
+                    diff:
+                        null,
 
-            diff:
-              diffMinutes,
+                    diet_type:
+                        null,
 
-            diet_type:
-              po.diet_type,
+                    dispatched:
+                        null,
 
-            dispatched:
-              po.dispatched,
+                    is_cancelled:
+                        null,
 
-            is_cancelled:
-              po.is_cancelled,
+                    is_diet_change:
+                        ho.is_diet_change,
 
-            is_diet_change:
-              ho.is_diet_change,
+                    is_transfer:
+                        ho.is_transfer,
 
-            is_transfer:
-              ho.is_transfer,
+                    order_status:
+                        ho.status,
 
-            order_status:
-              ho.status,
+                    liquid_hours:
+                        null
+                });
 
-            liquid_hours:
-              po.liquid_hours
-          });
+            } else {
+
+                /*
+                =======================================================
+                PATIENT ORDER LOOP
+                =======================================================
+                */
+
+                for (const po of ho.patientOrders) {
+
+                    /*
+                    ===================================================
+                    TIME DIFFERENCE
+                    ===================================================
+                    */
+
+                    let diffMinutes = null;
+
+                    if (
+                        po.created_at &&
+                        ho.order_date
+                    ) {
+
+                        diffMinutes = Math.floor(
+                            (
+                                new Date(po.created_at) -
+                                new Date(ho.order_date)
+                            ) / (1000 * 60)
+                        );
+                    }
+
+                    response.push({
+
+                        site_id:
+                            ho.mst_id?.toString(),
+
+                        mr_no:
+                            ho.mr_no?.toString(),
+
+                        patient_id:
+                            ho.patient_id,
+
+                        patient_name:
+                            ho.patient_name,
+
+                        age_gender:
+                            ho.age_gender,
+
+                        menu_detail:
+                            ho.menu_detail,
+
+                        admission_date:
+                            ho.admission_at,
+
+                        bed_no:
+                            ho.bed_no,
+
+                        ward:
+                            ho.ward,
+
+                        doctor:
+                            ho.doctor,
+
+                        username:
+                            userMap[po.created_by] || "",
+
+                        diet_name:
+                            dietMap[po.diet_type] || null,
+
+                        nursing_remark:
+                            po.nursing_remark,
+
+                        diet_remark:
+                            po.diet_remark,
+
+                        ho_date:
+                            ho.order_date,
+
+                        punch_date:
+                            po.created_at,
+
+                        diff:
+                            diffMinutes,
+
+                        diet_type:
+                            po.diet_type,
+
+                        dispatched:
+                            po.dispatched,
+
+                        is_cancelled:
+                            po.is_cancelled,
+
+                        is_diet_change:
+                            ho.is_diet_change,
+
+                        is_transfer:
+                            ho.is_transfer,
+
+                        order_status:
+                            ho.status,
+
+                        liquid_hours:
+                            po.liquid_hours
+                    });
+                }
+            }
         }
-      }
+
+        /*
+        ===========================================================
+        RETURN RESPONSE
+        ===========================================================
+        */
+
+        return response;
+    } catch (error) {
+        console.error(
+            "getOrderLedger Service Error:",
+            error
+        );
+
+        throw error;
     }
-
-    /*
-    ===========================================================
-    RETURN RESPONSE
-    ===========================================================
-    */
-
-    return response;
-  } catch (error) {
-    console.error(
-      "getOrderLedger Service Error:",
-      error
-    );
-
-    throw error;
-  }
 };
 
 export const getDietTypes = async () => {

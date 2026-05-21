@@ -171,6 +171,7 @@ const buildPatientPayload = (hinaiOrder) => ({
     admission_date: hinaiOrder.admission_at,
     ward: hinaiOrder.ward || '',
     menu_detail: hinaiOrder.menu_detail || '',
+    menu_name: hinaiOrder.menu || '',
     hinai_order_id: hinaiOrder.order_id,
 });
 
@@ -995,6 +996,7 @@ export const getPatientOrderFormData = async (body, jwtUser) => {
             ward: true,
             nurse_remark: true,
             menu_detail: true,
+            menu: true,
             order_id: true,
         },
     });
@@ -1002,7 +1004,7 @@ export const getPatientOrderFormData = async (body, jwtUser) => {
     if (!hinaiOrder) {
         throw new Error('HINAI order not found');
     }
-
+    
     let sourcePatientOrder = null;
     let mode = 'add';
 
@@ -1301,6 +1303,8 @@ export const getHinaiOrders = async (body, jwtUser) => {
 
     const mstId = await resolveSiteMapping(siteIdParam, 'mst_id');
     if (!mstId) throw new Error('Invalid site mapping');
+
+    console.log("User id is: ", jwtUser);
 
     const today = new Date();
     const startOfDay = new Date(today);
@@ -3144,8 +3148,8 @@ export const checkLatestHinaiOrders = async (body, jwtUser) => {
         REQUEST VALUES
         ===========================================================
         */
-        const viewdata = body.viewdata || 'all';
-        const ordertype = body.ordertype || 'regular';
+        const viewdata = getFirstDefined(body, ['view_data', 'viewdata']) || 'all';
+        const ordertype = getFirstDefined(body, ['order_type', 'ordertype']) || 'regular';
 
         /*
         ===========================================================
