@@ -1,5 +1,5 @@
 import response from '../../utils/response.js';
-import * as inpatientService from '../../services/ipd/inpatient.service.js';
+import * as inpatientsListCensusService from '../../services/ipd/inpatientsListCensus.service.js';
 import authPrisma from '../../config/authDb.js';
 
 /**
@@ -7,7 +7,7 @@ import authPrisma from '../../config/authDb.js';
  * @param {Object} req - Request object
  * @param {Object} res - Response object
  */
-export const fetchInpatients = async (req, res) => {
+export const fetchInpatientsListCensus = async (req, res) => {
   try {
     const siteId = req.user.siteID;
     
@@ -26,7 +26,7 @@ export const fetchInpatients = async (req, res) => {
     const actualSiteId = siteResults[0].site_id;
     // console.log("Actual Oracle Site ID:", actualSiteId);
 
-    const data = await inpatientService.getInpatients(actualSiteId);
+    const data = await inpatientsListCensusService.getInpatientsListCensus(actualSiteId);
     
     return response.success(res, 'Inpatient list fetched successfully', data);
   } catch (error) {
@@ -36,5 +36,5 @@ export const fetchInpatients = async (req, res) => {
 };
 
 export default {
-  fetchInpatients,
+  fetchInpatientsListCensus,
 };

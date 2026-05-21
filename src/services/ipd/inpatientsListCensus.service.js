@@ -2,11 +2,25 @@ import { getOracleConnection } from '../../config/oracleDb.js';
 import oracledb from 'oracledb';
 
 /**
+ * Convert object keys to snake_case + lowercase
+ */
+const toSnakeCase = (obj) => {
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [
+      key
+        .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+        .replace(/\s+/g, '_')
+        .toLowerCase(),
+      value,
+    ])
+  );
+};
+/**
  * Fetch inpatient list from Oracle database
  * @param {number|string} siteId - The site ID to filter by
  * @returns {Promise<Array>} - List of inpatients
  */
-export const getInpatients = async (siteId) => {
+export const getInpatientsListCensus = async (siteId) => {
   let connection;
 
   try {
@@ -33,6 +47,7 @@ export const getInpatients = async (siteId) => {
       WHERE ip.ADMITTED_SITE = :siteId 
         AND d.dateofdischarge IS NULL 
         AND ip.visit_patientstatus <> 1122
+        ORDER BY b.bed_no ASC
     `;
 
     const result = await connection.execute(
@@ -40,10 +55,11 @@ export const getInpatients = async (siteId) => {
       { siteId: siteId },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-
-    return result.rows;
+  
+    // Convert all response keys to snake_case lowercase
+    return result.rows.map(toSnakeCase);
   } catch (err) {
-    console.error('Error in getInpatients service:', err);
+    console.error('Error in get inpatients service:', err);
     throw err;
   } finally {
     if (connection) {
@@ -57,5 +73,5 @@ export const getInpatients = async (siteId) => {
 };
 
 export default {
-  getInpatients,
+  getInpatientsListCensus,
 };

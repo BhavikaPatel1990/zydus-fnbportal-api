@@ -1,4 +1,6 @@
 import prisma from '../../config/db.js';
+import { Prisma } from '@prisma/client';
+import authPrisma from '../../config/authDb.js';
 import axios from 'axios';
 import { getOracleConnection } from '../../config/oracleDb.js';
 import oracledb from 'oracledb';
@@ -1233,8 +1235,6 @@ export const getPatientOrderLedger = async (body, jwtUser) => {
 
     const siteId = jwtUser.siteID;
 
-    const loginUsername = jwtUser.username;
-
     /*
     ===========================================================
     GET ORDER DATA
@@ -1342,6 +1342,7 @@ export const getPatientOrderLedger = async (body, jwtUser) => {
     */
 
     const dietTypeIds = [];
+    const createdByUserIds = [];
 
     orders.forEach((order) => {
 
@@ -1349,6 +1350,9 @@ export const getPatientOrderLedger = async (body, jwtUser) => {
 
         if (po.diet_type !== null) {
           dietTypeIds.push(po.diet_type);
+        }
+        if (po.created_by) {
+          createdByUserIds.push(po.created_by);
         }
       });
     });
@@ -1386,6 +1390,30 @@ export const getPatientOrderLedger = async (body, jwtUser) => {
       dietMap[diet.diet_type_id] =
         diet.diet_name;
     });
+
+    /*
+    ===========================================================
+    FETCH USERS FROM ZYDUSAPP DATABASE
+    ===========================================================
+    */
+
+    const uniqueUserIds = [...new Set(createdByUserIds)];
+    const userMap = {};
+
+    if (uniqueUserIds.length > 0) {
+      try {
+        const users = await authPrisma.$queryRaw`
+          SELECT id::text, username, full_name FROM users
+          WHERE id::text IN (${Prisma.join(uniqueUserIds)})
+        `;
+        users.forEach((u) => {
+        //   console.log("u",u);
+          userMap[u.id] = u.username || u.full_name || '';
+        });
+      } catch (error) {
+        console.error("Error fetching users from zydusapp database:", error);
+      }
+    }
 
     /*
     ===========================================================
@@ -1438,7 +1466,7 @@ export const getPatientOrderLedger = async (body, jwtUser) => {
             ho.doctor,
 
           username:
-            loginUsername,
+            "",
 
           diet_name:
             null,
@@ -1544,8 +1572,7 @@ export const getPatientOrderLedger = async (body, jwtUser) => {
               ho.doctor,
 
             username:
-              po.created_by ||
-              loginUsername,
+              userMap[po.created_by] || "",
 
             diet_name:
               dietMap[po.diet_type] || null,

@@ -1091,8 +1091,9 @@ export const getPatientOrderFormData = async (body, jwtUser) => {
 
 export const getHinaiOrdersOldAsRawQuery = async (body, jwtUser) => {
     const siteIdParam = getFirstDefined(body, ['site_id']);
-    const viewdata = getFirstDefined(body, ['view_data']) || '0';
-    const ordertype = getFirstDefined(body, ['order_type']) || '0';
+    const viewdata = getFirstDefined(body, ['view_data', 'viewdata']) || '0';
+    const ordertype = getFirstDefined(body, ['order_type', 'ordertype']) || '0';
+    const location = getFirstDefined(body, ['location']) || '';
 
     const page = parseInt(body.page) || 1;
     const limit = parseInt(body.limit) || 10;
@@ -1108,6 +1109,28 @@ export const getHinaiOrdersOldAsRawQuery = async (body, jwtUser) => {
     let whereConditions = [`mst_id = $1`, `is_discharge = false`];
     let subqueryWhere = [`mst_id = $1`];
     let params = [mstId];
+
+    if (location && location !== 'all' && location !== '0') {
+        let locationName = location;
+        try {
+            const loc = await prisma.location.findFirst({
+                where: {
+                    OR: [
+                        { id: location },
+                        { name: location }
+                    ],
+                    is_active: true
+                }
+            });
+            if (loc) {
+                locationName = loc.name;
+            }
+        } catch (err) {
+            console.error('Location lookup error in getHinaiOrdersOldAsRawQuery:', err.message);
+        }
+        params.push(`%${locationName}%`);
+        whereConditions.push(`h.ward ILIKE $${params.length}`);
+    }
 
     if (ordertype === 'extra') {
         whereConditions.push(`menu = 'EXTRA ORDER'`);
@@ -1266,10 +1289,11 @@ export const releasePageLock = async (body, jwtUser) => {
 
 export const getHinaiOrders = async (body, jwtUser) => {
     const siteIdParam = getFirstDefined(body, ['site_id']);
-    const viewdata = getFirstDefined(body, ['view_data']) || '0';
-    const ordertype = getFirstDefined(body, ['order_type']) || '0';
+    const viewdata = getFirstDefined(body, ['view_data', 'viewdata']) || '0';
+    const ordertype = getFirstDefined(body, ['order_type', 'ordertype']) || '0';
     // listType: 'hinai' = all HIS orders (hinaiviewlist.php), 'ordered' = only with PatientOrder (viewlist.php)
     const listType = getFirstDefined(body, ['list_type']) || 'hinai';
+    const location = getFirstDefined(body, ['location']) || '';
 
     const page = parseInt(body.page) || 1;
     const limit = parseInt(body.limit) || 10;
@@ -1288,6 +1312,28 @@ export const getHinaiOrders = async (body, jwtUser) => {
         mst_id: mstId,
         is_discharge: false
     };
+
+    if (location && location !== 'all' && location !== '0') {
+        let locationName = location;
+        try {
+            const loc = await prisma.location.findFirst({
+                where: {
+                    OR: [
+                        { id: location },
+                        { name: location }
+                    ],
+                    is_active: true
+                }
+            });
+            if (loc) {
+                locationName = loc.name;
+            }
+        } catch (err) {
+            console.error('Location lookup error in getHinaiOrders:', err.message);
+        }
+
+        where.ward = { contains: locationName, mode: 'insensitive' };
+    }
 
     /*
     ===========================================================
@@ -3088,4 +3134,109 @@ export const getLiquidStickerData = async (body, jwtUser) => {
     }
 
     return result;
+};
+
+export const checkLatestHinaiOrders = async (body, jwtUser) => {
+    try {
+
+        /*
+        ===========================================================
+        REQUEST VALUES
+        ===========================================================
+        */
+        const viewdata = body.viewdata || 'all';
+        const ordertype = body.ordertype || 'regular';
+
+        /*
+        ===========================================================
+        SITE ID
+        ===========================================================
+        */
+        const siteIdParam = getFirstDefined(body, ['site_id', 'siteid', 'SITEID']) || jwtUser?.site_id || jwtUser?.mst_id;
+
+        if (!siteIdParam) {
+            throw new Error('site id is required');
+        }
+
+        /*
+        ===========================================================
+        MST ID
+        ===========================================================
+        */
+        const mstId = await resolveSiteMapping(siteIdParam, 'mst_id');
+
+        if (!mstId) {
+            throw new Error('Invalid site mapping');
+        }
+
+        /*
+        ===========================================================
+        DATE FILTER
+        ===========================================================
+        */
+        const now = new Date();
+
+        const tenSecondsAgo = new Date(now.getTime() - 10000);
+
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
+
+        /*
+        ===========================================================
+        WHERE CONDITION
+        ===========================================================
+        */
+        const where = {
+            mst_id: BigInt(mstId),
+            is_discharge: false,
+            created_at: { gte: tenSecondsAgo },
+            is_active: true,
+        };
+
+        /*
+        ===========================================================
+        ORDER TYPE FILTER
+        ===========================================================
+        */
+        if (ordertype === 'extra') {
+            where.menu = 'EXTRA ORDER';
+        } else if (ordertype === 'regular') {
+            where.menu = { not: 'EXTRA ORDER' };
+        }
+
+        /*
+        ===========================================================
+        VIEW DATA FILTER
+        ===========================================================
+        */
+        if (viewdata === 'today') {
+            where.order_date = { gte: startOfDay, lte: endOfDay };
+        }
+
+        /*
+        ===========================================================
+        CHECK EXISTS
+        ===========================================================
+        */
+        const latestOrder = await prisma.hinaiOrder.findFirst({
+            where,
+            select: { id: true },
+            orderBy: { created_at: 'desc' },
+        });
+
+        /*
+        ===========================================================
+        RESPONSE
+        ===========================================================
+        */
+        return { has_value: !!latestOrder };
+
+    } catch (error) {
+
+        console.error( 'check Latest HinaiOrders service error:', error);
+        throw new Error(error.message);
+    }
 };
