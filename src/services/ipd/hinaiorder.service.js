@@ -1426,8 +1426,7 @@ export const getHinaiOrders = async (body, jwtUser) => {
     const rows = await prisma.hinaiOrder.findMany({
         where,
         orderBy: [
-            { patient_id: 'asc' },
-            { order_id: 'desc' }
+            { order_date: 'desc' }
         ],
         include: {
             patientOrders: {
