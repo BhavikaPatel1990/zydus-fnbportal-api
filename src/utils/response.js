@@ -16,7 +16,10 @@ const DATETIME_FIELDS = [
     "createdon",
     "admdate",
     "admissiondate",
-    "ORDTIME"
+    "ORDTIME",
+    "admission_date",
+    "approved_date",
+    "punch_date",
 ];
 
 const DATE_ONLY_FIELDS = [
