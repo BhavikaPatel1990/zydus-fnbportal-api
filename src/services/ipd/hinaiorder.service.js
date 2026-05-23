@@ -1294,7 +1294,6 @@ export const getHinaiOrders = async (body, jwtUser) => {
     // listType: 'hinai' = all HIS orders (hinaiviewlist.php), 'ordered' = only with PatientOrder (viewlist.php)
     const listType = getFirstDefined(body, ['list_type']) || 'hinai';
     const location = getFirstDefined(body, ['location']) || '';
-    console.log(' location : ', location);
     const page = parseInt(body.page) || 1;
     const limit = parseInt(body.limit) || 10;
     const search = body.search || '';
