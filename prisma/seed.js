@@ -104,7 +104,7 @@ async function seedLocationsFromCSV() {
 
         // Clean + map CSV fields
         results.push({
-          name: row.location_name || row.name,
+          name: (row.location_name || row.name) ? (row.location_name || row.name).replace(/\s+/g, ' ').trim() : null,
           service_center_id: parseInt(row.hinai_service_center_id || 0),
           display_order: parseInt(row.display_order || 0),
           is_active_flag: row.is_active || "1",

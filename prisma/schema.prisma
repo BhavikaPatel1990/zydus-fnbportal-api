@@ -127,6 +127,7 @@ model MenuTime {
 }
 
 model PatientOrder {
+<<<<<<< HEAD
   id                  String               @id @default(uuid())
   patient_id          Int
   diet_type           Int
@@ -148,6 +149,30 @@ model PatientOrder {
   deleted_by          String?
   is_active           Boolean              @default(true)
   dietTypeData        DietType             @relation("DietTypeToPatientOrder", fields: [diet_type], references: [diet_type_id])
+=======
+  id              String   @id @default(uuid())
+  patient_id      Int
+  diet_type       Int
+  nursing_remark  String
+  diet_remark     String
+  dispatched      Boolean?
+  dispatched_by   String?
+  dispatched_at   DateTime?
+  hinai_order_id  Int
+  is_cancelled    Boolean?
+  liquid_hours    Int
+  mst_id         BigInt?
+  mail_flag       Int      @default(0)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  deleted_at DateTime?
+  created_by String?
+  updated_by String?
+  deleted_by String?
+  is_active  Boolean  @default(true)
+
+>>>>>>> 6dbd1a0 (update fix and seed)
   hinaiOrder          HinaiOrder           @relation("HinaiToPatientOrder", fields: [hinai_order_id], references: [order_id])
   patientOrderDetails PatientOrderDetail[] @relation("PoToOrderDetail")
   patientOrderLiquids PatientOrderLiquid[] @relation("PoToLiquid")
