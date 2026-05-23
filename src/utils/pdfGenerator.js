@@ -165,23 +165,106 @@ export const generateLiquidStickers = (stickersData, stream) => {
 };
 
 function renderLiquidLabel(doc, data, x, y, width, height) {
-    doc.rect(x, y, width, height).stroke();
-    
-    doc.fontSize(8).font('Helvetica-Bold');
-    doc.text(`${data.patient_name.substring(0, 15)} | ${data.mr_no.substring(data.mr_no.length - 8)} | ${data.bed_no}`, x + 5, y + 5);
-    
-    doc.font('Helvetica').fontSize(7);
-    doc.text(`Item: ${data.menu_detail?.substring(0, 30) || '-'}`, x + 5, y + 18);
-    
-    doc.font('Helvetica-Bold').text(`DtRem:`, x + 5, y + 28);
-    doc.font('Helvetica').text(data.diet_remark || '-', x + 40, y + 28, { width: width - 45 });
-    
-    doc.font('Helvetica-Bold').text(`NurRem:`, x + 5, y + 48);
-    doc.font('Helvetica').text(data.nursing_remark || '-', x + 40, y + 48, { width: width - 45 });
-    
-    doc.font('Helvetica-Bold').text(`Rem|Time:`, x + 5, y + 68);
-    doc.font('Helvetica').text(`${data.remarks || '-'} @${data.description}:00`, x + 45, y + 68);
-    
-    doc.font('Helvetica').fontSize(6);
-    doc.text(`OrdDtTime: ${data.order_date}`, x + 5, y + 80);
+
+    // ===== Layout Configuration =====
+    const leftPadding = 5;
+
+    const patientInfoY = y + 3;
+    const itemY = y + 14;
+    const dietRemarkY = y + 24;
+    const nursingRemarkY = y + 38;
+    const remarkTimeY = y + 48;
+    const orderDateY = y + 58;
+
+    const remarkLabelX = x + 5;
+    const remarkValueX = x + 38;
+    const remarkTimeValueX = x + 48;
+
+    const remarkTextWidth = width - 42;
+
+    const patientFontSize = 8;
+    const normalFontSize = 7;
+    const orderDateFontSize = 8;
+
+    const multilineLineGap = -1;
+
+    // ===== Patient Info =====
+    doc
+        .fontSize(patientFontSize)
+        .font('Helvetica-Bold');
+
+    doc.text(
+        `${data.patient_name.substring(0, 15)} | ${data.mr_no.substring(data.mr_no.length - 8)} | ${data.bed_no}`,
+        x + leftPadding,
+        patientInfoY
+    );
+
+    // ===== Item =====
+    doc
+        .font('Helvetica')
+        .fontSize(normalFontSize);
+
+    doc.text(
+        `Item: ${data.menu_detail?.substring(0, 30) || '-'}`,
+        x + leftPadding,
+        itemY
+    );
+
+    // ===== Diet Remark =====
+    doc
+        .font('Helvetica-Bold')
+        .text('DtRem:', remarkLabelX, dietRemarkY);
+
+    doc
+        .font('Helvetica')
+        .text(
+            data.diet_remark || '-',
+            remarkValueX,
+            dietRemarkY,
+            {
+                width: remarkTextWidth,
+                lineGap: multilineLineGap
+            }
+        );
+
+    // ===== Nursing Remark =====
+    doc
+        .font('Helvetica-Bold')
+        .text('NurRem:', remarkLabelX, nursingRemarkY);
+
+    doc
+        .font('Helvetica')
+        .text(
+            data.nursing_remark || '-',
+            remarkValueX,
+            nursingRemarkY,
+            {
+                width: remarkTextWidth,
+                lineGap: multilineLineGap
+            }
+        );
+
+    // ===== Remark & Time =====
+    doc
+        .font('Helvetica-Bold')
+        .text('Rem|Time:', remarkLabelX, remarkTimeY);
+
+    doc
+        .font('Helvetica')
+        .text(
+            `${data.remarks || '-'} @${data.description}:00`,
+            remarkTimeValueX,
+            remarkTimeY
+        );
+
+    // ===== Order Date =====
+    doc
+        .font('Helvetica')
+        .fontSize(orderDateFontSize);
+
+    doc.text(
+        `OrdDtTime: ${data.order_date}`,
+        x + leftPadding,
+        orderDateY
+    );
 }
