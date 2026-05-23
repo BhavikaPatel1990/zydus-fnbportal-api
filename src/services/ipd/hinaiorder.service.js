@@ -2883,6 +2883,8 @@ export const getPatientStickerData = async (body, jwtUser) => {
 
     const siteId = await resolveSiteMapping(getFirstDefined(body, ['site_id']) || jwtUser?.siteID, 'mst_id');
 
+    const menuSelection = resolveStickerMenuSelection(menuId, 'regular');
+
     const poIdInt = orderId ? parseInt(orderId) : undefined;
     const patientIdInt = patientId ? parseInt(patientId) : undefined;
 
@@ -2898,6 +2900,16 @@ export const getPatientStickerData = async (body, jwtUser) => {
         patientOrderFilter.id = poid;
     }
 
+    const patientOrderDetailsWhere = {};
+    
+    if (menuSelection.mode === 'ptm_id') {
+        patientOrderDetailsWhere.ptm_id = String(menuSelection.value);
+    } else if (menuSelection.mode === 'legacy_description') {
+        patientOrderDetailsWhere.menuTime = {
+            description: menuSelection.value
+        };
+    }
+
     const order = await prisma.hinaiOrder.findFirst({
         where: whereClause,
         include: {
@@ -2906,7 +2918,7 @@ export const getPatientStickerData = async (body, jwtUser) => {
                 include: {
                     dietTypeData: true,
                     patientOrderDetails: {
-                        where: menuId ? { ptm_id: String(menuId) } : {},
+                        where: patientOrderDetailsWhere,
                         include: { menuTime: true }
                     }
                 }
