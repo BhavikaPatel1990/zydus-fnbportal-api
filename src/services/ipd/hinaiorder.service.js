@@ -2753,37 +2753,88 @@ export const downloadOrdersCsv = async (body, jwtUser) => {
     }
 
     const sql = Prisma.sql`
-        SELECT
-            ho.order_id AS "OrderID",
-            ho.mr_no AS "MRNO",
-            ho.patient_name AS "PatientName",
-            CONCAT(ho.bed_no, '/', ho.ward) AS "Bed-Ward",
-            ho.doctor AS "Doctor",
-            dt.diet_name AS "DietType",
-            string_agg(CONCAT(m.description, ': ', COALESCE(pd.remarks, '')), ', ') AS "MenuType:Remarks",
-            po.nursing_remark AS "NurseRemark",
-            po.diet_remark AS "DietitianRemark",
-            po.created_by AS "OrderPunchBy",
-            TO_CHAR(po.created_at, 'DD/MM/YYYY HH24:MI') AS "OrderPunchTime",
-            TO_CHAR(ho.order_date, 'DD/MM/YYYY HH24:MI') AS "HISOrderTime",
-            LPAD(FLOOR(EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) / 3600)::text, 2, '0') || ':' || LPAD(FLOOR((EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) % 3600) / 60)::text, 2, '0') || ':' || LPAD(FLOOR(EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) % 60)::text, 2, '0') AS "OrdertoPunchTAT"
-            ${extraFields}
-        FROM "MenuTime" m
-        LEFT JOIN "PatientOrderDetail" pd ON pd.ptm_id = m.id
-        LEFT JOIN "PatientOrder" po ON po.id = pd.po_id
-        LEFT JOIN "DietType" dt ON dt.diet_type_id = po.diet_type
-        LEFT JOIN "HinaiOrder" ho ON ho.order_id = po.hinai_order_id
-        WHERE po.is_active = true
-            AND po.mst_id = ${BigInt(mstId)}
-            AND po.created_at >= ${startOfDay}
-            AND po.created_at <= ${endOfDay}
-            ${dietTypeFilter}
-        GROUP BY
-            ho.order_id, ho.mr_no, ho.patient_name, ho.bed_no, ho.ward, ho.doctor,
-            dt.diet_name, po.nursing_remark, po.diet_remark, po.created_by, po.created_at, ho.order_date,
-            po.dispatched_at, po.dispatched, po.is_cancelled, m.id
-        ORDER BY ho.ward, ho.bed_no, m.id
-    `;
+    SELECT
+        ho.order_id AS "OrderID",
+        ho.mr_no AS "MRNO",
+        ho.patient_name AS "PatientName",
+        CONCAT(ho.bed_no, '/', ho.ward) AS "Bed-Ward",
+        ho.doctor AS "Doctor",
+        dt.diet_name AS "DietType",
+
+        STRING_AGG(
+            DISTINCT CASE
+                WHEN pd.remarks IS NOT NULL
+                     AND TRIM(pd.remarks) <> ''
+                THEN CONCAT(m.description, ': ', pd.remarks)
+                ELSE m.description
+            END,
+            ', '
+        ) AS "MenuType:Remarks",
+
+        po.nursing_remark AS "NurseRemark",
+        po.diet_remark AS "DietitianRemark",
+        po.created_by AS "OrderPunchBy",
+
+        TO_CHAR(po.created_at, 'DD/MM/YYYY HH24:MI') AS "OrderPunchTime",
+        TO_CHAR(ho.order_date, 'DD/MM/YYYY HH24:MI') AS "HISOrderTime",
+
+        LPAD(
+            FLOOR(EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) / 3600)::text,
+            2,
+            '0'
+        ) || ':' ||
+        LPAD(
+            FLOOR((EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) % 3600) / 60)::text,
+            2,
+            '0'
+        ) || ':' ||
+        LPAD(
+            FLOOR(EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) % 60)::text,
+            2,
+            '0'
+        ) AS "OrdertoPunchTAT"
+
+        ${extraFields}
+
+    FROM "MenuTime" m
+    LEFT JOIN "PatientOrderDetail" pd
+        ON pd.ptm_id = m.id
+
+    LEFT JOIN "PatientOrder" po
+        ON po.id = pd.po_id
+
+    LEFT JOIN "DietType" dt
+        ON dt.diet_type_id = po.diet_type
+
+    LEFT JOIN "HinaiOrder" ho
+        ON ho.order_id = po.hinai_order_id
+
+    WHERE po.is_active = true
+        AND po.mst_id = ${BigInt(mstId)}
+        AND po.created_at >= ${startOfDay}
+        AND po.created_at <= ${endOfDay}
+        ${dietTypeFilter}
+
+    GROUP BY
+        ho.order_id,
+        ho.mr_no,
+        ho.patient_name,
+        ho.bed_no,
+        ho.ward,
+        ho.doctor,
+        dt.diet_name,
+        po.nursing_remark,
+        po.diet_remark,
+        po.created_by,
+        po.created_at,
+        ho.order_date,
+        po.dispatched_at,
+        po.dispatched,
+        po.is_cancelled
+
+   ORDER BY
+    ho.order_date DESC
+`;
 
     const results = await prisma.$queryRaw(sql);
 

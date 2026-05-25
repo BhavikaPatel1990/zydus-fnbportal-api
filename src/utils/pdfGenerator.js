@@ -44,30 +44,55 @@ export const generateBulkStickers = (stickersData, stream) => {
  * Common render logic for a single sticker page
  */
 function renderSticker(doc, data, startX, startY) {
-    const left = startX + 5;
-    const top = startY + 5;
-    const stickerWidth = 276;
-    const stickerHeight = 276;
-    const xLabel = startX + 15;
-    const xColon = startX + 72;
-    const xValue = startX + 80;
-    const defaultValueWidth = 181;
+    // =========================
+    // STICKER SIZE
+    // =========================
+    const outerSize = 276;
+
+    // Equal margin from all sides
+    const borderMargin = 15;
+
+    // Border position
+    const left = startX + borderMargin;
+    const top = startY + borderMargin;
+
+    // Border dimensions
+    const stickerWidth = outerSize - (borderMargin * 2);
+    const stickerHeight = outerSize - (borderMargin * 2);
+
+    // Inner content padding
+    const contentPadding = 10;
+
+    // Text positions
+    const xLabel = left + contentPadding;
+    const xColon = left + 68;
+    const xValue = left + 78;
+
+    const defaultValueWidth = stickerWidth - 95;
     const topValueWidth = 125;
 
-    // Outer Border
+    // =========================
+    // OUTER BORDER
+    // =========================
     doc.rect(left, top, stickerWidth, stickerHeight).stroke();
 
-    // Logo
+    // =========================
+    // LOGO
+    // =========================
     try {
-        doc.image(LOGO_PATH, startX + 245, startY + 10, { width: 30 });
+        doc.image( LOGO_PATH, left + stickerWidth - (borderMargin + 2), top - borderMargin , { width: 30 } );
     } catch (e) {
-        // Logo missing, skip
+        // Logo missing
     }
 
     doc.fillColor('black');
 
-    let y = startY + 20;
+    // Start content with equal top spacing
+    let y = top + contentPadding;
 
+    // =========================
+    // ROW HELPER
+    // =========================
     const addRow = (label, value, options = {}) => {
         const {
             fontSize = 9,
@@ -78,52 +103,118 @@ function renderSticker(doc, data, startX, startY) {
         } = options;
 
         const safeValue = value || '-';
-        doc.fontSize(fontSize).font('Helvetica-Bold').text(label, xLabel, y, {
+
+        // Label
+        doc .fontSize(fontSize) .font('Helvetica-Bold') .text(label, xLabel, y, { lineBreak: false });
+
+        // Colon
+        doc.text(':', xColon, y, {
             lineBreak: false
         });
-        doc.text(':', xColon, y, { lineBreak: false });
 
+        // Calculate value height
         const valueHeight = doc
             .fontSize(valueFontSize)
             .font(isBoldValue ? 'Helvetica-Bold' : 'Helvetica')
-            .heightOfString(safeValue, { width: valueWidth, align: 'left' });
+            .heightOfString(safeValue, {
+                width: valueWidth,
+                align: 'left'
+            });
 
+        // Value
         doc.text(safeValue, xValue, y, {
             width: valueWidth,
             align: 'left'
         });
 
+        // Next line
         y += Math.max(valueHeight, fontSize) + gap;
     };
 
-    addRow('MRN', data.mr_no, { isBoldValue: true, valueWidth: topValueWidth });
-    addRow('NAME', data.patient_name, { isBoldValue: true, valueWidth: topValueWidth });
-    addRow('DOCTOR', data.doctor, { isBoldValue: true, valueWidth: topValueWidth });
-    addRow('ADM NO.', data.admission_no, { isBoldValue: true, valueWidth: topValueWidth });
-    addRow('BED-WARD', `${data.bed_no || ''} - ${data.ward || ''}`, {
+    // =========================
+    // TOP SECTION
+    // =========================
+    addRow('MRN', data.mr_no, {
         isBoldValue: true,
-        valueWidth: defaultValueWidth,
-        gap: 5
+        valueWidth: topValueWidth
     });
 
-    // Horizontal Line
-    doc.moveTo(left, y).lineTo(left + stickerWidth, y).stroke();
+    addRow('NAME', data.patient_name, {
+        isBoldValue: true,
+        valueWidth: topValueWidth
+    });
+
+    addRow('DOCTOR', data.doctor, {
+        isBoldValue: true,
+        valueWidth: topValueWidth
+    });
+
+    addRow('ADM NO.', data.admission_no, {
+        isBoldValue: true,
+        valueWidth: topValueWidth
+    });
+
+    addRow(
+        'BED-WARD',
+        `${data.bed_no || ''} - ${data.ward || ''}`,
+        {
+            isBoldValue: true,
+            valueWidth: defaultValueWidth,
+            gap: 5
+        }
+    );
+
+    // =========================
+    // SECTION DIVIDER
+    // =========================
+    doc.moveTo(left, y)
+        .lineTo(left + stickerWidth, y)
+        .stroke();
+
     y += 8;
 
+    // =========================
+    // MIDDLE SECTION
+    // =========================
     addRow('DIET-TYPE', data.diet_name);
-    addRow('MENU', data.menu_description, { isBoldValue: true });
-    addRow('ITEM', data.items, { valueFontSize: 8, valueWidth: 180, gap: 6 });
 
-    // Horizontal Line
-    doc.moveTo(left, y).lineTo(left + stickerWidth, y).stroke();
+    addRow('MENU', data.menu_description, {
+        isBoldValue: true
+    });
+
+    addRow('ITEM', data.items, {
+        valueFontSize: 8,
+        valueWidth: 180,
+        gap: 6
+    });
+
+    // =========================
+    // SECTION DIVIDER
+    // =========================
+    doc.moveTo(left, y)
+        .lineTo(left + stickerWidth, y)
+        .stroke();
+
     y += 8;
 
-    addRow('NR RMK', data.nursing_remark, { fontSize: 8, valueFontSize: 8, valueWidth: 180 });
-    addRow('DT RMK', data.diet_remark, { fontSize: 8, valueFontSize: 8, valueWidth: 180 });
-    addRow('ORDER DATE', data.order_date, { gap: 0 });
+    // =========================
+    // BOTTOM SECTION
+    // =========================
+    addRow('NR RMK', data.nursing_remark, {
+        fontSize: 8,
+        valueFontSize: 8,
+        valueWidth: 180
+    });
 
-    // Bottom Border line
-    doc.moveTo(left, top + stickerHeight).lineTo(left + stickerWidth, top + stickerHeight).stroke();
+    addRow('DT RMK', data.diet_remark, {
+        fontSize: 8,
+        valueFontSize: 8,
+        valueWidth: 180
+    });
+
+    addRow('ORDER DATE', data.order_date, {
+        gap: 0
+    });
 }
 
 /**
