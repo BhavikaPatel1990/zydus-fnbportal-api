@@ -125,6 +125,13 @@ const response = {
             data: formatDatesFast(data),
         });
     },
+    normalError: async (res, message) => {
+        return res.status(200).json({
+            status: false,
+            message: message,
+            data: null,
+        });
+    },
     error: async (res, message) => {
         return res.status(403).json({
             status: false,

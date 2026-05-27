@@ -7,6 +7,15 @@ import oracledb from 'oracledb';
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL?.replace(/\/$/, '');
 
+const createHttpError = (message, statusCode = 200) => {
+    const error = new Error(message);
+    error.statusCode = statusCode;
+    return error;
+};
+
+const createNormalError = (message) => createHttpError(message, 200);
+const createBadRequestError = (message) => createHttpError(message, 400);
+
 const getFirstDefined = (payload, keys) => {
     for (const key of keys) {
         if (payload[key] !== undefined && payload[key] !== null && payload[key] !== '') {
@@ -19,14 +28,14 @@ const getFirstDefined = (payload, keys) => {
 const toIntValue = (value, fieldName, { required = true } = {}) => {
     if (value === undefined) {
         if (required) {
-            throw new Error(`${fieldName} is required`);
+            throw createNormalError(`${fieldName} is required`);
         }
         return null;
     }
 
     const parsed = Number.parseInt(value, 10);
     if (Number.isNaN(parsed)) {
-        throw new Error(`${fieldName} must be a valid integer`);
+        throw createNormalError(`${fieldName} must be a valid integer`);
     }
 
     return parsed;
@@ -34,7 +43,7 @@ const toIntValue = (value, fieldName, { required = true } = {}) => {
 
 const getSiteListApiUrl = () => {
     if (!AUTH_SERVICE_URL) {
-        throw new Error('AUTH_SERVICE_URL is not configured');
+        throw createBadRequestError('AUTH_SERVICE_URL is not configured');
     }
 
     return AUTH_SERVICE_URL.endsWith('/api')
@@ -65,7 +74,7 @@ const resolveSiteMapping = async (siteValue) => {
     const siteRecord = siteRecordByExternalId ?? siteRecordByMstId;
 
     if (!siteRecord) {
-        throw new Error(`No active mst_site mapping found for site_id ${parsedSiteId}`);
+        throw createNormalError(`No active mst_site mapping found for site_id ${parsedSiteId}`);
     }
 
     return siteRecord.id;
@@ -94,7 +103,7 @@ const resolveHINAISiteMapping = async (siteValue) => {
     const siteRecord = siteRecordByExternalId ?? siteRecordByMstId;
 
     if (!siteRecord) {
-        throw new Error(`No active mst_site mapping found for site_id ${parsedSiteId}`);
+        throw createNormalError(`No active mst_site mapping found for site_id ${parsedSiteId}`);
     }
 
     return siteRecord.site_id;
@@ -132,7 +141,7 @@ export const getDietOrder = async (body, jwtUser) => {
 
     const mstId = await resolveSiteMapping(siteIdParam);
     if (!mstId) {
-        throw new Error('Invalid site mapping');
+        throw createNormalError('Invalid site mapping');
     }
 
     const ctime = new Date();
@@ -312,7 +321,7 @@ export const getDietSheet = async (body, jwtUser) => {
     const locationId = body.location_id;
 
     const mstId = await resolveSiteMapping(siteIdParam);
-    if (!mstId) throw new Error('Invalid site mapping');
+    if (!mstId) throw createNormalError('Invalid site mapping');
 
     let locationName = undefined;
     if (locationId && locationId !== 'all' && locationId !== '') {
@@ -490,7 +499,7 @@ export const getDietSheetLiquids = async (body, jwtUser) => {
     const locationId = body.location_id;
 
     const mstId = await resolveSiteMapping(siteIdParam);
-    if (!mstId) throw new Error('Invalid site mapping');
+    if (!mstId) throw createNormalError('Invalid site mapping');
 
     let locationName = undefined;
     if (locationId && locationId !== 'all' && locationId !== '') {
@@ -630,7 +639,7 @@ export const getPendingDietOrders = async (body, jwtUser) => {
 
     // ✅ KEEP mapping (used in your system elsewhere)
     const mstId = await resolveHINAISiteMapping(siteIdParam);
-    if (!mstId) throw new Error('Invalid site mapping');
+    if (!mstId) throw createNormalError('Invalid site mapping');
 
     let connection;
 
@@ -779,18 +788,18 @@ export const getExtraOrders = async (body, jwtUser) => {
 
         // ✅ Site mapping
         const mstId = await resolveSiteMapping(siteIdParam);
-        if (!mstId) throw new Error('invalid site mapping');
+        if (!mstId) throw createNormalError('invalid site mapping');
 
         // ✅ Date validation
         if (!sdateRaw || !edateRaw) {
-            throw new Error('from_date and to_date are required');
+            throw createNormalError('from_date and to_date are required');
         }
 
         const sdate = new Date(sdateRaw);
         const edate = new Date(edateRaw);
 
         if (isNaN(sdate.getTime()) || isNaN(edate.getTime())) {
-            throw new Error('invalid date format, use yyyy-mm-dd');
+            throw createNormalError('invalid date format, use yyyy-mm-dd');
         }
 
         sdate.setHours(0, 0, 0, 0);
@@ -979,10 +988,10 @@ export const getLiquidData = async (body, jwtUser) => {
 
         // ✅ site mapping
         const mstId = await resolveSiteMapping(siteIdParam);
-        if (!mstId) throw new Error('invalid site mapping');
+        if (!mstId) throw createNormalError('invalid site mapping');
 
         // ✅ date validation (dd-mm-yyyy input)
-        if (!fromRaw || !toRaw) throw new Error('from_date and to_date are required');
+        if (!fromRaw || !toRaw) throw createNormalError('from_date and to_date are required');
 
         const parseDMY = (d) => {
             const [day, month, year] = d.split('-');
@@ -992,7 +1001,7 @@ export const getLiquidData = async (body, jwtUser) => {
         const from = parseDMY(fromRaw);
         const to = parseDMY(toRaw);
 
-        if (isNaN(from) || isNaN(to)) throw new Error('invalid date format (use dd-mm-yyyy)');
+        if (isNaN(from) || isNaN(to)) throw createNormalError('invalid date format (use dd-mm-yyyy)');
 
         from.setHours(0, 0, 0, 0);
         to.setHours(23, 59, 59, 999);
@@ -1224,7 +1233,7 @@ export const getPatientOrderLedger = async (body, jwtUser) => {
         const mrn = (body.mr_no || body.mrn || '').trim();
 
         if (!mrn) {
-            throw new Error("mr_no is required");
+            throw createNormalError("mr_no is required");
         }
 
         /*
