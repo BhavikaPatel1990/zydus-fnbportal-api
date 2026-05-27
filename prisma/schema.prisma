@@ -73,7 +73,7 @@ model HinaiOrder {
   out_by         String?
   remarks        String?
   clearance_time String?
-  clearance_by   BigInt?
+  clearance_by   String?
   diagnosis      String?
   approved_date  DateTime?
   created_at     DateTime       @default(now())
@@ -150,6 +150,7 @@ model PatientOrder {
   is_active  Boolean  @default(true)
 
   hinaiOrder          HinaiOrder           @relation("HinaiToPatientOrder", fields: [hinai_order_id], references: [order_id])
+  dietTypeData        DietType             @relation("DietTypeToPatientOrder", fields: [diet_type], references: [diet_type_id])
   patientOrderDetails PatientOrderDetail[] @relation("PoToOrderDetail")
   patientOrderLiquids PatientOrderLiquid[] @relation("PoToLiquid")
 

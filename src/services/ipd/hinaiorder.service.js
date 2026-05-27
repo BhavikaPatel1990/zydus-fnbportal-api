@@ -280,6 +280,9 @@ const buildHinaiOrderListRow = ({
     mobile_no: row.mobile_no || '',
     diagnosis: row.diagnosis || '',
     site_id: row.mst_id ? Number(row.mst_id) : null,
+    out_time: row.out_time,
+    clearance_time: row.clearance_time,
+    clearance: row.clearance,
 });
 
 const buildLegacyHinaiOrderListRow = (row) => ({
@@ -2578,6 +2581,25 @@ export const outPatientOrder = async (body, jwtUser) => {
 
     const orderIds = parsePipeValueList(hinaiOrderId).map(id => toIntValue(id, 'order_id'));
 
+    // Check already out-patient updated records
+    const alreadyOutOrders = await prisma.hinaiOrder.findMany({
+        where: {
+            order_id: { in: orderIds },
+            is_active: true,
+            out_time: {
+                not: null
+            }
+        },
+        select: {
+            order_id: true
+        }
+    });
+
+    if (alreadyOutOrders.length > 0) {
+        // throw new Error(`Selected hinai orders out: ${alreadyOutOrders.map(o => o.order_id).join(', ')}`);
+        throw new Error(`Selected hinai orders already out`);
+    }
+
     const result = await prisma.hinaiOrder.updateMany({
         where: {
             order_id: { in: orderIds },
@@ -2602,13 +2624,36 @@ export const clearPatientOrders = async (body, jwtUser) => {
     const auditUserId = getAuditUserId(jwtUser);
     const hinaiOrderIds = getFirstDefined(body, ['hinai_order_ids']);
 
-    const clearanceTime = new Date().toLocaleString('en-GB', { hour12: false }).replace(',', '');
+    const clearanceTime = new Date()
+        .toLocaleString('en-GB', { hour12: false })
+        .replace(',', '');
 
     if (!hinaiOrderIds) {
-        throw new Error('hinai_order_ids is required');
+        throw new Error('hinai order ids is required');
     }
 
-    const orderIds = parsePipeValueList(hinaiOrderIds).map(id => toIntValue(id, 'order_id'));
+    const orderIds = parsePipeValueList(hinaiOrderIds).map(id =>
+        toIntValue(id, 'order_id')
+    );
+
+    // Check already cleared orders
+    const alreadyClearedOrders = await prisma.hinaiOrder.findMany({
+        where: {
+            order_id: { in: orderIds },
+            clearance: true,
+            is_active: true
+        },
+        select: {
+            order_id: true
+        }
+    });
+
+    if (alreadyClearedOrders.length > 0) {
+        const clearedIds = alreadyClearedOrders.map(o => o.order_id);
+
+        // throw new Error(`Selected hinai orders already cleared: ${clearedIds.join(', ')}`);
+        throw new Error(`Selected hinai orders already cleared`);
+    }
 
     const result = await prisma.hinaiOrder.updateMany({
         where: {
@@ -2618,7 +2663,7 @@ export const clearPatientOrders = async (body, jwtUser) => {
         data: {
             clearance: true,
             clearance_time: clearanceTime,
-            clearance_by: auditUserId ? toBigIntValue(auditUserId, 'auditUserId', { required: false }) : null,
+            clearance_by: auditUserId ? String(auditUserId) : null,
             updated_by: auditUserId ? String(auditUserId) : null,
         }
     });
