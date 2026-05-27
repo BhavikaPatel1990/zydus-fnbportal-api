@@ -63,4 +63,3 @@ router.post('/print/liquid-stickers', checkPermission('FNB_PORTAL', 'READ'), hin
 router.post('/has-new-order',checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.hasNewOrder);
 
 export default router;
-

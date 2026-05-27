@@ -27,4 +27,3 @@ router.post("/patient-order-ledger", checkPermission('FNB_PORTAL', 'READ'), fnbD
 router.get("/diet-types", checkPermission('FNB_PORTAL', 'READ'), fnbDashboardController.getDietTypes);
 
 export default router;
-

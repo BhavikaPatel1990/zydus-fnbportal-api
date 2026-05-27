@@ -25,12 +25,12 @@ const checkPermission = (moduleKey, action) => {
             // Check permission from DB (zydusapp database)
             // Since we don't have the models in our local schema.prisma, we use $queryRaw
             const permissionExists = await authPrisma.$queryRaw`
-                SELECT rp.id 
+                SELECT rp.id
                 FROM role_permissions rp
                 JOIN user_roles ur ON rp.role_id = ur.role_id
                 JOIN modules m ON rp.module_id = m.id
                 JOIN permissions p ON rp.permission_id = p.id
-                WHERE ur.user_id = ${userId}::uuid 
+                WHERE ur.user_id = ${userId}::uuid
                   AND m.module_key = ${moduleKey}
                   AND p.permission_name = ${action}
                 LIMIT 1
