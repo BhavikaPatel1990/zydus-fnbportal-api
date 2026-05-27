@@ -1,5 +1,13 @@
 import prisma from '../../config/db.js';
 
+const createHttpError = (message, statusCode = 200) => {
+    const error = new Error(message);
+    error.statusCode = statusCode;
+    return error;
+};
+
+const createNormalError = (message) => createHttpError(message, 200);
+
 /**
  * Get all orders
  */
@@ -15,6 +23,10 @@ export const getAllOrders = async (req) => {
  * Get order by ID
  */
 export const getOrderById = async (id) => {
+    if (!id) {
+        throw createNormalError('Order id is required');
+    }
+
     const order = await prisma.fnbOrder.findFirst({
         where: {
             id: id,
@@ -28,6 +40,10 @@ export const getOrderById = async (id) => {
  * Create a new order
  */
 export const createOrder = async (body, user) => {
+    if (!body?.order_no) {
+        throw createNormalError('order_no is required');
+    }
+
     const order = await prisma.fnbOrder.create({
         data: {
             order_no: body.order_no,
@@ -43,6 +59,14 @@ export const createOrder = async (body, user) => {
  * Update an order
  */
 export const updateOrder = async (id, body, user) => {
+    if (!id) {
+        throw createNormalError('Order id is required');
+    }
+
+    if (!body?.order_no) {
+        throw createNormalError('order_no is required');
+    }
+
     const order = await prisma.fnbOrder.update({
         where: { id: id },
         data: {
@@ -59,6 +83,10 @@ export const updateOrder = async (id, body, user) => {
  * Soft delete an order
  */
 export const deleteOrder = async (id, user) => {
+    if (!id) {
+        throw createNormalError('Order id is required');
+    }
+
     const order = await prisma.fnbOrder.update({
         where: { id: id },
         data: {

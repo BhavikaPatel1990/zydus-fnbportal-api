@@ -12,6 +12,17 @@ import authPrisma from '../../config/authDb.js';
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL?.replace(/\/$/, '');
 
+const createHttpError = (message, statusCode = 200) => {
+    const error = new Error(message);
+    error.statusCode = statusCode;
+    return error;
+};
+
+const createNormalError = (message) => createHttpError(message, 200);
+const createBadRequestError = (message) => createHttpError(message, 400);
+const createForbiddenError = (message) => createHttpError(message, 403);
+const createUnauthorizedError = (message) => createHttpError(message, 401);
+
 const hinaiOrderSelect = {
     id: true,
     patient_id: true,
@@ -67,7 +78,7 @@ const getFirstDefined = (payload, keys) => {
 const toStringValue = (value, fieldName, { required = true } = {}) => {
     if (value === undefined) {
         if (required) {
-            throw new Error(`${fieldName} is required`);
+            throw createNormalError(`${fieldName} is required`);
         }
         return null;
     }
@@ -78,14 +89,14 @@ const toStringValue = (value, fieldName, { required = true } = {}) => {
 const toIntValue = (value, fieldName, { required = true } = {}) => {
     if (value === undefined) {
         if (required) {
-            throw new Error(`${fieldName} is required`);
+            throw createNormalError(`${fieldName} is required`);
         }
         return null;
     }
 
     const parsed = Number.parseInt(value, 10);
     if (Number.isNaN(parsed)) {
-        throw new Error(`${fieldName} must be a valid integer`);
+        throw createNormalError(`${fieldName} must be a valid integer`);
     }
 
     return parsed;
@@ -94,7 +105,7 @@ const toIntValue = (value, fieldName, { required = true } = {}) => {
 const toBigIntValue = (value, fieldName, { required = true } = {}) => {
     if (value === undefined || value === null || value === '') {
         if (required) {
-            throw new Error(`${fieldName} is required`);
+            throw createNormalError(`${fieldName} is required`);
         }
         return null;
     }
@@ -103,7 +114,7 @@ const toBigIntValue = (value, fieldName, { required = true } = {}) => {
         return BigInt(value);
     } catch (error) {
         if (required) {
-            throw new Error(`${fieldName} must be a valid bigint`);
+            throw createNormalError(`${fieldName} must be a valid bigint`);
         }
         return null;
     }
@@ -112,14 +123,14 @@ const toBigIntValue = (value, fieldName, { required = true } = {}) => {
 const toDateValue = (value, fieldName, { required = true } = {}) => {
     if (value === undefined) {
         if (required) {
-            throw new Error(`${fieldName} is required`);
+            throw createNormalError(`${fieldName} is required`);
         }
         return null;
     }
 
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) {
-        throw new Error(`${fieldName} must be a valid date`);
+        throw createNormalError(`${fieldName} must be a valid date`);
     }
 
     return parsed;
@@ -360,7 +371,7 @@ const getAuditUserId = (jwtUser) => jwtUser?.userId ?? jwtUser?.id ?? null;
 
 const getSiteListApiUrl = () => {
     if (!AUTH_SERVICE_URL) {
-        throw new Error('AUTH_SERVICE_URL is not configured');
+        throw createBadRequestError('AUTH_SERVICE_URL is not configured');
     }
 
     return AUTH_SERVICE_URL.endsWith('/api')
@@ -387,7 +398,7 @@ const getMstIdFromSiteId = async (siteId) => {
     );
 
     if (!siteRecord) {
-        throw new Error(`No mst mapping found for site_id ${parsedSiteId}`);
+        throw createNormalError(`No mst mapping found for site_id ${parsedSiteId}`);
     }
 
     return siteRecord.id; // mst_id
@@ -412,7 +423,7 @@ const getMstIdDirect = async (mstId) => {
     );
 
     if (!siteRecord) {
-        throw new Error(`Invalid mst_id ${parsedMstId}`);
+        throw createNormalError(`Invalid mst_id ${parsedMstId}`);
     }
 
     return siteRecord.id;

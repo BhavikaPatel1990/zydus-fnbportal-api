@@ -2,6 +2,24 @@ import response from '../../utils/response.js';
 import * as hinaiOrderService from '../../services/ipd/hinaiorder.service.js';
 import * as pdfGenerator from '../../utils/pdfGenerator.js';
 
+const handleHinaiOrderError = (res, error, fallbackMessage) => {
+    const message = error?.message || fallbackMessage;
+
+    if (error?.statusCode === 401) {
+        return response.authError(res, message);
+    }
+
+    if (error?.statusCode === 403) {
+        return response.error(res, message);
+    }
+
+    if (error?.statusCode === 400) {
+        return response.serverError(res, message);
+    }
+
+    return response.normalError(res, message);
+};
+
 
 export const createHinaiOrder = async (req, res) => {
     try {
@@ -13,7 +31,7 @@ export const createHinaiOrder = async (req, res) => {
         return response.success(res, message, data);
     } catch (error) {
         console.error('Error creating HINAI order:', error);
-        return response.serverError(res, error.message || 'Failed to create HINAI order');
+        return handleHinaiOrderError(res, error, 'Failed to create HINAI order');
     }
 
 };
@@ -28,7 +46,7 @@ export const updateHinaiOrderTransfer = async (req, res) => {
         return response.success(res, message, data);
     } catch (error) {
         console.error('Error updating HINAI order transfer:', error);
-        return response.serverError(res, error.message || 'Failed to update transfer status');
+        return handleHinaiOrderError(res, error, 'Failed to update transfer status');
     }
 
 };
@@ -43,7 +61,7 @@ export const updateHinaiOrderDischarge = async (req, res) => {
         return response.success(res, message, data);
     } catch (error) {
         console.error('Error updating HINAI order discharge:', error);
-        return response.serverError(res, error.message || 'Failed to update discharge status');
+        return handleHinaiOrderError(res, error, 'Failed to update discharge status');
     }
 
 };
@@ -54,7 +72,7 @@ export const getHinaiOrders = async (req, res) => {
         return response.success(res, 'HINAI orders fetched successfully', data);
     } catch (error) {
         console.error('Error fetching HINAI orders:', error);
-        return response.serverError(res, error.message || 'Failed to fetch HINAI orders');
+        return handleHinaiOrderError(res, error, 'Failed to fetch HINAI orders');
     }
 
 };
@@ -65,7 +83,7 @@ export const refreshHinaiOrders = async (req, res) => {
         return response.success(res, 'HINAI orders refreshed successfully', data);
     } catch (err) {
         console.error('Error refreshing HINAI orders:', err);
-        return response.serverError(res, err.message || 'Failed to refresh HINAI orders');
+        return handleHinaiOrderError(res, err, 'Failed to refresh HINAI orders');
     }
 
 };
@@ -85,7 +103,7 @@ export const getHinaiOrderSummary = async (req, res) => {
         );
     } catch (error) {
         console.error('Error fetching HINAI order summary:', error);
-        return response.serverError(res, error.message || 'Failed to fetch order summary');
+        return handleHinaiOrderError(res, error, 'Failed to fetch order summary');
     }
 
 };
@@ -97,7 +115,7 @@ export const getMenuDetails = async (req, res) => {
 
     } catch (error) {
         console.error('Menu details error:', error.message);
-        return response.serverError(res, error.message);
+        return handleHinaiOrderError(res, error, 'Failed to fetch menu details');
     }
 };
 
@@ -110,7 +128,7 @@ export const getHinaiOrderDetails = async (req, res) => {
 
     } catch (error) {
         console.error('HINAI order details error:', error.message);
-        return response.serverError(res, error.message);
+        return handleHinaiOrderError(res, error, 'Failed to fetch HINAI order details');
     }
 };
 
@@ -121,8 +139,7 @@ export const getNursingRemarks = async (req, res) => {
         return response.success(res, 'Nursing remarks fetched successfully', data);
     } catch (error) {
         console.error('getNursingRemarks controller error:', error);
-
-        return response.serverError(res, error.message);
+        return handleHinaiOrderError(res, error, 'Failed to fetch nursing remarks');
     }
 };
 
@@ -140,7 +157,7 @@ export const createPatientOrder = async (req, res) => {
         );
     } catch (error) {
         console.error('Error saving patient order:', error);
-        return response.serverError(res, error.message || 'Failed to save patient order');
+        return handleHinaiOrderError(res, error, 'Failed to save patient order');
     }
 
 };
@@ -159,7 +176,7 @@ export const getPatientOrderFormData = async (req, res) => {
         );
     } catch (error) {
         console.error('Error fetching patient order form data:', error);
-        return response.serverError(res, error.message || 'Failed to fetch form data');
+        return handleHinaiOrderError(res, error, 'Failed to fetch form data');
     }
 
 };
@@ -178,7 +195,7 @@ export const getPatientLiquidOrderFormData = async (req, res) => {
         );
     } catch (error) {
         console.error('getPatientLiquidOrderFormData error:', error.message);
-        return response.serverError(res, error.message);
+        return handleHinaiOrderError(res, error, 'Failed to fetch patient liquid order form data');
     }
 };
 
@@ -196,7 +213,7 @@ export const getPatientLiquidOrderTimings = async (req, res) => {
         );
     } catch (error) {
         console.error('getPatientLiquidOrderTimings error:', error.message);
-        return response.serverError(res, error.message);
+        return handleHinaiOrderError(res, error, 'Failed to fetch patient liquid order timings');
     }
 };
 
@@ -215,7 +232,7 @@ export const createPatientLiquidOrder = async (req, res) => {
 
     } catch (error) {
         console.error('Error saving patient liquid order:', error);
-        return response.serverError(res, error.message || 'Failed to save liquid order');
+        return handleHinaiOrderError(res, error, 'Failed to save liquid order');
     }
 
 };
@@ -227,7 +244,7 @@ export const checkPageLock = async (req, res) => {
 
     } catch (error) {
         console.error('checkPageLock error:', error.message);
-        return response.serverError(res, error.message);
+        return handleHinaiOrderError(res, error, 'Failed to verify page lock status');
     }
 };
 
@@ -239,7 +256,7 @@ export const releasePageLock = async (req, res) => {
 
     } catch (error) {
         console.error('releasePageLock error:', error.message);
-        return response.serverError(res, error.message);
+        return handleHinaiOrderError(res, error, 'Failed to release page lock');
     }
 };
 
@@ -249,7 +266,7 @@ export const updateDiagnosis = async (req, res) => {
         return response.success(res, 'Diagnosis updated successfully', data);
     } catch (error) {
         console.error('updateDiagnosis error:', error.message);
-        return response.serverError(res, error.message);
+        return handleHinaiOrderError(res, error, 'Failed to update diagnosis');
     }
 };
 
@@ -262,7 +279,7 @@ export const dispatchPatientOrder = async (req, res) => {
         return response.success(res, 'Order dispatched successfully', data);
     } catch (error) {
         console.error('Error dispatching patient order:', error);
-        return response.serverError(res, error.message || 'Failed to dispatch order');
+        return handleHinaiOrderError(res, error, 'Failed to dispatch order');
     }
 
 };
@@ -276,7 +293,7 @@ export const cancelPatientOrder = async (req, res) => {
         return response.success(res, 'Order cancelled successfully', data);
     } catch (error) {
         console.error('cancelPatientOrder error:', error.message);
-        return response.serverError(res, error.message);
+        return handleHinaiOrderError(res, error, 'Failed to cancel order');
     }
 };
 
@@ -287,7 +304,7 @@ export const outPatientOrder = async (req, res) => {
 
     } catch (error) {
         console.error('outPatientOrder error:', error.message);
-        return response.serverError(res, error.message);
+        return handleHinaiOrderError(res, error, 'Failed to mark order as out');
     }
 };
 
@@ -297,7 +314,7 @@ export const clearPatientOrders = async (req, res) => {
         return response.success(res, 'Orders cleared successfully', data);
     } catch (error) {
         console.error('clearPatientOrders error:', error.message);
-        return response.serverError(res, error.message);
+        return handleHinaiOrderError(res, error, 'Failed to clear orders');
     }
 };
 
@@ -307,7 +324,7 @@ export const getWards = async (req, res) => {
         return response.success(res, 'Wards fetched successfully', data);
     } catch (error) {
         console.error('Error fetching wards:', error);
-        return response.serverError(res, error.message || 'Failed to fetch wards');
+        return handleHinaiOrderError(res, error, 'Failed to fetch wards');
     }
 
 };
@@ -318,7 +335,7 @@ export const getOrderMenuListWithPrintStatus = async (req, res) => {
         return response.success(res, 'Order menu list fetched successfully', data);
     } catch (error) {
         console.error('Error fetching order menu list:', error);
-        return response.serverError(res, error.message || 'Failed to fetch menu list');
+        return handleHinaiOrderError(res, error, 'Failed to fetch menu list');
     }
 
 };
@@ -338,7 +355,7 @@ export const downloadOrdersCsv = async (req, res) => {
         return res.send(csvData);
     } catch (error) {
         console.error('downloadOrdersCsv error:', error.message);
-        return response.serverError(res, error.message);
+        return handleHinaiOrderError(res, error, 'Failed to download orders CSV');
     }
 };
 
@@ -357,7 +374,7 @@ export const downloadOutAllOrdersCsv = async (req, res) => {
         return res.send(csvData);
     } catch (error) {
         console.error('downloadOutAllOrdersCsv error:', error.message);
-        return response.serverError(res, error.message);
+        return handleHinaiOrderError(res, error, 'Failed to download out orders CSV');
     }
 };
 
@@ -372,7 +389,7 @@ export const printPatientSticker = async (req, res) => {
         pdfGenerator.generatePatientSticker(data, res);
     } catch (error) {
         console.error('Error printing patient sticker:', error);
-        return response.serverError(res, error.message || 'Failed to generate patient sticker');
+        return handleHinaiOrderError(res, error, 'Failed to generate patient sticker');
     }
 
 };
@@ -391,7 +408,7 @@ export const printBulkStickers = async (req, res) => {
         pdfGenerator.generateBulkStickers(stickersData, res);
     } catch (error) {
         console.error('printBulkStickers error:', error.message);
-        return response.serverError(res, error.message);
+        return handleHinaiOrderError(res, error, 'Failed to generate bulk stickers');
     }
 };
 
@@ -409,7 +426,7 @@ export const printLiquidStickers = async (req, res) => {
         pdfGenerator.generateLiquidStickers(stickersData, res);
     } catch (error) {
         console.error('printLiquidStickers error:', error.message);
-        return response.serverError(res, error.message);
+        return handleHinaiOrderError(res, error, 'Failed to generate liquid stickers');
     }
 };
 
@@ -428,7 +445,7 @@ export const hasNewOrder = async (req,res) => {
             error
         );
 
-        return response.serverError(res, error.message || 'Failed to fetch order status');
+        return handleHinaiOrderError(res, error, 'Failed to fetch order status');
     }
 };
 

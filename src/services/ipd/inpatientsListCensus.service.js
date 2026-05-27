@@ -1,6 +1,15 @@
 import { getOracleConnection } from '../../config/oracleDb.js';
 import oracledb from 'oracledb';
 
+const createHttpError = (message, statusCode = 200) => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+};
+
+const createNormalError = (message) => createHttpError(message, 200);
+const createBadRequestError = (message) => createHttpError(message, 400);
+
 /**
  * Convert object keys to snake_case + lowercase
  */
@@ -24,6 +33,10 @@ export const getInpatientsListCensus = async (siteId) => {
   let connection;
 
   try {
+    if (siteId === undefined || siteId === null || siteId === '') {
+      throw createNormalError('Site ID is required');
+    }
+
     connection = await getOracleConnection();
 
     const sql = `
@@ -60,7 +73,10 @@ export const getInpatientsListCensus = async (siteId) => {
     return result.rows.map(toSnakeCase);
   } catch (err) {
     console.error('Error in get inpatients service:', err);
-    throw err;
+    if (err?.statusCode) {
+      throw err;
+    }
+    throw createBadRequestError(err.message || 'Failed to fetch inpatient list from Oracle');
   } finally {
     if (connection) {
       try {
