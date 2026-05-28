@@ -3008,7 +3008,7 @@ export const getPatientStickerData = async (body, jwtUser) => {
     }
 
     const patientOrderDetailsWhere = {};
-    
+
     if (menuSelection.mode === 'ptm_id') {
         patientOrderDetailsWhere.ptm_id = String(menuSelection.value);
     } else if (menuSelection.mode === 'legacy_description') {
@@ -3067,7 +3067,7 @@ const markStickerAsPrinted = async (patientId, poId, menuId) => {
             where: {
                 patient_id: patientId,
                 po_id: poId,
-                menu_time_id: 0 // Simplification for now
+                menu_time_id: menuId // Simplification for now
             }
         });
 
@@ -3081,7 +3081,7 @@ const markStickerAsPrinted = async (patientId, poId, menuId) => {
                 data: {
                     patient_id: patientId,
                     po_id: poId,
-                    menu_time_id: 0,
+                    menu_time_id: menuId,
                     print_done: true
                 }
             });
