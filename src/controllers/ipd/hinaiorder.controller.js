@@ -344,12 +344,12 @@ export const downloadOrdersCsv = async (req, res) => {
     try {
         const csvData = await hinaiOrderService.downloadOrdersCsv(req.body, req.user);
         if (!csvData) {
-            return response.serverError(res, 'No records to display...');
+            return response.normalError(res, 'No records to display...');
         }
 
         const itemType = req.body.item || 'regular';
         const fileName = `TodayOrders_${new Date().toISOString().slice(0, 10)}_${itemType}.csv`;
-        
+
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
         return res.send(csvData);
@@ -364,11 +364,11 @@ export const downloadOutAllOrdersCsv = async (req, res) => {
     try {
         const csvData = await hinaiOrderService.downloadOutAllOrdersCsv(req.body, req.user);
         if (!csvData) {
-            return response.serverError(res, 'No records to display...');
+            return response.normalError(res, 'No records to display...');
         }
 
         const fileName = `OutAllOrders_${new Date().toISOString().slice(0, 10)}.csv`;
-        
+
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
         return res.send(csvData);
@@ -382,10 +382,10 @@ export const downloadOutAllOrdersCsv = async (req, res) => {
 export const printPatientSticker = async (req, res) => {
     try {
         const data = await hinaiOrderService.getPatientStickerData(req.body, req.user);
-        
+
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'inline; filename=sticker.pdf');
-        
+
         pdfGenerator.generatePatientSticker(data, res);
     } catch (error) {
         console.error('Error printing patient sticker:', error);
@@ -399,12 +399,12 @@ export const printBulkStickers = async (req, res) => {
         const stickersData = await hinaiOrderService.getBulkStickerData(req.body, req.user);
 
         if (!stickersData.length) {
-            return response.serverError(res, 'No records to display...');
+            return response.normalError(res, 'No records to display...');
         }
-        
+
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'inline; filename=bulk_stickers.pdf');
-        
+
         pdfGenerator.generateBulkStickers(stickersData, res);
     } catch (error) {
         console.error('printBulkStickers error:', error.message);
@@ -417,12 +417,12 @@ export const printLiquidStickers = async (req, res) => {
         const stickersData = await hinaiOrderService.getLiquidStickerData(req.body, req.user);
 
         if (!stickersData.length) {
-            return response.serverError(res, 'No records to display...');
+            return response.normalError(res, 'No records to display...');
         }
-        
+
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'inline; filename=liquid_stickers.pdf');
-        
+
         pdfGenerator.generateLiquidStickers(stickersData, res);
     } catch (error) {
         console.error('printLiquidStickers error:', error.message);
@@ -448,4 +448,3 @@ export const hasNewOrder = async (req,res) => {
         return handleHinaiOrderError(res, error, 'Failed to fetch order status');
     }
 };
-
