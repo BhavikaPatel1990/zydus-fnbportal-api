@@ -115,6 +115,7 @@ model Location {
 model MenuTime {
   id                  String               @id @default(uuid())
   description         String
+  sort_order          Int                  @default(0)
   created_at          DateTime             @default(now())
   updated_at          DateTime             @updatedAt
   deleted_at          DateTime?
