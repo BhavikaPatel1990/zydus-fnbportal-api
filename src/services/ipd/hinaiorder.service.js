@@ -656,7 +656,7 @@ const getPatientOrderMenuTimes = async (dietType) => {
             is_active: true,
         },
         orderBy: {
-            description: 'asc',
+            sort_order: 'asc'
         },
     });
 
