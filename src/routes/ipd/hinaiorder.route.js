@@ -4,6 +4,11 @@ import checkPermission from '../../middleware/checkPermission.js';
 
 const router = Router();
 
+router.use((req, res, next) => {
+    req.body = { ...req.params, ...req.query, ...req.body };
+    next();
+});
+
 router.post('/', checkPermission('FNB_PORTAL', 'CREATE'), hinaiOrderController.createHinaiOrder);
 
 router.put('/transfer', checkPermission('FNB_PORTAL', 'UPDATE'), hinaiOrderController.updateHinaiOrderTransfer);
@@ -53,6 +58,10 @@ router.post('/cancel', checkPermission('FNB_PORTAL', 'UPDATE'), hinaiOrderContro
 router.post('/export/orders', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.downloadOrdersCsv);
 
 router.post('/export/out-all', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.downloadOutAllOrdersCsv);
+router.post('/out-all-list', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.getOutAllList);
+
+router.post('/clearance-list', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.getClearanceList);
+router.post('/export/clearance', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.downloadClearanceCsv);
 
 router.post('/print/sticker', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.printPatientSticker);
 router.post('/print/bulk-stickers', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.printBulkStickers);

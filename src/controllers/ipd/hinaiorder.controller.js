@@ -362,7 +362,8 @@ export const downloadOrdersCsv = async (req, res) => {
 
 export const downloadOutAllOrdersCsv = async (req, res) => {
     try {
-        const csvData = await hinaiOrderService.downloadOutAllOrdersCsv(req.body, req.user);
+        const requestData = { ...req.body, ...req.query };
+        const csvData = await hinaiOrderService.downloadOutAllOrdersCsv(requestData, req.user);
         if (!csvData) {
             return response.normalError(res, 'No records to display...');
         }
@@ -375,6 +376,45 @@ export const downloadOutAllOrdersCsv = async (req, res) => {
     } catch (error) {
         console.error('downloadOutAllOrdersCsv error:', error.message);
         return handleHinaiOrderError(res, error, 'Failed to download out orders CSV');
+    }
+};
+
+export const getOutAllList = async (req, res) => {
+    try {
+        const data = await hinaiOrderService.getOutAllList(req.body, req.user);
+        return response.success(res, 'Out all orders list fetched successfully', data);
+    } catch (error) {
+        console.error('getOutAllList error:', error.message);
+        return handleHinaiOrderError(res, error, 'Failed to fetch out all orders list');
+    }
+};
+
+export const getClearanceList = async (req, res) => {
+    try {
+        const data = await hinaiOrderService.getClearanceList(req.body, req.user);
+        return response.success(res, 'Clearance list fetched successfully', data);
+    } catch (error) {
+        console.error('getClearanceList error:', error.message);
+        return handleHinaiOrderError(res, error, 'Failed to fetch clearance list');
+    }
+};
+
+export const downloadClearanceCsv = async (req, res) => {
+    try {
+        const requestData = { ...req.body, ...req.query };
+        const csvData = await hinaiOrderService.downloadClearanceCsv(requestData, req.user);
+        if (!csvData) {
+            return response.normalError(res, 'No records to display...');
+        }
+
+        const fileName = `Clearance_Report_${new Date().toISOString().slice(0, 10)}.csv`;
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+        return res.send(csvData);
+    } catch (error) {
+        console.error('downloadClearanceCsv error:', error.message);
+        return handleHinaiOrderError(res, error, 'Failed to download clearance CSV');
     }
 };
 

@@ -378,6 +378,35 @@ const getSiteListApiUrl = () => {
         ? `${AUTH_SERVICE_URL}/site/list`
         : `${AUTH_SERVICE_URL}/api/site/list`;
 };
+let siteListCache = null;
+let siteListCacheTime = 0;
+const SITE_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+let userMapCache = null;
+let userMapCacheTime = 0;
+const USER_MAP_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+const fetchSiteList = async () => {
+    const now = Date.now();
+    if (siteListCache && (now - siteListCacheTime < SITE_CACHE_TTL)) {
+        return siteListCache;
+    }
+    try {
+        const apiResponse = await axios.get(getSiteListApiUrl());
+        const siteList = Array.isArray(apiResponse.data?.data)
+            ? apiResponse.data.data
+            : [];
+        siteListCache = siteList;
+        siteListCacheTime = now;
+        return siteList;
+    } catch (error) {
+        console.error('Error fetching site list from API:', error.message);
+        if (siteListCache) {
+            return siteListCache;
+        }
+        throw error;
+    }
+};
 
 const getMstIdFromSiteId = async (siteId) => {
     if (siteId === undefined || siteId === null) {
@@ -387,11 +416,7 @@ const getMstIdFromSiteId = async (siteId) => {
     const parsedSiteId = toIntValue(siteId, 'site_id', { required: false });
     if (parsedSiteId === null) return null;
 
-    const apiResponse = await axios.get(getSiteListApiUrl());
-
-    const siteList = Array.isArray(apiResponse.data?.data)
-        ? apiResponse.data.data
-        : [];
+    const siteList = await fetchSiteList();
 
     const siteRecord = siteList.find(
         (site) => Number(site.site_id) === parsedSiteId
@@ -412,11 +437,7 @@ const getMstIdDirect = async (mstId) => {
     const parsedMstId = toIntValue(mstId, 'mst_id', { required: false });
     if (parsedMstId === null) return null;
 
-    const apiResponse = await axios.get(getSiteListApiUrl());
-
-    const siteList = Array.isArray(apiResponse.data?.data)
-        ? apiResponse.data.data
-        : [];
+    const siteList = await fetchSiteList();
 
     const siteRecord = siteList.find(
         (site) => Number(site.id) === parsedMstId
@@ -430,6 +451,10 @@ const getMstIdDirect = async (mstId) => {
 };
 
 const getUserMap = async (siteId) => {
+    const now = Date.now();
+    if (userMapCache && (now - userMapCacheTime < USER_MAP_CACHE_TTL)) {
+        return userMapCache;
+    }
     try {
         const users = await authPrisma.$queryRaw`
             SELECT id, full_name as name, username FROM users
@@ -439,10 +464,12 @@ const getUserMap = async (siteId) => {
             const id = String(u.id);
             map[id] = u.name || u.username;
         });
+        userMapCache = map;
+        userMapCacheTime = now;
         return map;
     } catch (error) {
         console.error('Error fetching user map from DB:', error.message);
-        return {};
+        return userMapCache || {};
     }
 };
 
@@ -2809,88 +2836,63 @@ export const downloadOrdersCsv = async (body, jwtUser) => {
     }
 
     const sql = Prisma.sql`
-    SELECT
-        ho.order_id AS "OrderID",
-        ho.mr_no AS "MRNO",
-        ho.patient_name AS "PatientName",
-        CONCAT(ho.bed_no, '/', ho.ward) AS "Bed-Ward",
-        ho.doctor AS "Doctor",
-        dt.diet_name AS "DietType",
-
-        STRING_AGG(
-            DISTINCT CASE
-                WHEN pd.remarks IS NOT NULL
-                     AND TRIM(pd.remarks) <> ''
-                THEN CONCAT(m.description, ': ', pd.remarks)
-                ELSE m.description
-            END,
-            ', '
-        ) AS "MenuType:Remarks",
-
-        po.nursing_remark AS "NurseRemark",
-        po.diet_remark AS "DietitianRemark",
-        po.created_by AS "OrderPunchBy",
-
-        TO_CHAR(po.created_at, 'DD/MM/YYYY HH24:MI') AS "OrderPunchTime",
-        TO_CHAR(ho.order_date, 'DD/MM/YYYY HH24:MI') AS "HISOrderTime",
-
-        LPAD(
-            FLOOR(EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) / 3600)::text,
-            2,
-            '0'
-        ) || ':' ||
-        LPAD(
-            FLOOR((EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) % 3600) / 60)::text,
-            2,
-            '0'
-        ) || ':' ||
-        LPAD(
-            FLOOR(EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) % 60)::text,
-            2,
-            '0'
-        ) AS "OrdertoPunchTAT"
-
-        ${extraFields}
-
-    FROM "MenuTime" m
-    LEFT JOIN "PatientOrderDetail" pd
-        ON pd.ptm_id = m.id
-
-    LEFT JOIN "PatientOrder" po
-        ON po.id = pd.po_id
-
-    LEFT JOIN "DietType" dt
-        ON dt.diet_type_id = po.diet_type
-
-    LEFT JOIN "HinaiOrder" ho
-        ON ho.order_id = po.hinai_order_id
-
-    WHERE po.is_active = true
-        AND po.mst_id = ${BigInt(mstId)}
-        AND po.created_at >= ${startOfDay}
-        AND po.created_at <= ${endOfDay}
-        ${dietTypeFilter}
-
-    GROUP BY
-        ho.order_id,
-        ho.mr_no,
-        ho.patient_name,
-        ho.bed_no,
-        ho.ward,
-        ho.doctor,
-        dt.diet_name,
-        po.nursing_remark,
-        po.diet_remark,
-        po.created_by,
-        po.created_at,
-        ho.order_date,
-        po.dispatched_at,
-        po.dispatched,
-        po.is_cancelled
-
-   ORDER BY
-    ho.order_date DESC
-`;
+        SELECT
+            ho.order_id AS "OrderID",
+            ho.mr_no AS "MRNO",
+            ho.patient_name AS "PatientName",
+            CONCAT(ho.bed_no, '/', ho.ward) AS "Bed-Ward",
+            ho.doctor AS "Doctor",
+            dt.diet_name AS "DietType",
+            pd_agg.menu_detail AS "MenuType:Remarks",
+            po.nursing_remark AS "NurseRemark",
+            po.diet_remark AS "DietitianRemark",
+            po.created_by AS "OrderPunchBy",
+            TO_CHAR(po.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata', 'DD/MM/YYYY HH24:MI') AS "OrderPunchTime",
+            TO_CHAR(ho.order_date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata', 'DD/MM/YYYY HH24:MI') AS "HISOrderTime",
+            LPAD(
+                FLOOR(EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) / 3600)::text,
+                2,
+                '0'
+            ) || ':' ||
+            LPAD(
+                FLOOR((EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) % 3600) / 60)::text,
+                2,
+                '0'
+            ) || ':' ||
+            LPAD(
+                FLOOR(EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) % 60)::text,
+                2,
+                '0'
+            ) AS "OrdertoPunchTAT"
+            ${extraFields}
+        FROM "PatientOrder" po
+        LEFT JOIN "HinaiOrder" ho ON ho.order_id = po.hinai_order_id
+        LEFT JOIN "DietType" dt ON dt.diet_type_id = po.diet_type
+        LEFT JOIN (
+            SELECT 
+                pd.po_id,
+                STRING_AGG(
+                    CASE
+                        WHEN pd.remarks IS NOT NULL AND TRIM(pd.remarks) <> ''
+                        THEN CONCAT(m.description, ': ', pd.remarks)
+                        ELSE m.description
+                    END,
+                    ', '
+                    ORDER BY m.sort_order
+                ) AS menu_detail
+            FROM "PatientOrderDetail" pd
+            JOIN "MenuTime" m ON pd.ptm_id = m.id
+            WHERE pd.is_active = true
+            GROUP BY pd.po_id
+        ) pd_agg ON pd_agg.po_id = po.id
+        WHERE po.is_active = true
+            AND po.mst_id = ${BigInt(mstId)}
+            AND po.created_at >= ${startOfDay}
+            AND po.created_at <= ${endOfDay}
+            ${dietTypeFilter}
+        ORDER BY
+            ho.order_date DESC
+    `;
 
     const results = await prisma.$queryRaw(sql);
 
@@ -2913,13 +2915,20 @@ export const downloadOrdersCsv = async (body, jwtUser) => {
 };
 
 export const downloadOutAllOrdersCsv = async (body, jwtUser) => {
-    const fromRaw = getFirstDefined(body, ['from_date']);
-    const toRaw = getFirstDefined(body, ['to_date']);
+    const siteIdParam = getFirstDefined(body, ['site_id']) || jwtUser?.siteID;
+    const mstId = await resolveSiteMapping(siteIdParam, 'mst_id');
+    if (!mstId) throw new Error('Invalid site mapping');
+
+    const fromRaw = getFirstDefined(body, ['from_date', 'fromdate']);
+    const toRaw = getFirstDefined(body, ['to_date', 'todate']);
 
     if (!fromRaw || !toRaw) throw new Error('from_date and to_date are required');
 
-    const fromDate = new Date(fromRaw);
-    const toDate = new Date(toRaw);
+    const fromDate = parseInputDate(fromRaw);
+    const toDate = parseInputDate(toRaw);
+
+    if (!fromDate || !toDate) throw new Error('Invalid date format');
+
     fromDate.setHours(0, 0, 0, 0);
     toDate.setHours(23, 59, 59, 999);
 
@@ -2931,39 +2940,80 @@ export const downloadOutAllOrdersCsv = async (body, jwtUser) => {
             CONCAT(ho.bed_no, '/', ho.ward) AS "Bed-Ward",
             ho.doctor AS "Doctor",
             dt.diet_name AS "DietType",
-            string_agg(CONCAT(m.description, ': ', COALESCE(pd.remarks, '')), ', ') AS "MenuType:Remarks",
-            po.nursing_remark AS "NurseRemark",
+            COALESCE(pd_agg.menu_detail, ho.menu_detail, ho.menu) AS "MenuType:Remarks",
+            COALESCE(po.nursing_remark, ho.nurse_remark) AS "NurseRemark",
             po.diet_remark AS "DietitianRemark",
             po.created_by AS "OrderPunchBy",
-            TO_CHAR(po.created_at, 'DD/MM/YYYY HH24:MI') AS "OrderPunchTime",
-            TO_CHAR(ho.order_date, 'DD/MM/YYYY HH24:MI') AS "HISOrderTime",
-            LPAD(FLOOR(EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) / 3600)::text, 2, '0') || ':' || LPAD(FLOOR((EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) % 3600) / 60)::text, 2, '0') || ':' || LPAD(FLOOR(EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) % 60)::text, 2, '0') AS "OrdertoPunchTAT",
+            TO_CHAR(po.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata', 'DD/MM/YYYY HH24:MI') AS "OrderPunchTime",
+            TO_CHAR(ho.order_date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata', 'DD/MM/YYYY HH24:MI') AS "HISOrderTime",
+            LPAD(
+                FLOOR(EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) / 3600)::text,
+                2,
+                '0'
+            ) || ':' ||
+            LPAD(
+                FLOOR((EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) % 3600) / 60)::text,
+                2,
+                '0'
+            ) || ':' ||
+            LPAD(
+                FLOOR(EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) % 60)::text,
+                2,
+                '0'
+            ) AS "OrdertoPunchTAT",
             TO_CHAR(TO_TIMESTAMP(ho.out_time, 'DD/MM/YYYY HH24:MI:SS'), 'DD/MM/YYYY HH24:MI') AS "OutTime",
-            LPAD(FLOOR(EXTRACT(EPOCH FROM (TO_TIMESTAMP(ho.out_time, 'DD/MM/YYYY HH24:MI:SS') - ho.order_date)) / 3600)::text, 2, '0') || ':' || LPAD(FLOOR((EXTRACT(EPOCH FROM (TO_TIMESTAMP(ho.out_time, 'DD/MM/YYYY HH24:MI:SS') - ho.order_date)) % 3600) / 60)::text, 2, '0') || ':' || LPAD(FLOOR(EXTRACT(EPOCH FROM (TO_TIMESTAMP(ho.out_time, 'DD/MM/YYYY HH24:MI:SS') - ho.order_date)) % 60)::text, 2, '0') AS "OrdertoOutTAT",
-
+            LPAD(
+                FLOOR(EXTRACT(EPOCH FROM (TO_TIMESTAMP(ho.out_time, 'DD/MM/YYYY HH24:MI:SS') - (ho.order_date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata'))) / 3600)::text,
+                2,
+                '0'
+            ) || ':' ||
+            LPAD(
+                FLOOR((EXTRACT(EPOCH FROM (TO_TIMESTAMP(ho.out_time, 'DD/MM/YYYY HH24:MI:SS') - (ho.order_date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata'))) % 3600) / 60)::text,
+                2,
+                '0'
+            ) || ':' ||
+            LPAD(
+                FLOOR(EXTRACT(EPOCH FROM (TO_TIMESTAMP(ho.out_time, 'DD/MM/YYYY HH24:MI:SS') - (ho.order_date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata'))) % 60)::text,
+                2,
+                '0'
+            ) AS "OrdertoOutTAT",
             ho.out_by AS "OutBy"
-        FROM "MenuTime" m
-        LEFT JOIN "PatientOrderDetail" pd ON pd.ptm_id = m.id
-        LEFT JOIN "PatientOrder" po ON po.id = pd.po_id
-        LEFT JOIN "DietType" dt ON dt.diet_type_id = po.diet_type
-        LEFT JOIN "HinaiOrder" ho ON ho.order_id = po.hinai_order_id
-        WHERE po.is_active = true
-            AND ho.out_time IS NOT NULL
-            AND TO_TIMESTAMP(ho.out_time, 'DD/MM/YYYY HH24:MI:SS') >= ${fromDate}
-            AND TO_TIMESTAMP(ho.out_time, 'DD/MM/YYYY HH24:MI:SS') <= ${toDate}
-        GROUP BY
-            ho.order_id, ho.mr_no, ho.patient_name, ho.bed_no, ho.ward, ho.doctor,
-            dt.diet_name, po.nursing_remark, po.diet_remark, po.created_by, po.created_at, ho.order_date,
-            ho.out_time, ho.out_by, m.id
-        ORDER BY ho.ward, ho.bed_no, m.id
+        FROM "HinaiOrder" ho
+        LEFT JOIN "PatientOrder" po ON po.hinai_order_id = ho.order_id AND po.is_active = true
+        LEFT JOIN "DietType" dt ON dt.diet_type_id = COALESCE(po.diet_type, ho.diet_type)
+        LEFT JOIN (
+            SELECT 
+                pd.po_id,
+                STRING_AGG(
+                    CASE
+                        WHEN pd.remarks IS NOT NULL AND TRIM(pd.remarks) <> ''
+                        THEN CONCAT(m.description, ': ', pd.remarks)
+                        ELSE m.description
+                    END,
+                    ', '
+                    ORDER BY m.sort_order
+                ) AS menu_detail
+            FROM "PatientOrderDetail" pd
+            JOIN "MenuTime" m ON pd.ptm_id = m.id
+            WHERE pd.is_active = true
+            GROUP BY pd.po_id
+        ) pd_agg ON pd_agg.po_id = po.id
+        WHERE ho.is_active = true
+          AND ho.mst_id = ${BigInt(mstId)}
+          AND ho.out_time IS NOT NULL
+          AND ho.out_time <> ''
+          AND TO_DATE(ho.out_time, 'DD/MM/YYYY') >= ${fromDate}
+          AND TO_DATE(ho.out_time, 'DD/MM/YYYY') <= ${toDate}
+        ORDER BY
+            ho.ward,
+            ho.bed_no
     `;
 
     const results = await prisma.$queryRaw(sql);
 
     if (!results.length) return null;
 
-    const resolvedMstId = await resolveSiteMapping(jwtUser?.siteID || 1, 'mst_id');
-    const userMap = await getUserMap(resolvedMstId);
+    const userMap = await getUserMap(mstId);
 
     const headers = Object.keys(results[0]);
     const csvRows = [
@@ -2974,6 +3024,289 @@ export const downloadOutAllOrdersCsv = async (body, jwtUser) => {
             }
             if (row['OutBy'] && userMap[String(row['OutBy'])]) {
                 row['OutBy'] = userMap[String(row['OutBy'])];
+            }
+            if (row['MRNO']) {
+                row['MRNO'] = String(row['MRNO']);
+            }
+            return headers.map((h) => escapeCsvValue(row[h])).join(',');
+        }),
+    ];
+
+    return csvRows.join('\n');
+};
+
+export const getOutAllList = async (body, jwtUser) => {
+    const siteIdParam = getFirstDefined(body, ['site_id']) || jwtUser?.siteID;
+    const mstId = await resolveSiteMapping(siteIdParam, 'mst_id');
+    if (!mstId) throw new Error('Invalid site mapping');
+
+    const fromRaw = getFirstDefined(body, ['fromdate', 'from_date']);
+    const toRaw = getFirstDefined(body, ['todate', 'to_date']);
+
+    if (!fromRaw || !toRaw) throw new Error('fromdate and todate are required');
+
+    const fromDate = parseInputDate(fromRaw);
+    const toDate = parseInputDate(toRaw);
+
+    if (!fromDate || !toDate) throw new Error('Invalid date format');
+
+    fromDate.setHours(0, 0, 0, 0);
+    toDate.setHours(23, 59, 59, 999);
+
+    const page = parseInt(body.page) || 1;
+    const limit = parseInt(body.limit) || 10;
+
+    const sql = Prisma.sql`
+        SELECT DISTINCT ON (ho.mr_no)
+            ho.patient_id,
+            ho.mr_no,
+            ho.patient_name,
+            ho.doctor,
+            ho.admission_no,
+            ho.bed_no,
+            ho.menu_detail,
+            ho.out_time,
+            ho.out_by
+        FROM "HinaiOrder" ho
+        WHERE ho.is_active = true
+          AND ho.mst_id = ${BigInt(mstId)}
+          AND ho.out_time IS NOT NULL
+          AND ho.out_time <> ''
+          AND TO_DATE(ho.out_time, 'DD/MM/YYYY') >= ${fromDate}
+          AND TO_DATE(ho.out_time, 'DD/MM/YYYY') <= ${toDate}
+        ORDER BY ho.mr_no, TO_TIMESTAMP(ho.out_time, 'DD/MM/YYYY HH24:MI:SS') DESC NULLS LAST
+    `;
+
+    const results = await prisma.$queryRaw(sql);
+
+    const total = results.length;
+    const isPaginated = limit !== -1;
+    const paginated = isPaginated ? results.slice((page - 1) * limit, page * limit) : results;
+
+    const userMap = await getUserMap(mstId);
+
+    const mappedData = paginated.map((row) => ({
+        patientid: row.patient_id,
+        mrno: row.mr_no ? row.mr_no.toString() : '',
+        patientname: row.patient_name,
+        doctor: row.doctor,
+        admno: row.admission_no,
+        bedno: row.bed_no,
+        menudetail: row.menu_detail,
+        outby: userMap[String(row.out_by)] || row.out_by || '',
+        outtime: row.out_time
+    }));
+
+    return {
+        total,
+        page,
+        limit,
+        totalPages: isPaginated ? Math.ceil(total / limit) : 1,
+        data: mappedData
+    };
+};
+
+const parseInputDate = (dateStr) => {
+    if (!dateStr) return null;
+    if (dateStr instanceof Date) return dateStr;
+    const str = String(dateStr).trim();
+    if (str.includes('/')) {
+        const parts = str.split('/');
+        if (parts.length === 3) {
+            const day = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            const year = parseInt(parts[2], 10);
+            return new Date(year, month, day);
+        }
+    }
+    if (str.includes('-')) {
+        const parts = str.split('-');
+        if (parts.length === 3) {
+            if (parts[0].length === 4) {
+                return new Date(str);
+            } else {
+                const day = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10) - 1;
+                const year = parseInt(parts[2], 10);
+                return new Date(year, month, day);
+            }
+        }
+    }
+    const parsed = new Date(str);
+    return isNaN(parsed.getTime()) ? null : parsed;
+};
+
+export const getClearanceList = async (body, jwtUser) => {
+    const siteIdParam = getFirstDefined(body, ['site_id']) || jwtUser?.siteID;
+    const mstId = await resolveSiteMapping(siteIdParam, 'mst_id');
+    if (!mstId) throw new Error('Invalid site mapping');
+
+    const fromRaw = getFirstDefined(body, ['fromdate', 'from_date']);
+    const toRaw = getFirstDefined(body, ['todate', 'to_date']);
+
+    if (!fromRaw || !toRaw) throw new Error('fromdate and todate are required');
+
+    const fromDate = parseInputDate(fromRaw);
+    const toDate = parseInputDate(toRaw);
+
+    if (!fromDate || !toDate) throw new Error('Invalid date format');
+
+    fromDate.setHours(0, 0, 0, 0);
+    toDate.setHours(23, 59, 59, 999);
+
+    const page = parseInt(body.page) || 1;
+    const limit = parseInt(body.limit) || 10;
+
+    const sql = Prisma.sql`
+        SELECT DISTINCT ON (ho.mr_no)
+            ho.patient_id,
+            ho.mr_no,
+            ho.patient_name,
+            ho.doctor,
+            ho.admission_no,
+            ho.bed_no,
+            ho.menu_detail,
+            ho.clearance_time,
+            ho.clearance_by
+        FROM "HinaiOrder" ho
+        WHERE ho.is_active = true
+          AND ho.clearance = true
+          AND ho.mst_id = ${BigInt(mstId)}
+          AND ho.clearance_time IS NOT NULL
+          AND ho.clearance_time <> ''
+          AND TO_DATE(ho.clearance_time, 'DD/MM/YYYY') >= ${fromDate}
+          AND TO_DATE(ho.clearance_time, 'DD/MM/YYYY') <= ${toDate}
+        ORDER BY ho.mr_no, TO_TIMESTAMP(ho.clearance_time, 'DD/MM/YYYY HH24:MI:SS') DESC NULLS LAST
+    `;
+
+    const results = await prisma.$queryRaw(sql);
+
+    const total = results.length;
+    const isPaginated = limit !== -1;
+    const paginated = isPaginated ? results.slice((page - 1) * limit, page * limit) : results;
+
+    const userMap = await getUserMap(mstId);
+
+    const mappedData = paginated.map((row) => ({
+        patientid: row.patient_id,
+        mrno: row.mr_no ? row.mr_no.toString() : '',
+        patientname: row.patient_name,
+        doctor: row.doctor,
+        admno: row.admission_no,
+        bedno: row.bed_no,
+        menudetail: row.menu_detail,
+        Clearancetime: row.clearance_time,
+        clearanceby: userMap[String(row.clearance_by)] || row.clearance_by || ''
+    }));
+
+    return {
+        total,
+        page,
+        limit,
+        totalPages: isPaginated ? Math.ceil(total / limit) : 1,
+        data: mappedData
+    };
+};
+
+export const downloadClearanceCsv = async (body, jwtUser) => {
+    const siteIdParam = getFirstDefined(body, ['site_id']) || jwtUser?.siteID;
+    const mstId = await resolveSiteMapping(siteIdParam, 'mst_id');
+    if (!mstId) throw new Error('Invalid site mapping');
+
+    const fromRaw = getFirstDefined(body, ['fromdate', 'from_date']);
+    const toRaw = getFirstDefined(body, ['todate', 'to_date']);
+
+    if (!fromRaw || !toRaw) throw new Error('fromdate and todate are required');
+
+    const fromDate = parseInputDate(fromRaw);
+    const toDate = parseInputDate(toRaw);
+
+    if (!fromDate || !toDate) throw new Error('Invalid date format');
+
+    fromDate.setHours(0, 0, 0, 0);
+    toDate.setHours(23, 59, 59, 999);
+
+    const sql = Prisma.sql`
+        SELECT
+            ho.order_id AS "OrderID",
+            ho.mr_no AS "MRNO",
+            ho.patient_name AS "PatientName",
+            CONCAT(ho.bed_no, '/', ho.ward) AS "Bed-Ward",
+            ho.doctor AS "Doctor",
+            dt.diet_name AS "DietType",
+            COALESCE(pd_agg.menu_detail, ho.menu_detail, ho.menu) AS "MenuType:Remarks",
+            COALESCE(po.nursing_remark, ho.nurse_remark) AS "NurseRemark",
+            po.diet_remark AS "DietitianRemark",
+            po.created_by AS "OrderPunchBy",
+            TO_CHAR(po.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata', 'DD/MM/YYYY HH24:MI') AS "OrderPunchTime",
+            TO_CHAR(ho.order_date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata', 'DD/MM/YYYY HH24:MI') AS "HISOrderTime",
+            LPAD(
+                FLOOR(EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) / 3600)::text,
+                2,
+                '0'
+            ) || ':' ||
+            LPAD(
+                FLOOR((EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) % 3600) / 60)::text,
+                2,
+                '0'
+            ) || ':' ||
+            LPAD(
+                FLOOR(EXTRACT(EPOCH FROM (po.created_at - ho.order_date)) % 60)::text,
+                2,
+                '0'
+            ) AS "OrdertoPunchTAT",
+            TO_CHAR(TO_TIMESTAMP(ho.clearance_time, 'DD/MM/YYYY HH24:MI:SS'), 'DD/MM/YYYY HH24:MI') AS "ClearanceTime",
+            ho.clearance_by AS "ClearanceBy"
+        FROM "HinaiOrder" ho
+        LEFT JOIN "PatientOrder" po ON po.hinai_order_id = ho.order_id AND po.is_active = true
+        LEFT JOIN "DietType" dt ON dt.diet_type_id = COALESCE(po.diet_type, ho.diet_type)
+        LEFT JOIN (
+            SELECT 
+                pd.po_id,
+                STRING_AGG(
+                    CASE
+                        WHEN pd.remarks IS NOT NULL AND TRIM(pd.remarks) <> ''
+                        THEN CONCAT(m.description, ': ', pd.remarks)
+                        ELSE m.description
+                    END,
+                    ', '
+                    ORDER BY m.sort_order
+                ) AS menu_detail
+            FROM "PatientOrderDetail" pd
+            JOIN "MenuTime" m ON pd.ptm_id = m.id
+            WHERE pd.is_active = true
+            GROUP BY pd.po_id
+        ) pd_agg ON pd_agg.po_id = po.id
+        WHERE ho.is_active = true
+          AND ho.clearance = true
+          AND ho.mst_id = ${BigInt(mstId)}
+          AND ho.clearance_time IS NOT NULL
+          AND ho.clearance_time <> ''
+          AND TO_DATE(ho.clearance_time, 'DD/MM/YYYY') >= ${fromDate}
+          AND TO_DATE(ho.clearance_time, 'DD/MM/YYYY') <= ${toDate}
+        ORDER BY
+            ho.ward,
+            ho.bed_no
+    `;
+
+    const results = await prisma.$queryRaw(sql);
+
+    if (!results.length) return null;
+
+    const userMap = await getUserMap(mstId);
+
+    const headers = Object.keys(results[0]);
+    const csvRows = [
+        headers.join(','),
+        ...results.map((row) => {
+            if (row['OrderPunchBy'] && userMap[String(row['OrderPunchBy'])]) {
+                row['OrderPunchBy'] = userMap[String(row['OrderPunchBy'])];
+            }
+            if (row['ClearanceBy'] && userMap[String(row['ClearanceBy'])]) {
+                row['ClearanceBy'] = userMap[String(row['ClearanceBy'])];
+            }
+            if (row['MRNO']) {
+                row['MRNO'] = String(row['MRNO']);
             }
             return headers.map((h) => escapeCsvValue(row[h])).join(',');
         }),
