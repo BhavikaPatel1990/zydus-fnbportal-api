@@ -28,15 +28,15 @@ const handleInpatientsError = (res, error, fallbackMessage) => {
 export const fetchInpatientsListCensus = async (req, res) => {
   try {
     const siteId = req.user.siteID;
-    
-    
+
+
     if (!siteId) {
       return response.normalError(res, 'Site ID is missing in user profile');
     }
 
     // Get actual site_id from mst_sites table in zydusapp database
     const siteResults = await authPrisma.$queryRaw`SELECT site_id FROM mst_sites WHERE id = ${parseInt(siteId)}`;
-    
+
     if (!siteResults || siteResults.length === 0 || !siteResults[0].site_id) {
       return response.normalError(res, 'Invalid site configuration or actual site ID not found');
     }
@@ -45,7 +45,7 @@ export const fetchInpatientsListCensus = async (req, res) => {
     // console.log("Actual Oracle Site ID:", actualSiteId);
 
     const data = await inpatientsListCensusService.getInpatientsListCensus(actualSiteId);
-    
+
     return response.success(res, 'Inpatient list fetched successfully', data);
   } catch (error) {
     console.error('fetchInpatients error:', error.message);

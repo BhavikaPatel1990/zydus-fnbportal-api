@@ -2869,7 +2869,7 @@ export const downloadOrdersCsv = async (body, jwtUser) => {
         LEFT JOIN "HinaiOrder" ho ON ho.order_id = po.hinai_order_id
         LEFT JOIN "DietType" dt ON dt.diet_type_id = po.diet_type
         LEFT JOIN (
-            SELECT 
+            SELECT
                 pd.po_id,
                 STRING_AGG(
                     CASE
@@ -2982,7 +2982,7 @@ export const downloadOutAllOrdersCsv = async (body, jwtUser) => {
         LEFT JOIN "PatientOrder" po ON po.hinai_order_id = ho.order_id AND po.is_active = true
         LEFT JOIN "DietType" dt ON dt.diet_type_id = COALESCE(po.diet_type, ho.diet_type)
         LEFT JOIN (
-            SELECT 
+            SELECT
                 pd.po_id,
                 STRING_AGG(
                     CASE
@@ -3261,7 +3261,7 @@ export const downloadClearanceCsv = async (body, jwtUser) => {
         LEFT JOIN "PatientOrder" po ON po.hinai_order_id = ho.order_id AND po.is_active = true
         LEFT JOIN "DietType" dt ON dt.diet_type_id = COALESCE(po.diet_type, ho.diet_type)
         LEFT JOIN (
-            SELECT 
+            SELECT
                 pd.po_id,
                 STRING_AGG(
                     CASE
@@ -3691,4 +3691,157 @@ export const checkLatestHinaiOrders = async (body, jwtUser) => {
         console.error('check Latest HinaiOrders service error:', error);
         throw new Error(error.message);
     }
+};
+
+export const getLastOrder = async (body, jwtUser) => {
+    const mrnoStr = getFirstDefined(body, ['mrno', 'mr_no']);
+    if (!mrnoStr) throw new Error('mrno is required');
+    const mrNo = BigInt(mrnoStr);
+
+    const today = new Date();
+    const startOfDay = new Date(today);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(today);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const orders = await prisma.hinaiOrder.findMany({
+        where: {
+            mr_no: mrNo,
+            status: true, // ostatus = 1
+            created_at: { gte: startOfDay, lte: endOfDay }
+        },
+        orderBy: { id: 'desc' }
+    });
+
+    return orders.map(order => ({
+        id: order.id,
+        siteid: order.mst_id ? order.mst_id.toString() : '',
+        patientid: order.patient_id,
+        mrno: order.mr_no.toString(),
+        patientname: order.patient_name,
+        doctor: order.doctor,
+        admno: order.admission_no,
+        bedno: order.bed_no,
+        ward: order.ward,
+        menu: order.menu,
+        menudetail: order.menu_detail,
+        orderdate: order.order_date ? new Date(order.order_date).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '') : '',
+        nurseremark: order.nurse_remark || ''
+    }));
+};
+
+export const updateSiteId = async (body, jwtUser) => {
+    const id = getFirstDefined(body, ['id']);
+    const mrnoStr = getFirstDefined(body, ['mrno', 'mr_no']);
+    if (!id || !mrnoStr) throw new Error('id and mrno are required');
+    const mrNo = BigInt(mrnoStr);
+
+    const siteIdParam = getFirstDefined(body, ['site_id']) || jwtUser?.siteID;
+    const mstId = await resolveSiteMapping(siteIdParam, 'mst_id');
+    if (!mstId) throw new Error('Invalid site mapping');
+
+    const today = new Date();
+    const startOfDay = new Date(today);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(today);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // Update HinaiOrder
+    const result = await prisma.hinaiOrder.updateMany({
+        where: {
+            id: id,
+            mr_no: mrNo,
+            created_at: { gte: startOfDay, lte: endOfDay }
+        },
+        data: {
+            mst_id: BigInt(mstId)
+        }
+    });
+
+    if (result.count === 0) {
+        throw new Error('Record not found or already updated');
+    }
+
+    // Return the updated order list
+    return await getLastOrder(body, jwtUser);
+};
+
+export const getLastPunchOrder = async (body, jwtUser) => {
+    const mrnoStr = getFirstDefined(body, ['mrno', 'mr_no']);
+    if (!mrnoStr) throw new Error('mrno is required');
+    const mrNo = BigInt(mrnoStr);
+
+    const today = new Date();
+    const startOfDay = new Date(today);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(today);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const patientOrders = await prisma.patientOrder.findMany({
+        where: {
+            is_active: true,
+            created_at: { gte: startOfDay, lte: endOfDay },
+            hinaiOrder: {
+                mr_no: mrNo
+            }
+        },
+        include: {
+            hinaiOrder: true
+        },
+        orderBy: { id: 'desc' }
+    });
+
+    return patientOrders.map(po => {
+        const ho = po.hinaiOrder;
+        return {
+            id: po.id,
+            siteid: po.mst_id ? po.mst_id.toString() : '',
+            patientid: po.patient_id,
+            mrno: ho.mr_no.toString(),
+            patientname: ho.patient_name,
+            doctor: ho.doctor,
+            admno: ho.admission_no,
+            bedno: ho.bed_no,
+            ward: ho.ward,
+            menu: ho.menu,
+            menudetail: ho.menu_detail,
+            orderdate: ho.order_date ? new Date(ho.order_date).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '') : '',
+            dietRemark: po.diet_remark || ''
+        };
+    });
+};
+
+export const updatePOSiteId = async (body, jwtUser) => {
+    const id = getFirstDefined(body, ['id']);
+    const mrnoStr = getFirstDefined(body, ['mrno', 'mr_no']);
+    if (!id || !mrnoStr) throw new Error('id and mrno are required');
+    const mrNo = BigInt(mrnoStr);
+
+    const siteIdParam = getFirstDefined(body, ['site_id']) || jwtUser?.siteID;
+    const mstId = await resolveSiteMapping(siteIdParam, 'mst_id');
+    if (!mstId) throw new Error('Invalid site mapping');
+
+    const today = new Date();
+    const startOfDay = new Date(today);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(today);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // Update PatientOrder
+    const result = await prisma.patientOrder.updateMany({
+        where: {
+            id: id,
+            created_at: { gte: startOfDay, lte: endOfDay }
+        },
+        data: {
+            mst_id: BigInt(mstId)
+        }
+    });
+
+    if (result.count === 0) {
+        throw new Error('Record not found or already updated');
+    }
+
+    // Return the updated order list (using getLastOrder per PHP logic)
+    return await getLastOrder(body, jwtUser);
 };

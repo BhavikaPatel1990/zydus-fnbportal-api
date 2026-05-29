@@ -488,3 +488,43 @@ export const hasNewOrder = async (req,res) => {
         return handleHinaiOrderError(res, error, 'Failed to fetch order status');
     }
 };
+
+export const getLastOrder = async (req, res) => {
+    try {
+        const data = await hinaiOrderService.getLastOrder(req.body, req.user);
+        return response.success(res, 'Last HINAI order fetched successfully', data);
+    } catch (error) {
+        console.error('getLastOrder controller error:', error);
+        return handleHinaiOrderError(res, error, 'Failed to fetch last order');
+    }
+};
+
+export const updateSiteId = async (req, res) => {
+    try {
+        const data = await hinaiOrderService.updateSiteId(req.body, req.user);
+        return response.success(res, 'HINAI order site updated successfully', data);
+    } catch (error) {
+        console.error('updateSiteId controller error:', error);
+        return handleHinaiOrderError(res, error, 'Failed to update HINAI order site');
+    }
+};
+
+export const getLastPunchOrder = async (req, res) => {
+    try {
+        const data = await hinaiOrderService.getLastPunchOrder(req.body, req.user);
+        return response.success(res, 'Last punched order fetched successfully', data);
+    } catch (error) {
+        console.error('getLastPunchOrder controller error:', error);
+        return handleHinaiOrderError(res, error, 'Failed to fetch last punch order');
+    }
+};
+
+export const updatePOSiteId = async (req, res) => {
+    try {
+        const data = await hinaiOrderService.updatePOSiteId(req.body, req.user);
+        return response.success(res, 'PatientOrder site updated successfully', data);
+    } catch (error) {
+        console.error('updatePOSiteId controller error:', error);
+        return handleHinaiOrderError(res, error, 'Failed to update PatientOrder site');
+    }
+};

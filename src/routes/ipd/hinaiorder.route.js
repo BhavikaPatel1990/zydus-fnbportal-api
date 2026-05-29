@@ -71,4 +71,9 @@ router.post('/print/liquid-stickers', checkPermission('FNB_PORTAL', 'READ'), hin
 
 router.post('/has-new-order',checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.hasNewOrder);
 
+router.post('/last-order', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.getLastOrder);
+router.post('/update-site-id', checkPermission('FNB_PORTAL', 'UPDATE'), hinaiOrderController.updateSiteId);
+router.post('/last-punch-order', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.getLastPunchOrder);
+router.post('/update-po-site-id', checkPermission('FNB_PORTAL', 'UPDATE'), hinaiOrderController.updatePOSiteId);
+
 export default router;
