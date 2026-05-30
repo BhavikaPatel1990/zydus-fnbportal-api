@@ -126,16 +126,16 @@ router.post('/print/liquid-stickers', checkPermission('FNB_PORTAL', 'READ'), hin
 router.post('/export/orders', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.downloadOrdersCsv);
 
 // Export Out Orders CSV
-router.post('/export/out-all', checkPermission('REPORTS_READ', 'READ'), hinaiOrderController.downloadOutAllOrdersCsv);
+router.post('/export/out-all', checkPermission('FNB_PORTAL', 'REPORTS_READ'), hinaiOrderController.downloadOutAllOrdersCsv);
 
 // Get Out Orders Report
-router.post('/out-all-list', checkPermission('REPORTS_READ', 'READ'), hinaiOrderController.getOutAllList);
+router.post('/out-all-list', checkPermission('FNB_PORTAL', 'REPORTS_READ'), hinaiOrderController.getOutAllList);
 
 // Get Clearance Report
-router.post('/clearance-list', checkPermission('REPORTS_READ', 'READ'), hinaiOrderController.getClearanceList);
+router.post('/clearance-list', checkPermission('FNB_PORTAL', 'REPORTS_READ'), hinaiOrderController.getClearanceList);
 
 // Export Clearance CSV
-router.post('/export/clearance', checkPermission('REPORTS_READ', 'READ'), hinaiOrderController.downloadClearanceCsv);
+router.post('/export/clearance', checkPermission('FNB_PORTAL', 'REPORTS_READ'), hinaiOrderController.downloadClearanceCsv);
 
 /* ==========================================================================
    MASTER MENU CONFIGURATION
