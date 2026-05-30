@@ -20,6 +20,7 @@ const DATETIME_FIELDS = [
     "admission_date",
     "approved_date",
     "punch_date",
+    "timestamp"
 ];
 
 const DATE_ONLY_FIELDS = [
