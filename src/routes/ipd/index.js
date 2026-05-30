@@ -7,6 +7,8 @@ import fnbDashboardRoutes from './fnbdashboard.route.js';
 import { authorize } from '../../middleware/authorize.js';
 import attachUserProfile from '../../middleware/attachUserProfile.js';
 import { activityLogger } from '../../middleware/activityLogger.js';
+import * as hinaiOrderController from '../../controllers/ipd/hinaiorder.controller.js';
+
 
 const router = Router();
 
@@ -17,6 +19,9 @@ router.get('/health', (req, res) => {
         message: 'IPD module is ready',
     });
 });
+
+/* PUBLIC ROUTE */
+router.post('/hinaiorders/refresh-orders-job', hinaiOrderController.refreshHinaiOrders);
 
 /* MIDDLEWARE */
 router.use(authorize);

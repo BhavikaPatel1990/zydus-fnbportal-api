@@ -77,4 +77,7 @@ router.post('/update-site-id', checkPermission('FNB_PORTAL', 'UPDATE'), hinaiOrd
 router.post('/last-punch-order', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.getLastPunchOrder);
 router.post('/update-po-site-id', checkPermission('FNB_PORTAL', 'UPDATE'), hinaiOrderController.updatePOSiteId);
 
+
+
+
 export default router;
