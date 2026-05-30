@@ -763,7 +763,13 @@ export const getPendingDietOrders = async (body, jwtUser) => {
         };
 
     } catch (err) {
-        console.error('Error in getPendingDietOrders:', err);
+        console.error('Error in get Pending Diet Orders:', err);
+        if (err.message?.includes('NJS-510') || err.message?.includes('transportConnectTimeout')) {
+            throw createNormalError(
+                'Unable to connect to the hinai server. Please try again later.'
+            );
+        }
+
         throw err;
     } finally {
         if (connection) {
