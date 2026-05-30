@@ -65,19 +65,19 @@ const resolveSiteMapping = async (siteValue) => {
     const apiResponse = await axios.get(getSiteListApiUrl());
     const siteList = Array.isArray(apiResponse.data?.data) ? apiResponse.data.data : [];
 
-    const siteRecordByExternalId = siteList.find(
-        (site) => Number(site.site_id) === parsedSiteId
-    );
+    // const siteRecordByExternalId = siteList.find(
+    //     (site) => Number(site.site_id) === parsedSiteId
+    // );
     const siteRecordByMstId = siteList.find(
         (site) => Number(site.id) === parsedSiteId
     );
-    const siteRecord = siteRecordByExternalId ?? siteRecordByMstId;
+    // const siteRecord = siteRecordByExternalId ?? siteRecordByMstId;
 
-    if (!siteRecord) {
+    if (!siteRecordByMstId) {
         throw createNormalError(`No active mst_site mapping found for site_id ${parsedSiteId}`);
     }
 
-    return siteRecord.id;
+    return siteRecordByMstId.id;
 };
 
 const resolveHINAISiteMapping = async (siteValue) => {
@@ -94,19 +94,19 @@ const resolveHINAISiteMapping = async (siteValue) => {
     const apiResponse = await axios.get(getSiteListApiUrl());
     const siteList = Array.isArray(apiResponse.data?.data) ? apiResponse.data.data : [];
 
-    const siteRecordByExternalId = siteList.find(
-        (site) => Number(site.site_id) === parsedSiteId
-    );
+    // const siteRecordByExternalId = siteList.find(
+    //     (site) => Number(site.site_id) === parsedSiteId
+    // );
     const siteRecordByMstId = siteList.find(
         (site) => Number(site.id) === parsedSiteId
     );
-    const siteRecord = siteRecordByExternalId ?? siteRecordByMstId;
+    // const siteRecord = siteRecordByExternalId ?? siteRecordByMstId;
 
-    if (!siteRecord) {
+    if (!siteRecordByMstId) {
         throw createNormalError(`No active mst_site mapping found for site_id ${parsedSiteId}`);
     }
 
-    return siteRecord.site_id;
+    return siteRecordByMstId.site_id;
 };
 
 const formatDateTime = (date) => {
@@ -646,7 +646,7 @@ export const getPendingDietOrders = async (body, jwtUser) => {
     try {
         connection = await getOracleConnection();
 
-        const sql = ` 
+        const sql = `
         /* 🔴 QUERY SAME AS PROVIDED - NO CHANGE */
         WITH cte AS (
             select p.patient_id,p.mrno,pm2.prefix||' '||p.patientname as PATIENT,ip.admissionnumber,
@@ -655,7 +655,7 @@ export const getPendingDietOrders = async (body, jwtUser) => {
             pm.prefix||' '||e.employee_name as DOCTOR,dl.createddatetime cdate,
             dc.name,di.description,dl.diettiming as diettype,dlr.id hinaiorderid,
             h.username,dl.docno as DOC
-            from inpatients ip 
+            from inpatients ip
             left join visit v on v.visitid=ip.visitid
             left join patient p on p.patient_id=ip.patient
             left join bed b on b.bed_id=ip.bed
@@ -663,18 +663,18 @@ export const getPendingDietOrders = async (body, jwtUser) => {
             left join prefix_master pm on pm.id=e.emp_prefix
             left join prefix_master pm2 on pm2.id=p.patprefix
             left join servicecenter sc on sc.service_center_id=b.servicecenter
-            left join discharge d on d.visit=v.visitid 
-            left join dietlaterequest dl on dl.patient=p.patient_id 
+            left join discharge d on d.visit=v.visitid
+            left join dietlaterequest dl on dl.patient=p.patient_id
                 and to_char(dl.createddatetime,'yyyy-mm-dd')=to_char(sysdate,'yyyy-mm-dd')
-            left join dietconfiguration dc on dc.id = dl.dietprescription 
+            left join dietconfiguration dc on dc.id = dl.dietprescription
             left join DIET_LATE_REQUESTDETAILITEM dlr on dlr.dietlaterequest_detailid =dl.id
             left join DIETITEM di on di.id = dlr.dietitemid
             left join hisuser h on h.id=dl.createdby
-            where ip.ADMITTED_SITE=:siteId 
-                and d.dateofdischarge is null 
+            where ip.ADMITTED_SITE=:siteId
+                and d.dateofdischarge is null
                 and ip.visit_patientstatus<>1122
 
-            union 
+            union
 
             select p.patient_id,p.mrno,pm2.prefix||' '||p.patientname as PATIENT,
             ip.admissionnumber,to_char(ip.admissiondate,'yyyy-mm-dd') adate,
@@ -683,7 +683,7 @@ export const getPendingDietOrders = async (body, jwtUser) => {
             pm.prefix||' '||e.employee_name as DOCTOR,dr.createddatetime cdate,
             dc.name,di.description,dr.diettiming as diettype,
             drd.id hinaiorderid,h.username,dr.docno as DOC
-            from inpatients ip  
+            from inpatients ip
             left join visit v on v.visitid=ip.visitid
             left join patient p on p.patient_id=ip.patient
             left join bed b on b.bed_id=ip.bed
@@ -691,17 +691,17 @@ export const getPendingDietOrders = async (body, jwtUser) => {
             left join prefix_master pm on pm.id=e.emp_prefix
             left join prefix_master pm2 on pm2.id=p.patprefix
             left join servicecenter sc on sc.service_center_id=b.servicecenter
-            left join discharge d on d.visit=v.visitid               
-            left join DIETREQUESTDETAIL dq on dq.patient = p.patient_id 
+            left join discharge d on d.visit=v.visitid
+            left join DIETREQUESTDETAIL dq on dq.patient = p.patient_id
                 and dq.request_cancel_status<>2
-            inner join dietrequest dr on dr.id=dq.drid 
+            inner join dietrequest dr on dr.id=dq.drid
                 and to_char(dr.createddatetime,'yyyy-mm-dd')=to_char(sysdate,'yyyy-mm-dd')
-            left join dietconfiguration dc on dc.id = dq.dietclassification 
-            left join DIETREQUESTDETAILITEM drd on dq.id = drd.dietrequest_detailid 
+            left join dietconfiguration dc on dc.id = dq.dietclassification
+            left join DIETREQUESTDETAILITEM drd on dq.id = drd.dietrequest_detailid
             left join DIETITEM di on di.id = drd.dietitemid
             left join hisuser h on h.id=dr.requestedby
-            where ip.ADMITTED_SITE=:siteId 
-                and d.dateofdischarge is null 
+            where ip.ADMITTED_SITE=:siteId
+                and d.dateofdischarge is null
                 and ip.visit_patientstatus<>1122
                 and drd.id IS NOT NULL
         ),
@@ -715,15 +715,15 @@ export const getPendingDietOrders = async (body, jwtUser) => {
                 ).EXTRACT('/ROWSET/ROW/text()').getStringVal(), ', ')
             ) AS NAME,
             name as menu,cdate,diettype,hinaiorderid,username,DOC
-            from cte 
+            from cte
             group by cdate,patient_id,mrno,PATIENT,admissionnumber,adate,admdate,
             bed_id,bed_no,scname,DOCTOR,name,diettype,hinaiorderid,username,DOC
         )
         select scname as WARD,bed_no as BED,mrno as MRN,PATIENT,adate,
-        to_char(admdate,'YYYY-MM-DD hh24:mi') admdate,DOCTOR, patient_id 
-        from cte1 
-        where rn=1 
-        AND patient_id != 1157622 
+        to_char(admdate,'YYYY-MM-DD hh24:mi') admdate,DOCTOR, patient_id
+        from cte1
+        where rn=1
+        AND patient_id != 1157622
         and doc is null
         order by 1,5 desc
         `;

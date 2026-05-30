@@ -24,6 +24,7 @@ router.post('/order-summary', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderC
 router.post('/menu-details', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.getMenuDetails);
 
 router.post('/order-details', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.getHinaiOrderDetails);
+router.post('/nursing-desk/diet-details', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.getNursingDeskDietDetails);
 
 router.post('/nursing-remarks', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.getNursingRemarks);
 

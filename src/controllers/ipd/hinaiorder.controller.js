@@ -132,6 +132,16 @@ export const getHinaiOrderDetails = async (req, res) => {
     }
 };
 
+export const getNursingDeskDietDetails = async (req, res) => {
+    try {
+        const data = await hinaiOrderService.getNursingDeskDietDetails(req.body, req.user);
+        return response.success(res, 'Nursing desk diet details fetched successfully', data);
+    } catch (error) {
+        console.error('getNursingDeskDietDetails controller error:', error);
+        return handleHinaiOrderError(res, error, 'Failed to fetch nursing desk diet details');
+    }
+};
+
 export const getNursingRemarks = async (req, res) => {
     try {
         const data = await hinaiOrderService.getNursingRemarks(req.body, req.user);

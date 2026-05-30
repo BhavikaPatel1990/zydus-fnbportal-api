@@ -1330,8 +1330,8 @@ export const releasePageLock = async (body, jwtUser) => {
 
 export const getHinaiOrders = async (body, jwtUser) => {
     const siteIdParam = getFirstDefined(body, ['site_id']);
-    const viewdata = getFirstDefined(body, ['view_data', 'viewdata']) || '0';
-    const ordertype = getFirstDefined(body, ['order_type', 'ordertype']) || '0';
+    const viewdata = getFirstDefined(body, ['view_data', 'viewdata']) || 'today';
+    const ordertype = getFirstDefined(body, ['order_type', 'ordertype']) || 'regular';
     // listType: 'hinai' = all HIS orders (hinaiviewlist.php), 'ordered' = only with PatientOrder (viewlist.php)
     const listType = getFirstDefined(body, ['list_type']) || 'hinai';
     const location = getFirstDefined(body, ['location']) || '';
@@ -2438,6 +2438,98 @@ export const getHinaiOrderDetails = async (body, jwtUser) => {
 
         throw new Error(error.message);
     }
+};
+
+export const getNursingDeskDietDetails = async (body, jwtUser) => {
+    const patientId = toIntValue(
+        getFirstDefined(body, ['patient_id']),
+        'patient_id'
+    );
+    const hinaiOrderId = toIntValue(
+        getFirstDefined(body, ['hinai_order_id', 'poid']),
+        'hinai_order_id'
+    );
+    const orderType = getFirstDefined(body, ['order_type', 'ordertype']) || 'regular';
+
+    const hinaiOrder = await prisma.hinaiOrder.findFirst({
+        where: {
+            patient_id: patientId,
+            order_id: hinaiOrderId,
+            is_active: true
+        },
+        include: {
+            patientOrders: {
+                where: {
+                    is_active: true
+                },
+                orderBy: {
+                    created_at: 'desc'
+                },
+                take: 1,
+                include: {
+                    patientOrderDetails: {
+                        where: {
+                            is_active: true
+                        },
+                        include: {
+                            menuTime: true
+                        },
+                        orderBy: {
+                            created_at: 'asc'
+                        }
+                    },
+                    patientOrderLiquids: {
+                        where: {
+                            is_active: true
+                        },
+                        orderBy: {
+                            liquid_time: 'asc'
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    if (!hinaiOrder) {
+        throw new Error('Order not found');
+    }
+
+    const patientOrder = hinaiOrder.patientOrders?.[0];
+
+    if (!patientOrder) {
+        return {
+            res1: [
+                {
+                    dietRemark: ''
+                }
+            ],
+            res2: []
+        };
+    }
+
+    const isLiquidOrder =
+        orderType === 'liquids' ||
+        [17129492, 17129493, 17129495, 18894123].includes(patientOrder.diet_type);
+
+    const res2 = isLiquidOrder
+        ? patientOrder.patientOrderLiquids.map((item) => ({
+            liqtime: item.liquid_time,
+            remarks: item.remarks || ''
+        }))
+        : patientOrder.patientOrderDetails.map((item) => ({
+            description: item.menuTime?.description || '',
+            remarks: item.remarks || ''
+        }));
+
+    return {
+        res1: [
+            {
+                dietRemark: patientOrder.diet_remark || ''
+            }
+        ],
+        res2
+    };
 };
 
 export const getNursingRemarks = async (body, jwtUser) => {
