@@ -3,7 +3,9 @@ import { fetchInpatientsListCensus } from '../../controllers/ipd/inpatientsListC
 import checkPermission from '../../middleware/checkPermission.js';
 
 const router = Router();
-
+/* ==========================================================================
+   LIVE HINAI IPD Census List
+   ========================================================================== */
 router.get('/', checkPermission('FNB_PORTAL', 'READ'), fetchInpatientsListCensus);
 
 export default router;
