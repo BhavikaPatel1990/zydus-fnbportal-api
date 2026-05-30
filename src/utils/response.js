@@ -17,9 +17,9 @@ const DATETIME_FIELDS = [
     "admdate",
     "admissiondate",
     "ORDTIME",
-    "admission_date",
+    // "admission_date",
     "approved_date",
-    "punch_date",
+    // "punch_date",
     "timestamp"
 ];
 
