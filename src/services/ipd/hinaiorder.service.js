@@ -3805,21 +3805,35 @@ export const getLastOrder = async (body, jwtUser) => {
         orderBy: { id: 'desc' }
     });
 
-    return orders.map(order => ({
-        id: order.id,
-        siteid: order.mst_id ? order.mst_id.toString() : '',
-        patientid: order.patient_id,
-        mrno: order.mr_no.toString(),
-        patientname: order.patient_name,
-        doctor: order.doctor,
-        admno: order.admission_no,
-        bedno: order.bed_no,
-        ward: order.ward,
-        menu: order.menu,
-        menudetail: order.menu_detail,
-        orderdate: order.order_date ? new Date(order.order_date).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '') : '',
-        nurseremark: order.nurse_remark || ''
-    }));
+    let siteList = [];
+    try {
+        siteList = await fetchSiteList();
+    } catch (err) {
+        console.error('Failed to fetch site list for getLastOrder:', err.message);
+    }
+
+    return orders.map(order => {
+        const siteRecord = siteList.find(s => Number(s.id) === Number(order.mst_id));
+        return {
+            id: order.id,
+            site_id: order.mst_id ? order.mst_id.toString() : '',
+            hinai_site_id: siteRecord ? siteRecord.site_id : '',
+            site_name: siteRecord ? siteRecord.site_name : '',
+            patient_id: order.patient_id,
+            mr_no: order.mr_no.toString(),
+            patient_name: order.patient_name,
+            doctor: order.doctor,
+            admission_no: order.admission_no,
+            bed_no: order.bed_no,
+            ward: order.ward,
+            menu: order.menu,
+            menu_detail: order.menu_detail,
+            order_date: order.order_date ? new Date(order.order_date).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '') : '',
+            nurse_remark: order.nurse_remark || '',
+            diet_remark: order.diet_remark || '',
+            order_time: order.order_time || ''
+        };
+    });
 };
 
 export const updateSiteId = async (body, jwtUser) => {
@@ -3887,18 +3901,20 @@ export const getLastPunchOrder = async (body, jwtUser) => {
         const ho = po.hinaiOrder;
         return {
             id: po.id,
-            siteid: po.mst_id ? po.mst_id.toString() : '',
-            patientid: po.patient_id,
+  site_id: order.mst_id ? order.mst_id.toString() : '',
+            hinai_site_id: siteRecord ? siteRecord.site_id : '',
+            site_name: siteRecord ? siteRecord.site_name : '',
+            patient_id: po.patient_id,
             mrno: ho.mr_no.toString(),
-            patientname: ho.patient_name,
+            patient_name: ho.patient_name,
             doctor: ho.doctor,
-            admno: ho.admission_no,
-            bedno: ho.bed_no,
+            admission_no: ho.admission_no,
+            bed_no: ho.bed_no,
             ward: ho.ward,
             menu: ho.menu,
-            menudetail: ho.menu_detail,
-            orderdate: ho.order_date ? new Date(ho.order_date).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '') : '',
-            dietRemark: po.diet_remark || ''
+            menu_detail: ho.menu_detail,
+            order_date: ho.order_date ? new Date(ho.order_date).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '') : '',
+            diet_remark: po.diet_remark || ''
         };
     });
 };

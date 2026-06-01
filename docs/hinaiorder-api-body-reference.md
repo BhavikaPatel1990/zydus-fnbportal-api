@@ -117,6 +117,20 @@ Use these same sample values in all examples below:
 
 `POST /ipd/hinaiorders/list`
 
+Default behavior of `/list` now matches the nursing desk page when `view_data`, `order_type`, or `list_type` are not sent:
+
+- `view_data = today`
+- `order_type = regular`
+- `list_type = hinai`
+
+### Nursing desk default body
+
+```json
+{
+  "site_id": 1
+}
+```
+
 ### Today regular
 
 ```json
@@ -271,6 +285,50 @@ Use these same sample values in all examples below:
 {
   "patient_id": 1364794,
   "hinai_order_id": 62425697
+}
+```
+
+## 8A. Nursing desk diet details
+
+`POST /ipd/hinaiorders/nursing-desk/diet-details`
+
+This is the PHP `getNormalDiet.php` / `getLiquidDiet.php` style modal payload.
+
+### Regular
+
+```json
+{
+  "patient_id": 1364794,
+  "hinai_order_id": 62425697,
+  "order_type": "regular"
+}
+```
+
+### Liquids
+
+```json
+{
+  "patient_id": 1364794,
+  "hinai_order_id": 62425697,
+  "order_type": "liquids"
+}
+```
+
+### Response shape
+
+```json
+{
+  "res1": [
+    {
+      "dietRemark": "LESS OIL"
+    }
+  ],
+  "res2": [
+    {
+      "description": "Breakfast",
+      "remarks": "NO SUGAR"
+    }
+  ]
 }
 ```
 
@@ -809,3 +867,255 @@ Legacy meal mapping:
   "menu_id": "3d203e1b-31f7-45bc-a410-133373de5f3f"
 }
 ```
+
+## 30. Clearance list
+
+`POST /ipd/hinaiorders/clearance-list`
+
+### Standard body
+
+```json
+{
+  "site_id": 1,
+  "from_date": "2026-05-16",
+  "to_date": "2026-05-16"
+}
+```
+
+### Alternate body
+
+```json
+{
+  "siteid": 1,
+  "fromdate": "16/05/2026",
+  "todate": "16/05/2026"
+}
+```
+
+### Response data row
+
+```json
+{
+  "patientid": 1364794,
+  "mrno": "10002026571197",
+  "patientname": "MR DINESH RAMNIKLAL RATHOD",
+  "doctor": "DR NAME",
+  "admno": "AD1000260401778",
+  "bedno": "1031",
+  "menudetail": "SOFT DIET",
+  "Clearancetime": "28/05/2026 17:15:00",
+  "clearanceby": "user"
+}
+```
+
+## 31. Clearance CSV
+
+`POST /ipd/hinaiorders/export/clearance`
+
+### Standard body
+
+```json
+{
+  "site_id": 1,
+  "from_date": "2026-05-16",
+  "to_date": "2026-05-16"
+}
+```
+
+### Alternate body
+
+```json
+{
+  "siteid": 1,
+  "fromdate": "16/05/2026",
+  "todate": "16/05/2026"
+}
+```
+
+## 32. Out All List
+
+`POST /ipd/hinaiorders/out-all-list`
+
+### Standard body
+
+```json
+{
+  "site_id": 1,
+  "from_date": "2026-05-16",
+  "to_date": "2026-05-16",
+  "page": 1,
+  "limit": 20
+}
+```
+
+### Alternate body
+
+```json
+{
+  "siteid": 1,
+  "fromdate": "16/05/2026",
+  "todate": "16/05/2026",
+  "page": 1,
+  "limit": 20
+}
+```
+
+### Response data row
+
+```json
+{
+  "patientid": 1364794,
+  "mrno": "10002026571197",
+  "patientname": "MR DINESH RAMNIKLAL RATHOD",
+  "doctor": "DR NAME",
+  "admno": "AD1000260401778",
+  "bedno": "1031",
+  "menudetail": "SOFT DIET",
+  "outtime": "28/05/2026 17:15:00",
+  "outby": "user"
+}
+```
+
+## 33. Out All CSV
+
+`POST /ipd/hinaiorders/export/out-all`
+
+### Standard body
+
+```json
+{
+  "site_id": 1,
+  "from_date": "2026-05-16",
+  "to_date": "2026-05-16"
+}
+```
+
+### Alternate body
+
+```json
+{
+  "siteid": 1,
+  "fromdate": "16/05/2026",
+  "todate": "16/05/2026"
+}
+```
+
+## 34. Get Last Order
+
+`POST /ipd/hinaiorders/last-order`
+
+### Body
+
+```json
+{
+  "mrno": "10002026570261"
+}
+```
+
+### Alternate body parameters
+
+Supports `mr_no` instead of `mrno`.
+
+### Response data array
+
+```json
+[
+  {
+    "id": "uuid-string",
+    "siteid": "1",
+    "patientid": 1364794,
+    "mrno": "10002026570261",
+    "patientname": "MR DINESH RAMNIKLAL RATHOD",
+    "doctor": "DR NAME",
+    "admno": "AD1000260401778",
+    "bedno": "1031",
+    "ward": "ICU",
+    "menu": "SOFT DIET",
+    "menudetail": "SOFT DIET REMARKS",
+    "orderdate": "29/05/2026 12:13",
+    "nurseremark": "Nurse Remark"
+  }
+]
+```
+
+## 35. Update Site ID
+
+`POST /ipd/hinaiorders/update-site-id`
+
+### Body
+
+```json
+{
+  "id": "patientorder-uuid",
+  "mrno": "10002026570261",
+  "site_id": 1
+}
+```
+
+### Alternate body parameters
+
+Supports `mr_no` instead of `mrno`, and `siteid` instead of `site_id`.
+
+### Response data array
+
+Returns the updated last HINAI orders list (same structure as `GET /ipd/hinaiorders/last-order`).
+
+## 36. Get Last Punch Order
+
+`POST /ipd/hinaiorders/last-punch-order`
+
+### Body
+
+```json
+{
+  "mrno": "10002026570261"
+}
+```
+
+### Alternate body parameters
+
+Supports `mr_no` instead of `mrno`.
+
+### Response data array
+
+```json
+[
+  {
+    "id": 12345,
+    "siteid": "1",
+    "patientid": 1364794,
+    "mrno": "10002026570261",
+    "patientname": "MR DINESH RAMNIKLAL RATHOD",
+    "doctor": "DR NAME",
+    "admno": "AD1000260401778",
+    "bedno": "1031",
+    "ward": "ICU",
+    "menu": "SOFT DIET",
+    "menudetail": "SOFT DIET REMARKS",
+    "orderdate": "29/05/2026 12:13",
+    "dietRemark": "Dietitian Remark"
+  }
+]
+```
+
+## 37. Update Patient Order Site ID
+
+`POST /ipd/hinaiorders/update-po-site-id`
+
+### Body
+
+```json
+{
+  "id": 12345,
+  "mrno": "10002026570261",
+  "site_id": 1
+}
+```
+
+### Alternate body parameters
+
+Supports `mr_no` instead of `mrno`, and `siteid` instead of `site_id`.
+
+### Response data array
+
+Returns the updated last HINAI orders list (same structure as `GET /ipd/hinaiorders/last-order` per PHP logic).
