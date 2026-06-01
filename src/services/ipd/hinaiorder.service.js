@@ -3882,7 +3882,12 @@ export const getLastPunchOrder = async (body, jwtUser) => {
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(today);
     endOfDay.setHours(23, 59, 59, 999);
-
+    let siteList = [];
+    try {
+        siteList = await fetchSiteList();
+    } catch (err) {
+        console.error('Failed to fetch site list for getLastOrder:', err.message);
+    }
     const patientOrders = await prisma.patientOrder.findMany({
         where: {
             is_active: true,
@@ -3899,9 +3904,12 @@ export const getLastPunchOrder = async (body, jwtUser) => {
 
     return patientOrders.map(po => {
         const ho = po.hinaiOrder;
+        const mstId = po.mst_id || ho?.mst_id;
+        const siteRecord = siteList.find(s => Number(s.id) === Number(mstId));
+
         return {
             id: po.id,
-  site_id: order.mst_id ? order.mst_id.toString() : '',
+            site_id: mstId ? mstId.toString() : '',
             hinai_site_id: siteRecord ? siteRecord.site_id : '',
             site_name: siteRecord ? siteRecord.site_name : '',
             patient_id: po.patient_id,
