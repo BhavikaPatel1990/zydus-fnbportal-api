@@ -185,6 +185,22 @@ export const getPatientOrderLedger = async (req, res) => {
   }
 };
 
+export const downloadPatientOrderLedgerCsv = async (req, res) => {
+  try {
+    const csvContent = await fnbDashboardService.downloadPatientOrderLedgerCsv(req.body, req.user);
+    if (!csvContent) {
+      return response.normalError(res, 'No records to display...');
+    }
+    const mrn = (req.body.mr_no || req.body.mrn || 'Export').trim();
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=OrderLedger_${mrn}.csv`);
+    return res.status(200).send(csvContent);
+  } catch (error) {
+    console.error('downloadPatientOrderLedgerCsv error:', error.message);
+    return handleDashboardError(res, error, 'Failed to download patient order ledger CSV');
+  }
+};
+
 export const getDietTypes = async (req, res) => {
     try {
         const data = await fnbDashboardService.getDietTypes();

@@ -67,6 +67,9 @@ router.post('/search-patient', checkPermission('FNB_PORTAL', 'READ'), fnbDashboa
 // Get Patient Order Ledger History
 router.post('/patient-order-ledger', checkPermission('FNB_PORTAL', 'READ'), fnbDashboardController.getPatientOrderLedger);
 
+// Download Patient Order Ledger CSV
+router.post('/patient-order-ledger/download', checkPermission('FNB_PORTAL', 'READ'), fnbDashboardController.downloadPatientOrderLedgerCsv);
+
 /* ==========================================================================
    MASTER DATA
    ========================================================================== */
