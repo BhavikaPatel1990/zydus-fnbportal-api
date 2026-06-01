@@ -25,6 +25,25 @@ const getFirstDefined = (payload, keys) => {
     return undefined;
 };
 
+const getUserMapForIds = async (userIds) => {
+    const userMap = {};
+    const uniqueUserIds = [...new Set(userIds.filter(Boolean))];
+    if (uniqueUserIds.length > 0) {
+        try {
+            const users = await authPrisma.$queryRaw`
+                SELECT id::text, username, full_name FROM users
+                WHERE id::text IN (${Prisma.join(uniqueUserIds)})
+            `;
+            users.forEach((u) => {
+                userMap[u.id] = u.full_name || '';
+            });
+        } catch (error) {
+            console.error("Error fetching users from ZYDUSAPP database:", error);
+        }
+    }
+    return userMap;
+};
+
 const toIntValue = (value, fieldName, { required = true } = {}) => {
     if (value === undefined) {
         if (required) {
@@ -901,6 +920,10 @@ export const getExtraOrders = async (body, jwtUser) => {
             return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
         };
 
+        // ✅ Fetch usernames from authPrisma
+        const createdByUserIds = orders.map(po => po.created_by).filter(Boolean);
+        const userMap = await getUserMapForIds(createdByUserIds);
+
         // ✅ Final response (snake_case)
         const data = orders.map(po => {
             const ho = po.hinaiOrder;
@@ -917,7 +940,7 @@ export const getExtraOrders = async (body, jwtUser) => {
                 ward: ho?.ward || '',
                 doctor: ho?.doctor || '',
                 mobile_no: ho?.mobile_no || '',
-                username: po?.created_by || '',
+                username: userMap[po?.created_by] || '',
                 diet_name: dietMap.get(po.diet_type) || '',
                 nursing_remark: po.nursing_remark || '',
                 diet_remark: po.diet_remark || '',
@@ -1081,6 +1104,10 @@ export const getLiquidData = async (body, jwtUser) => {
             ]
         });
 
+        // ✅ Fetch usernames from authPrisma
+        const createdByUserIds = records.map((po) => po.created_by).filter(Boolean);
+        const userMap = await getUserMapForIds(createdByUserIds);
+
         // ✅ flatten + filter search
         let data = [];
 
@@ -1102,7 +1129,7 @@ export const getLiquidData = async (body, jwtUser) => {
                     admission_date: formatDateTime(ho?.admission_at),
                     remarks: liq?.remarks || '-',
                     liquid_detail_id: liq?.id,
-                    username: po?.created_by,
+                    username: userMap[po.created_by] || "",
                     admission_no: ho?.admission_no,
                     menu: ho?.menu,
                     menu_detail: ho?.menu_detail,
@@ -1394,22 +1421,7 @@ export const getPatientOrderLedger = async (body, jwtUser) => {
         ===========================================================
         */
 
-        const uniqueUserIds = [...new Set(createdByUserIds)];
-        const userMap = {};
-
-        if (uniqueUserIds.length > 0) {
-            try {
-                const users = await authPrisma.$queryRaw`
-                    SELECT id::text, username, full_name FROM users
-                    WHERE id::text IN (${Prisma.join(uniqueUserIds)})
-                `;
-                users.forEach((u) => {
-                    userMap[u.id] = u.username || u.full_name || '';
-                });
-            } catch (error) {
-                console.error("Error fetching users from zydusapp database:", error);
-            }
-        }
+        const userMap = await getUserMapForIds(createdByUserIds);
 
         /*
         ===========================================================
