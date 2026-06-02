@@ -336,22 +336,47 @@ export const getDietSheet = async (body, jwtUser) => {
     const page = parseInt(body.page) || 1;
     const limit = parseInt(body.limit) || 10;
     const search = (body.search || '').toLowerCase();
-    const dietType = body.diet_type ? Number(body.diet_type) : undefined;
-    const locationId = body.location_id;
 
     const mstId = await resolveSiteMapping(siteIdParam);
     if (!mstId) throw createNormalError('Invalid site mapping');
 
-    let locationName = undefined;
-    if (locationId && locationId !== 'all' && locationId !== '') {
-        try {
-            const loc = await prisma.location.findUnique({ where: { id: locationId } });
-            locationName = loc?.name;
-        } catch (error) {
-            console.error('location_id lookup error:', error.message);
+    // Resolve ward names/location_id filter
+    const locationIdParam = body.location_id || body.ward;
+    let wardFilter = undefined;
+    if (locationIdParam && locationIdParam !== 'All' && locationIdParam !== 'all' && locationIdParam !== '') {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (uuidRegex.test(locationIdParam)) {
+            const loc = await prisma.location.findFirst({
+                where: { id: locationIdParam }
+            });
+            if (loc) {
+                wardFilter = loc.name;
+            } else {
+                wardFilter = locationIdParam;
+            }
+        } else {
+            wardFilter = locationIdParam;
         }
     }
 
+    // Resolve diet_type/diet_name/menu to activeDietType id
+    const dietTypeParam = body.diet_type !== undefined ? body.diet_type : (body.menu || body.diet_name);
+    let activeDietType = undefined;
+    if (dietTypeParam !== undefined && dietTypeParam !== null && dietTypeParam !== 'All' && dietTypeParam !== 'all' && dietTypeParam !== '') {
+        const parsed = Number(dietTypeParam);
+        if (!Number.isNaN(parsed) && Number.isInteger(parsed)) {
+            activeDietType = parsed;
+        } else {
+            const dt = await prisma.dietType.findFirst({
+                where: { diet_name: String(dietTypeParam) }
+            });
+            if (dt) {
+                activeDietType = dt.diet_type_id;
+            } else {
+                activeDietType = -999;
+            }
+        }
+    }
 
     const today = new Date();
     const start = new Date(today.setHours(0, 0, 0, 0));
@@ -362,7 +387,7 @@ export const getDietSheet = async (body, jwtUser) => {
         where: {
             mst_id: mstId,
             is_active: true,
-            diet_type: dietType ? { equals: dietType, not: 18894123 } : { not: 18894123 },
+            diet_type: activeDietType ? { equals: activeDietType, not: 18894123 } : { not: 18894123 },
             created_at: { gte: start, lte: end }
         },
         orderBy: { id: 'desc' }
@@ -387,7 +412,7 @@ export const getDietSheet = async (body, jwtUser) => {
             mst_id: mstId,
             is_discharge: false,
             diet_type: { notIn: [17129492, 17129493, 17129495] },
-            ward: locationName
+            ...(wardFilter !== undefined && { ward: wardFilter })
         }
     });
 
@@ -534,34 +559,58 @@ export const getDietSheetLiquids = async (body, jwtUser) => {
     const page = parseInt(body.page) || 1;
     const limit = parseInt(body.limit) || 10;
     const search = (body.search || '').toLowerCase();
-    const dietType = body.diet_type ? Number(body.diet_type) : undefined;
-    const locationId = body.location_id;
 
     const mstId = await resolveSiteMapping(siteIdParam);
     if (!mstId) throw createNormalError('Invalid site mapping');
 
-    let locationName = undefined;
-    if (locationId && locationId !== 'all' && locationId !== '') {
-        try {
-            const loc = await prisma.location.findUnique({ where: { id: locationId } });
-            locationName = loc?.name;
-        } catch (error) {
-            console.error('location_id lookup error:', error.message);
+    // Resolve ward names/location_id filter
+    const locationIdParam = body.location_id || body.ward;
+    let wardFilter = undefined;
+    if (locationIdParam && locationIdParam !== 'All' && locationIdParam !== 'all' && locationIdParam !== '') {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (uuidRegex.test(locationIdParam)) {
+            const loc = await prisma.location.findFirst({
+                where: { id: locationIdParam }
+            });
+            if (loc) {
+                wardFilter = loc.name;
+            } else {
+                wardFilter = locationIdParam;
+            }
+        } else {
+            wardFilter = locationIdParam;
         }
     }
 
+    // Resolve diet_type/diet_name/menu to activeDietType id
+    const dietTypeParam = body.diet_type !== undefined ? body.diet_type : (body.menu || body.diet_name);
+    let activeDietType = undefined;
+    if (dietTypeParam !== undefined && dietTypeParam !== null && dietTypeParam !== 'All' && dietTypeParam !== 'all' && dietTypeParam !== '') {
+        const parsed = Number(dietTypeParam);
+        if (!Number.isNaN(parsed) && Number.isInteger(parsed)) {
+            activeDietType = parsed;
+        } else {
+            const dt = await prisma.dietType.findFirst({
+                where: { diet_name: String(dietTypeParam) }
+            });
+            if (dt) {
+                activeDietType = dt.diet_type_id;
+            } else {
+                activeDietType = -999;
+            }
+        }
+    }
 
     const today = new Date();
     const start = new Date(today.setHours(0, 0, 0, 0));
     const end = new Date(today.setHours(23, 59, 59, 999));
-
 
     // 1️⃣ Latest patient orders (same logic)
     const patientOrders = await prisma.patientOrder.findMany({
         where: {
             mst_id: mstId,
             is_active: true,
-            diet_type: dietType ? { equals: dietType, not: 18894123 } : { not: 18894123 },
+            diet_type: activeDietType ? { equals: activeDietType, not: 18894123 } : { not: 18894123 },
             created_at: { gte: start, lte: end }
         },
         orderBy: { id: 'desc' }
@@ -585,7 +634,7 @@ export const getDietSheetLiquids = async (body, jwtUser) => {
             mst_id: mstId,
             is_discharge: false,
             diet_type: { in: [17129492, 17129493, 17129495] },
-            ward: locationName
+            ...(wardFilter !== undefined && { ward: wardFilter })
         }
     });
 
