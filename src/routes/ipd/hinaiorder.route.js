@@ -87,6 +87,9 @@ router.post('/update-diagnosis', checkPermission('FNB_PORTAL', 'UPDATE'), hinaiO
 // Get Ward List
 router.post('/wards', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.getWards);
 
+// Get Menu List
+router.post('/menus', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.getMenus);
+
 // Get Menu List with Sticker Print Status
 router.post('/order-menu-list', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.getOrderMenuListWithPrintStatus);
 

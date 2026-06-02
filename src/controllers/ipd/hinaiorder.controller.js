@@ -339,6 +339,16 @@ export const getWards = async (req, res) => {
 
 };
 
+export const getMenus = async (req, res) => {
+    try {
+        const data = await hinaiOrderService.getMenus(req.body);
+        return response.success(res, 'Menus fetched successfully', data);
+    } catch (error) {
+        console.error('Error fetching menus:', error);
+        return handleHinaiOrderError(res, error, 'Failed to fetch menus');
+    }
+};
+
 export const getOrderMenuListWithPrintStatus = async (req, res) => {
     try {
         const data = await hinaiOrderService.getOrderMenuListWithPrintStatus(req.body);

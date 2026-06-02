@@ -2171,15 +2171,9 @@ export const getHinaiOrderSummary = async (body, jwtUser) => {
             AND order_date <= ${endOfDay}
         `;
     }
-    if (ordertype === 'extra') {
+    if (ordertype === 'extra' && viewdata === 'today') {
         orderTypeCondition = Prisma.sql`
             AND menu = 'EXTRA ORDER'
-        `;
-    }
-
-    if (ordertype === 'regular') {
-        orderTypeCondition = Prisma.sql`
-            AND menu != 'EXTRA ORDER'
         `;
     }
 
@@ -2220,11 +2214,7 @@ export const getHinaiOrderSummary = async (body, jwtUser) => {
         punched_orders,
         pending_order_punch,
         pending_extra_order_punch,
-        totals:
-            `Total Orders: ${total_orders}` +
-            ` | Punched Orders: ${punched_orders}` +
-            ` | Pending Order Punch: ${pending_order_punch}` +
-            ` | Pending Extra Order Punch: ${pending_extra_order_punch}`
+        totals: `Total Orders: ${total_orders} | Punched Orders: ${punched_orders}| Pending Order Punch: ${pending_order_punch}| Pending Extra Order Punch: ${pending_extra_order_punch}`
     };
 };
 
@@ -2822,6 +2812,24 @@ export const getWards = async (body) => {
     });
 
     return locations.map(l => l.name);
+};
+
+export const getMenus = async (body) => {
+    const dietTypes = await prisma.dietType.findMany({
+        where: {
+            is_active: true,
+            deleted_at: null
+        },
+        select: {
+            diet_name: true
+        },
+        distinct: ['diet_name'],
+        orderBy: {
+            diet_name: 'asc'
+        }
+    });
+
+    return dietTypes.map(d => d.diet_name).filter(Boolean);
 };
 
 export const getOrderMenuListWithPrintStatus = async (body) => {
