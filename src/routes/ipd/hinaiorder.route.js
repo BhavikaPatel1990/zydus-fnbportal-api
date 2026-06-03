@@ -53,19 +53,19 @@ router.post('/nursing-remarks', checkPermission('FNB_PORTAL', 'NURSING_MENU'), h
    ========================================================================== */
 
 // Get Patient Order Form Data
-router.post('/patient-order/form', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.getPatientOrderFormData);
+router.post('/patient-order/form', checkPermission('FNB_PORTAL', 'UPDATE'), hinaiOrderController.getPatientOrderFormData);
 
 // Create/Update Patient Food Order
-router.post('/patient-order', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.createPatientOrder);
+router.post('/patient-order', checkPermission('FNB_PORTAL', 'UPDATE'), hinaiOrderController.createPatientOrder);
 
 // Get Liquid Diet Form Data
-router.post('/patient-order-liquid/form', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.getPatientLiquidOrderFormData);
+router.post('/patient-order-liquid/form', checkPermission('FNB_PORTAL', 'UPDATE'), hinaiOrderController.getPatientLiquidOrderFormData);
 
 // Get Liquid Diet Timing Details
-router.post('/patient-order-liquid/timings', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.getPatientLiquidOrderTimings);
+router.post('/patient-order-liquid/timings', checkPermission('FNB_PORTAL', 'UPDATE'), hinaiOrderController.getPatientLiquidOrderTimings);
 
 // Create Liquid Diet Order
-router.post('/patient-order-liquid', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.createPatientLiquidOrder);
+router.post('/patient-order-liquid', checkPermission('FNB_PORTAL', 'UPDATE'), hinaiOrderController.createPatientLiquidOrder);
 
 /* ==========================================================================
    PAGE LOCK MANAGEMENT
@@ -129,7 +129,7 @@ router.post('/print/liquid-stickers', checkPermission('FNB_PORTAL', 'READ'), hin
 router.post('/export/orders', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.downloadOrdersCsv);
 
 // Export Out Orders CSV
-router.post('/export/out-all', checkPermission('FNB_PORTAL', 'REPORTS_READ'), hinaiOrderController.downloadOutAllOrdersCsv);
+router.post('/export/out-all', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.downloadOutAllOrdersCsv);
 
 // Get Out Orders Report
 router.post('/out-all-list', checkPermission('FNB_PORTAL', 'REPORTS_READ'), hinaiOrderController.getOutAllList);
