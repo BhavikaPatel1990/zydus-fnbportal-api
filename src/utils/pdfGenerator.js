@@ -278,13 +278,6 @@ function renderLiquidLabel(doc, data, x, y, width, height) {
     // ===== Layout Configuration =====
     const leftPadding = 5;
 
-    const patientInfoY = y + 3;
-    const itemY = y + 14;
-    const dietRemarkY = y + 24;
-    const nursingRemarkY = y + 38;
-    const remarkTimeY = y + 48;
-    const orderDateY = y + 58;
-
     const remarkLabelX = x + 5;
     const remarkValueX = x + 38;
     const remarkTimeValueX = x + 48;
@@ -297,6 +290,8 @@ function renderLiquidLabel(doc, data, x, y, width, height) {
 
     const multilineLineGap = -1;
 
+    let cy = y + 3;
+
     // ===== Patient Info =====
     doc
         .fontSize(patientFontSize)
@@ -305,8 +300,9 @@ function renderLiquidLabel(doc, data, x, y, width, height) {
     doc.text(
         `${data.patient_name.substring(0, 15)} | ${data.mr_no.substring(data.mr_no.length - 8)} | ${data.bed_no}`,
         x + leftPadding,
-        patientInfoY
+        cy
     );
+    cy += patientFontSize + 3;
 
     // ===== Item =====
     doc
@@ -316,55 +312,79 @@ function renderLiquidLabel(doc, data, x, y, width, height) {
     doc.text(
         `Item: ${data.menu_detail?.substring(0, 30) || '-'}`,
         x + leftPadding,
-        itemY
+        cy
     );
+    cy += normalFontSize + 3;
 
     // ===== Diet Remark =====
     doc
         .font('Helvetica-Bold')
-        .text('DtRem:', remarkLabelX, dietRemarkY);
+        .text('DtRem:', remarkLabelX, cy);
 
     doc
         .font('Helvetica')
         .text(
             data.diet_remark || '-',
             remarkValueX,
-            dietRemarkY,
+            cy,
             {
                 width: remarkTextWidth,
                 lineGap: multilineLineGap
             }
         );
 
+    const dietRemarkHeight = doc.heightOfString(data.diet_remark || '-', {
+        width: remarkTextWidth,
+        lineGap: multilineLineGap
+    });
+    cy += Math.max(dietRemarkHeight, normalFontSize) + 3;
+
     // ===== Nursing Remark =====
     doc
         .font('Helvetica-Bold')
-        .text('NurRem:', remarkLabelX, nursingRemarkY);
+        .text('NurRem:', remarkLabelX, cy);
 
     doc
         .font('Helvetica')
         .text(
             data.nursing_remark || '-',
             remarkValueX,
-            nursingRemarkY,
+            cy,
             {
                 width: remarkTextWidth,
                 lineGap: multilineLineGap
             }
         );
 
+    const nursingRemarkHeight = doc.heightOfString(data.nursing_remark || '-', {
+        width: remarkTextWidth,
+        lineGap: multilineLineGap
+    });
+    cy += Math.max(nursingRemarkHeight, normalFontSize) + 3;
+
     // ===== Remark & Time =====
     doc
         .font('Helvetica-Bold')
-        .text('Rem|Time:', remarkLabelX, remarkTimeY);
+        .text('Rem|Time:', remarkLabelX, cy);
 
+    const remarkTimeText = `${data.remarks || '-'} @${data.description}:00`;
     doc
         .font('Helvetica')
         .text(
-            `${data.remarks || '-'} @${data.description}:00`,
+            remarkTimeText,
             remarkTimeValueX,
-            remarkTimeY
+            cy,
+            {
+                width: remarkTextWidth - 10,
+                lineGap: multilineLineGap
+            }
         );
+
+    const remarkTimeHeight = doc.heightOfString(remarkTimeText, {
+        width: remarkTextWidth - 10,
+        lineGap: multilineLineGap
+    });
+    cy += Math.max(remarkTimeHeight, normalFontSize) + 3;
 
     // ===== Order Date =====
     doc
@@ -374,6 +394,6 @@ function renderLiquidLabel(doc, data, x, y, width, height) {
     doc.text(
         `OrdDtTime: ${data.order_date}`,
         x + leftPadding,
-        orderDateY
+        cy
     );
 }

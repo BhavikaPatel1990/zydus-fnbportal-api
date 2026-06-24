@@ -61,6 +61,7 @@ model HinaiOrder {
   status         Boolean
   nurse_remark   String?
   is_discharge   Boolean
+  patient_status String?
   nursing_user   String
   is_diet_change Boolean
   is_transfer    Boolean
@@ -76,6 +77,7 @@ model HinaiOrder {
   clearance_by   String?
   diagnosis      String?
   approved_date  DateTime?
+  plan_name      String?
   created_at     DateTime       @default(now())
   updated_at     DateTime       @updatedAt
   deleted_at     DateTime?

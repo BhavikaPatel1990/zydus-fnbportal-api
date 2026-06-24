@@ -42,6 +42,7 @@ const hinaiOrderSelect = {
     status: true,
     nurse_remark: true,
     is_discharge: true,
+    patient_status: true,
     nursing_user: true,
     is_diet_change: true,
     is_transfer: true,
@@ -57,6 +58,7 @@ const hinaiOrderSelect = {
     clearance_by: true,
     diagnosis: true,
     approved_date: true,
+    plan_name: true,
     created_at: true,
     updated_at: true,
     deleted_at: true,
@@ -184,6 +186,7 @@ const buildPatientPayload = (hinaiOrder) => ({
     menu_detail: hinaiOrder.menu_detail || '',
     menu_name: hinaiOrder.menu || '',
     hinai_order_id: hinaiOrder.order_id,
+    plan_name: hinaiOrder.plan_name || '',
 });
 
 const buildOrderPayload = ({
@@ -294,6 +297,8 @@ const buildHinaiOrderListRow = ({
     out_time: row.out_time,
     clearance_time: row.clearance_time,
     clearance: row.clearance,
+    patient_status: row.patient_status || '',
+    plan_name: row.plan_name || '',
 });
 
 const buildLegacyHinaiOrderListRow = (row) => ({
@@ -320,6 +325,7 @@ const buildLegacyHinaiOrderListRow = (row) => ({
     nurse_remark: row.NURSEREMARK,
     approved_date: row.APPROVEDDATE || row.approveddate,
     diet_order: row.dietorder,
+    patient_status: row.PATIENTSTATUS || '',
 });
 
 const buildHinaiOrderDetailPayload = (orderDetails) => ({
@@ -507,6 +513,7 @@ const mapHinaiOrderPayload = async (payload) => {
     const email = getFirstDefined(payload, ['email', 'EMAIL']);
     const nurseRemark = getFirstDefined(payload, ['nurse_remark', 'NURSEREMARK', 'nurseremark']);
     const approvedDate = getFirstDefined(payload, ['approved_date', 'APPROVEDDATE', 'ord_approveddate']);
+    const planName = getFirstDefined(payload, ['plan_name', 'PLAN_NAME', 'planname']);
     const siteId = getFirstDefined(payload, ['site_id', 'SITEID', 'siteid']);
     const status = getFirstDefined(payload, ['status']);
     const isDischarge = getFirstDefined(payload, ['is_discharge']);
@@ -552,6 +559,7 @@ const mapHinaiOrderPayload = async (payload) => {
         clearance_by: toBigIntValue(clearanceBy, 'clearance_by', { required: false }),
         diagnosis: toStringValue(diagnosis, 'diagnosis', { required: false }),
         approved_date: approvedDate === undefined ? null : toDateValue(approvedDate, 'approved_date'),
+        plan_name: toStringValue(planName, 'plan_name', { required: false }),
     };
 };
 
@@ -1238,6 +1246,7 @@ export const getHinaiOrdersOldAsRawQuery = async (body, jwtUser) => {
             h.nursing_user,
             h.is_diet_change,
             h.is_transfer,
+            h.patient_status AS "PATIENTSTATUS",
             CASE WHEN h.diet_type IN (17129492, 17129493, 17129495) THEN 'liquid' ELSE 'regular' END AS "dietorder",
             to_char(h.approved_date, 'DD-MM-YYYY HH24:MI') AS "approveddate"
         FROM "HinaiOrder" h
@@ -1338,6 +1347,8 @@ export const getHinaiOrders = async (body, jwtUser) => {
     const page = parseInt(body.page) || 1;
     const limit = parseInt(body.limit) || 10;
     const search = body.search || '';
+    const markDischarge = getFirstDefined(body, ['mark_discharge', 'markDischarge']) || '';
+    const dischargeIntimation = getFirstDefined(body, ['discharge_intimation', 'dischargeIntimation']) || '';
 
     const mstId = await resolveSiteMapping(siteIdParam, 'mst_id');
     if (!mstId) throw new Error('Invalid site mapping');
@@ -1352,6 +1363,39 @@ export const getHinaiOrders = async (body, jwtUser) => {
         mst_id: mstId,
         is_discharge: false
     };
+
+    let andConditions = [];
+
+    if (markDischarge || dischargeIntimation) {
+        let statusConditions = [];
+        if (markDischarge) {
+            let cond = { patient_status: '388' };
+            if (markDischarge === 'Cash') {
+                cond.plan_name = 'Cash';
+            } else if (markDischarge === 'TPA') {
+                cond.plan_name = { not: 'Cash' };
+            }
+            statusConditions.push(cond);
+        }
+        if (dischargeIntimation) {
+            let cond = { patient_status: { in: ['93706101', '93706103'] } };
+            if (dischargeIntimation === 'Cash') {
+                cond.plan_name = 'Cash';
+            } else if (dischargeIntimation === 'TPA') {
+                cond.plan_name = { not: 'Cash' };
+            }
+            statusConditions.push(cond);
+        }
+        if (statusConditions.length === 1) {
+            andConditions.push(statusConditions[0]);
+        } else if (statusConditions.length > 1) {
+            andConditions.push({ OR: statusConditions });
+        }
+    }
+
+    if (andConditions.length > 0) {
+        where.AND = andConditions;
+    }
 
     if (location && location !== 'all' && location !== '0') {
         let locationName = location;
@@ -1914,7 +1958,9 @@ WITH cte AS (
            '/' || (CASE WHEN p.GENDERID = 1 THEN 'M' ELSE 'F' END) AS agegender,
            p.mobileno, p.email,
            dl.otherspecification nurseremark,
-           TO_CHAR(dl.approveddate,'yyyy-mm-dd hh24:mi') AS approveddate
+           ip.visit_patientstatus AS PATIENTSTATUS,
+           TO_CHAR(dl.approveddate,'yyyy-mm-dd hh24:mi') AS approveddate,
+           ip.plan_name AS plan_name
     FROM inpatients ip
     LEFT JOIN visit v ON v.visitid=ip.visitid
     LEFT JOIN problem prb ON prb.visitid=v.visitid
@@ -1952,7 +1998,9 @@ WITH cte AS (
            '/' || (CASE WHEN p.GENDERID = 1 THEN 'M' ELSE 'F' END) AS agegender,
            p.mobileno, p.email,
            dietReqCo.comments nurseremark,
-           TO_CHAR(NVL(dr.approveddatetime, dr.createddatetime),'yyyy-mm-dd hh24:mi') AS approveddate
+           ip.visit_patientstatus AS PATIENTSTATUS,
+           TO_CHAR(NVL(dr.approveddatetime, dr.createddatetime),'yyyy-mm-dd hh24:mi') AS approveddate,
+           ip.plan_name AS plan_name
     FROM inpatients ip
     LEFT JOIN visit v ON v.visitid=ip.visitid
     LEFT JOIN patient p ON p.patient_id=ip.patient
@@ -1973,7 +2021,7 @@ WITH cte AS (
       AND ip.visit_patientstatus<>1122
       AND drd.id IS NOT NULL
       AND dc.name IS NOT NULL
-      AND dr.createddatetime >= SYSDATE - INTERVAL '2' HOUR
+      AND dr.createddatetime >= SYSDATE - INTERVAL '24' HOUR
 ),
 cte1 AS (
     SELECT ROW_NUMBER() OVER (PARTITION BY mrno,diettype ORDER BY cdate DESC) RN,
@@ -1982,23 +2030,23 @@ cte1 AS (
            RTRIM(XMLAGG(XMLELEMENT(e, description || ', ')).EXTRACT('//text()'), ', ') AS NAME,
            name AS menu, cdate, diettype, hinaiorderid,
            username, isdietchanged, Diagnosis, agegender,
-           mobileno, email, nurseremark, approveddate
+           mobileno, email, nurseremark, approveddate, plan_name
     FROM cte
     GROUP BY cdate, ad_siteid, siteid, patient_id, mrno, PATIENT,
              admissionnumber, admdate, bed_id, bed_no,
              scname, DOCTOR, name, diettype, hinaiorderid,
              username, isdietchanged, Diagnosis, agegender,
-             mobileno, email, nurseremark, approveddate
+             mobileno, email, nurseremark, approveddate, plan_name
 )
 SELECT *
 FROM cte1
 WHERE rn = 1
-  AND TO_CHAR(cdate,'yyyy-mm-dd') = :ctime
+  AND trunc(cdate) = trunc(SYSDATE)
 `;
 
         const result = await connection.execute(
             sql,
-            { ctime },
+            {},
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
 
@@ -2013,7 +2061,8 @@ WHERE rn = 1
                     ward: row.SCNAME ? row.SCNAME.replace(/\s+/g, ' ').trim() : null,
                     bed_no: row.BED_NO,
                     is_transfer: false,
-                    is_discharge: false
+                    is_discharge: false,
+                    plan_name: row.PLAN_NAME || null
                 },
                 create: {
                     mst_id: mappedSiteId,
@@ -2041,6 +2090,7 @@ WHERE rn = 1
                     email: row.EMAIL,
                     nurse_remark: row.NURSEREMARK,
                     approved_date: row.APPROVEDDATE ? new Date(row.APPROVEDDATE) : null,
+                    plan_name: row.PLAN_NAME || null,
                     created_by: row.USERNAME || null,
                     updated_by: row.USERNAME || null
                 }
@@ -2054,8 +2104,9 @@ WHERE rn = 1
             `
       select pa.admissionno, pa.patientid
       from patientadmission pa
-      left join visit v on v.visitid=pa.visitid
-      left join discharge d on d.visit=v.visitid
+      inner join visit v on v.visitid=pa.visitid
+      inner join inpatients ip on ip.visitid=v.visitid
+      inner join discharge d on d.visit=v.visitid
       where d.dateofdischarge>=SYSDATE - INTERVAL '1' HOUR
       and d.dateofdischarge is not null
       `,
@@ -2076,6 +2127,72 @@ WHERE rn = 1
                 }
             });
         }
+
+        // ===============================
+        // 2.1 MARK FOR DISCHARGE CHECK
+        // ===============================
+        const markForDischargeResult = await connection.execute(
+            `
+            SELECT md.visitid,
+                   ip.visit_patientstatus,
+                   ip.admissionnumber
+            FROM markfordischarge md
+            INNER JOIN inpatients ip
+                ON ip.visitid = md.visitid
+            WHERE TRUNC(md.createddatetime) = TRUNC(SYSDATE)
+            `,
+            {},
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        for (const row of markForDischargeResult.rows) {
+            if (row.ADMISSIONNUMBER) {
+                await prisma.hinaiOrder.updateMany({
+                    where: {
+                        admission_no: row.ADMISSIONNUMBER,
+                        is_discharge: false
+                    },
+                    data: {
+                        patient_status: row.VISIT_PATIENTSTATUS ? String(row.VISIT_PATIENTSTATUS) : null,
+                        updated_at: new Date(),
+                        updated_by: 'system'
+                    }
+                });
+            }
+        }
+
+        // ===============================
+        // 2.2 DISCHARGE INTIMATION CHECK
+        // ===============================
+        const dischargeIntimationResult = await connection.execute(
+            `
+            SELECT ip.admissionnumber, ip.visit_patientstatus
+            FROM inpatients ip
+            WHERE ip.discharge_intimated_date IS NOT NULL
+              AND ip.visit_patientstatus IN (93706101, 93706103)
+              AND TRUNC(ip.discharge_intimated_date) = TRUNC(SYSDATE)
+            `,
+            {},
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        for (const row of dischargeIntimationResult.rows) {
+            if (row.ADMISSIONNUMBER) {
+                await prisma.hinaiOrder.updateMany({
+                    where: {
+                        admission_no: row.ADMISSIONNUMBER,
+                        is_discharge: false
+                    },
+                    data: {
+                        patient_status: row.VISIT_PATIENTSTATUS ? String(row.VISIT_PATIENTSTATUS) : null,
+                        updated_at: new Date(),
+                        updated_by: 'system'
+                    }
+                });
+            }
+        }
+
+
 
         // ===============================
         // 3. TRANSFER QUERY
@@ -3529,6 +3646,8 @@ export const getBulkStickerData = async (body, jwtUser) => {
     const menuId = getFirstDefined(body, ['menu_id']);
     const ward = body.ward;
     const itemType = body.item || body.order_type || 'regular';
+    const markDischarge = getFirstDefined(body, ['mark_discharge', 'markDischarge']) || '';
+    const dischargeIntimation = getFirstDefined(body, ['discharge_intimation', 'dischargeIntimation']) || '';
     const menuSelection = resolveStickerMenuSelection(menuId, itemType);
 
     const today = new Date();
@@ -3574,6 +3693,38 @@ export const getBulkStickerData = async (body, jwtUser) => {
     };
 
     if (ward) whereClause.ward = ward;
+
+    let andConditions = [];
+    if (markDischarge || dischargeIntimation) {
+        let statusConditions = [];
+        if (markDischarge) {
+            let cond = { patient_status: '388' };
+            if (markDischarge === 'Cash') {
+                cond.plan_name = 'Cash';
+            } else if (markDischarge === 'TPA') {
+                cond.plan_name = { not: 'Cash' };
+            }
+            statusConditions.push(cond);
+        }
+        if (dischargeIntimation) {
+            let cond = { patient_status: { in: ['93706101', '93706103'] } };
+            if (dischargeIntimation === 'Cash') {
+                cond.plan_name = 'Cash';
+            } else if (dischargeIntimation === 'TPA') {
+                cond.plan_name = { not: 'Cash' };
+            }
+            statusConditions.push(cond);
+        }
+        if (statusConditions.length === 1) {
+            andConditions.push(statusConditions[0]);
+        } else if (statusConditions.length > 1) {
+            andConditions.push({ OR: statusConditions });
+        }
+    }
+
+    if (andConditions.length > 0) {
+        whereClause.AND = andConditions;
+    }
 
     const orders = await prisma.hinaiOrder.findMany({
         where: whereClause,
@@ -3628,6 +3779,9 @@ export const getBulkStickerData = async (body, jwtUser) => {
 export const getLiquidStickerData = async (body, jwtUser) => {
     const siteId = await resolveSiteMapping(getFirstDefined(body, ['site_id']) || jwtUser?.siteID, 'mst_id');
     const menuId = getFirstDefined(body, ['menu_id']);
+    const ward = body.ward;
+    const markDischarge = getFirstDefined(body, ['mark_discharge', 'markDischarge']) || '';
+    const dischargeIntimation = getFirstDefined(body, ['discharge_intimation', 'dischargeIntimation']) || '';
 
     const today = new Date();
     const startOfDay = new Date(today);
@@ -3647,6 +3801,40 @@ export const getLiquidStickerData = async (body, jwtUser) => {
             }
         }
     };
+
+    if (ward) whereClause.ward = ward;
+
+    let andConditions = [];
+    if (markDischarge || dischargeIntimation) {
+        let statusConditions = [];
+        if (markDischarge) {
+            let cond = { patient_status: '388' };
+            if (markDischarge === 'Cash') {
+                cond.plan_name = 'Cash';
+            } else if (markDischarge === 'TPA') {
+                cond.plan_name = { not: 'Cash' };
+            }
+            statusConditions.push(cond);
+        }
+        if (dischargeIntimation) {
+            let cond = { patient_status: { in: ['93706101', '93706103'] } };
+            if (dischargeIntimation === 'Cash') {
+                cond.plan_name = 'Cash';
+            } else if (dischargeIntimation === 'TPA') {
+                cond.plan_name = { not: 'Cash' };
+            }
+            statusConditions.push(cond);
+        }
+        if (statusConditions.length === 1) {
+            andConditions.push(statusConditions[0]);
+        } else if (statusConditions.length > 1) {
+            andConditions.push({ OR: statusConditions });
+        }
+    }
+
+    if (andConditions.length > 0) {
+        whereClause.AND = andConditions;
+    }
 
     const orders = await prisma.hinaiOrder.findMany({
         where: whereClause,
