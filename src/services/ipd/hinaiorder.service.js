@@ -346,6 +346,7 @@ const buildHinaiOrderDetailPayload = (orderDetails) => ({
 });
 
 const LEGACY_REGULAR_STICKER_MENU_MAP = {
+    '1': 'EM',
     '2': 'Breakfast',
     '3': 'MM',
     '4': 'Lunch',
@@ -355,7 +356,7 @@ const LEGACY_REGULAR_STICKER_MENU_MAP = {
     '8': 'Dinner',
 };
 
-const resolveStickerMenuSelection = (rawMenuId, itemType = 'regular') => {
+export const resolveStickerMenuSelection = (rawMenuId, itemType = 'regular') => {
     if (rawMenuId === undefined || rawMenuId === null || rawMenuId === '') {
         return { mode: 'all', value: null };
     }
@@ -366,7 +367,7 @@ const resolveStickerMenuSelection = (rawMenuId, itemType = 'regular') => {
         return { mode: 'all', value: null };
     }
 
-    if (itemType === 'regular' && LEGACY_REGULAR_STICKER_MENU_MAP[normalized]) {
+    if (LEGACY_REGULAR_STICKER_MENU_MAP[normalized]) {
         return { mode: 'legacy_description', value: LEGACY_REGULAR_STICKER_MENU_MAP[normalized] };
     }
 
@@ -3537,6 +3538,7 @@ export const getPatientStickerData = async (body, jwtUser) => {
     const orderId = getFirstDefined(body, ['hinai_order_id']);
     const menuId = getFirstDefined(body, ['menu_id']);
     const poid = getFirstDefined(body, ['po_id']);
+    const dietType = getFirstDefined(body, ['diet_type']);
 
     const siteId = await resolveSiteMapping(getFirstDefined(body, ['site_id']) || jwtUser?.siteID, 'mst_id');
 
@@ -3555,6 +3557,12 @@ export const getPatientStickerData = async (body, jwtUser) => {
     const patientOrderFilter = { is_active: true };
     if (poid) {
         patientOrderFilter.id = poid;
+    }
+    if (dietType) {
+        const dietTypeInt = parseInt(dietType);
+        if (!isNaN(dietTypeInt)) {
+            patientOrderFilter.diet_type = dietTypeInt;
+        }
     }
 
     const patientOrderDetailsWhere = {};
