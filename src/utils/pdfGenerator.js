@@ -176,25 +176,26 @@ function renderSticker(doc, data, startX, startY) {
     // =========================
     // MIDDLE SECTION
     // =========================
-    const dietMenuText =
-        `${data.diet_name || '-'}, MENU : ${data.menu_description || '-'}`;
-
     // Label
     doc.fontSize(9).font('Helvetica-Bold').text('DIET-TYPE', xLabel, y, { lineBreak: false });
 
     // Colon
     doc.text(':', xColon, y, { lineBreak: false });
 
-    // Value (Bold)
+    // Value
     const valueWidth = defaultValueWidth;
 
-    doc.font('Helvetica-Bold').fontSize(9).text(dietMenuText, xValue, y, {
-        width: valueWidth,
-        align: 'left'
-    });
+    doc.fontSize(9)
+        .font('Helvetica')
+        .text(data.diet_name || '-', xValue, y, { continued: true, width: valueWidth, align: 'left' })
+        .font('Helvetica-Bold')
+        .text(', MENU : ', { continued: true })
+        .font('Helvetica')
+        .text(data.menu_description || '-');
 
     // Dynamic height handling
-    const valueHeight = doc.heightOfString(dietMenuText, {
+    const dietMenuTextForHeight = `${data.diet_name || '-'}, MENU : ${data.menu_description || '-'}`;
+    const valueHeight = doc.font('Helvetica').fontSize(9).heightOfString(dietMenuTextForHeight, {
         width: valueWidth
     });
 
