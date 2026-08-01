@@ -19,11 +19,11 @@ const prisma = new PrismaClient({
 
 if (isDev) {
     prisma.$on('query', (e) => {
-        console.log('\n========================');
-        console.log('QUERY : ', e.query);
-        console.log('PARAMS:', e.params);
-        console.log('TIME  : ', e.duration, 'ms');
-        console.log('========================\n');
+        // console.log('\n========================');
+        // console.log('QUERY : ', e.query);
+        // console.log('PARAMS:', e.params);
+        // console.log('TIME  : ', e.duration, 'ms');
+        // console.log('========================\n');
     });
 }
 export default prisma;

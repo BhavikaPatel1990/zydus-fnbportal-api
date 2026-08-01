@@ -2776,7 +2776,7 @@ export const dispatchPatientOrder = async (body, jwtUser) => {
     );
     const auditUserId = getAuditUserId(jwtUser);
 
-    console.log('auditUserId', auditUserId);
+    // console.log('auditUserId', auditUserId);
     const result = await prisma.patientOrder.update({
         where: { id: poId },
         data: {
