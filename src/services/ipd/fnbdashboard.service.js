@@ -4,6 +4,7 @@ import authPrisma from '../../config/authDb.js';
 import axios from 'axios';
 import { getOracleConnection } from '../../config/oracleDb.js';
 import oracledb from 'oracledb';
+import { formatDateTime } from '../../utils/dateUtils.js';
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL?.replace(/\/$/, '');
 
@@ -128,14 +129,7 @@ const resolveHINAISiteMapping = async (siteValue) => {
     return siteRecordByMstId.site_id;
 };
 
-const formatDateTime = (date) => {
-    if (!date) return '';
-    const d = new Date(date);
 
-    const pad = (n) => n.toString().padStart(2, '0');
-
-    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
 
 const getSiteIdParam = (body) => getFirstDefined(body, ['site_id', 'SITEID', 'siteid']);
 
@@ -962,12 +956,7 @@ export const getExtraOrders = async (body, jwtUser) => {
         );
 
         // ✅ Date formatter
-        const formatDate = (date) => {
-            if (!date) return '';
-            const d = new Date(date);
-            const pad = (n) => n.toString().padStart(2, '0');
-            return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        };
+        const formatDate = (date) => formatDateTime(date);
 
         // ✅ Fetch usernames from authPrisma
         const createdByUserIds = orders.map(po => po.created_by).filter(Boolean);
