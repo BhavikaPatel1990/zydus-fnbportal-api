@@ -354,6 +354,8 @@ const LEGACY_REGULAR_STICKER_MENU_MAP = {
     '6': 'EveTea',
     '7': '6PM',
     '8': 'Dinner',
+    '9': 'BT',
+    '10': 'NBM BreakDown Time',
 };
 
 export const resolveStickerMenuSelection = (rawMenuId, itemType = 'regular') => {
@@ -2776,7 +2778,7 @@ export const dispatchPatientOrder = async (body, jwtUser) => {
     );
     const auditUserId = getAuditUserId(jwtUser);
 
-    console.log('auditUserId', auditUserId);
+    // console.log('auditUserId', auditUserId);
     const result = await prisma.patientOrder.update({
         where: { id: poId },
         data: {
@@ -2981,6 +2983,7 @@ export const getOrderMenuListWithPrintStatus = async (body) => {
             LEFT JOIN "StickerPrintStatus" sp ON sp.patient_id = po.patient_id
                 AND sp.po_id = po.hinai_order_id
                 AND sp.menu_time_id = (CASE m.description
+                    WHEN 'EM' THEN 1
                     WHEN 'Breakfast' THEN 2
                     WHEN 'MM' THEN 3
                     WHEN 'Lunch' THEN 4
@@ -2988,9 +2991,11 @@ export const getOrderMenuListWithPrintStatus = async (body) => {
                     WHEN 'EveTea' THEN 6
                     WHEN '6PM' THEN 7
                     WHEN 'Dinner' THEN 8
+                    WHEN 'BT' THEN 9
+                    WHEN 'NBM BreakDown Time' THEN 10
                     ELSE 0 END)
             WHERE po.patient_id = ${patientId} AND po.diet_type = ${dietType} AND po.hinai_order_id = ${poId}
-                AND m.description IN ('Breakfast', 'MM', 'Lunch', '2PM', 'EveTea', '6PM', 'Dinner')
+                AND m.description IN ('EM', 'Breakfast', 'MM', 'Lunch', '2PM', 'EveTea', '6PM', 'Dinner', 'BT', 'NBM BreakDown Time')
             ORDER BY m.id
         `;
         menuItems = results;
