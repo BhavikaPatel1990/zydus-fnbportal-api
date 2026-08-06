@@ -203,7 +203,7 @@ function renderSticker(doc, data, startX, startY) {
 
     addRow('ITEM', data.items, {
         valueFontSize: 8,
-        valueWidth: 180,
+        valueWidth: 170,
         gap: 6
     });
 
