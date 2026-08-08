@@ -194,6 +194,7 @@ const buildOrderPayload = ({
     dietType = null,
     nursingRemark = '',
     dietRemark = '',
+    nbmRemark = '',
     liquidHours,
 }) => {
     const payload = {
@@ -201,6 +202,7 @@ const buildOrderPayload = ({
         diet_type: dietType,
         nursing_remark: nursingRemark,
         diet_remark: dietRemark,
+        nbm_remark: nbmRemark,
     };
 
     if (liquidHours !== undefined) {
@@ -1639,12 +1641,6 @@ export const getPatientLiquidOrderFormData = async (body, jwtUser) => {
         if (!sourcePatientOrder) {
             throw new Error('Patient liquid order not found for edit');
         }
-
-        timings = sourcePatientOrder.patientOrderLiquids.map((item) => ({
-            liquid_time: item.liquid_time,
-            remarks: item.remarks || '',
-        }));
-        mode = 'edit';
     } else {
         // Automatically find the latest active order if poId is not provided
         sourcePatientOrder = await prisma.patientOrder.findFirst({
@@ -1664,14 +1660,21 @@ export const getPatientLiquidOrderFormData = async (body, jwtUser) => {
                 },
             },
         });
+    }
 
-        if (sourcePatientOrder) {
-            timings = sourcePatientOrder.patientOrderLiquids.map((item) => ({
+    let nbmRemark = '';
+
+    if (sourcePatientOrder) {
+        const nbmRecord = sourcePatientOrder.patientOrderLiquids.find((item) => item.liquid_time === 99);
+        nbmRemark = nbmRecord ? (nbmRecord.remarks || '') : '';
+
+        timings = sourcePatientOrder.patientOrderLiquids
+            .filter((item) => item.liquid_time !== 99)
+            .map((item) => ({
                 liquid_time: item.liquid_time,
                 remarks: item.remarks || '',
             }));
-            mode = 'edit';
-        }
+        mode = 'edit';
     }
 
     let prefillNursingRemark = '';
@@ -1724,6 +1727,7 @@ export const getPatientLiquidOrderFormData = async (body, jwtUser) => {
                 mode === 'edit'
                     ? sourcePatientOrder?.diet_remark || ''
                     : latestDietRemark,
+            nbmRemark: nbmRemark,
         }),
         timings,
     };
@@ -1769,6 +1773,7 @@ export const createPatientLiquidOrder = async (body, jwtUser) => {
     const liquidHours = toIntValue(getFirstDefined(body, ['liquid_hours']), 'liquid_hours');
     const dietRemark = toUpperTrimmed(getFirstDefined(body, ['diet_remark']));
     const nursingRemark = toUpperTrimmed(getFirstDefined(body, ['nursing_remark']));
+    const nbmRemark = toUpperTrimmed(getFirstDefined(body, ['nbm_remark']));
 
     const timingValues = parsePipeValueList(
         getFirstDefined(body, ['liquid_times'])
@@ -1894,14 +1899,26 @@ export const createPatientLiquidOrder = async (body, jwtUser) => {
             },
         });
 
-        await tx.patientOrderLiquid.createMany({
-            data: timings.map((item) => ({
+        const liquidEntries = timings.map((item) => ({
+            po_id: patientOrder.id,
+            ptm_id: null,
+            liquid_time: item.liquid_time,
+            remarks: item.remarks,
+            created_by: auditUserId ? String(auditUserId) : null,
+        }));
+
+        if (nbmRemark) {
+            liquidEntries.push({
                 po_id: patientOrder.id,
                 ptm_id: null,
-                liquid_time: item.liquid_time,
-                remarks: item.remarks,
+                liquid_time: 99,
+                remarks: nbmRemark,
                 created_by: auditUserId ? String(auditUserId) : null,
-            })),
+            });
+        }
+
+        await tx.patientOrderLiquid.createMany({
+            data: liquidEntries,
         });
 
         await tx.hinaiOrder.update({
@@ -1932,6 +1949,7 @@ export const createPatientLiquidOrder = async (body, jwtUser) => {
         timing_count: timings.length,
         nursing_remark: nursingRemark,
         diet_remark: dietRemark,
+        nbm_remark: nbmRemark,
         created_at: result.created_at,
         mode: existingPoId ? 'edit' : 'add',
     };
@@ -3791,7 +3809,9 @@ export const getBulkStickerData = async (body, jwtUser) => {
 
 export const getLiquidStickerData = async (body, jwtUser) => {
     const siteId = await resolveSiteMapping(getFirstDefined(body, ['site_id']) || jwtUser?.siteID, 'mst_id');
-    const menuId = getFirstDefined(body, ['menu_id']);
+    const rawMenuId = getFirstDefined(body, ['menu_id']);
+    const isNbmSelect = rawMenuId === 'NBM' || rawMenuId === 'NBM BreakDown Time' || rawMenuId === '99' || rawMenuId === 99;
+    const menuId = isNbmSelect ? 99 : (rawMenuId && parseInt(rawMenuId, 10) !== 0 ? parseInt(rawMenuId, 10) : null);
     const ward = body.ward;
     const markDischarge = getFirstDefined(body, ['mark_discharge', 'markDischarge']) || '';
     const dischargeIntimation = getFirstDefined(body, ['discharge_intimation', 'dischargeIntimation']) || '';
@@ -3810,7 +3830,7 @@ export const getLiquidStickerData = async (body, jwtUser) => {
             some: {
                 is_active: true,
                 created_at: { gte: startOfDay, lte: endOfDay },
-                patientOrderLiquids: menuId ? { some: { liquid_time: parseInt(menuId) } } : { some: {} }
+                patientOrderLiquids: menuId !== null ? { some: { liquid_time: menuId } } : { some: {} }
             }
         }
     };
@@ -3860,7 +3880,7 @@ export const getLiquidStickerData = async (body, jwtUser) => {
                 orderBy: { created_at: 'desc' },
                 take: 1,
                 include: {
-                    patientOrderLiquids: menuId ? { where: { liquid_time: parseInt(menuId) } } : true
+                    patientOrderLiquids: menuId !== null ? { where: { liquid_time: menuId } } : true
                 }
             }
         },
@@ -3877,7 +3897,7 @@ export const getLiquidStickerData = async (body, jwtUser) => {
                 bed_no: order.bed_no,
                 ward: order.ward,
                 menu_detail: order.menu_detail,
-                description: liq.liquid_time.toString(),
+                description: liq.liquid_time === 99 ? 'NBM BreakDown Time' : liq.liquid_time.toString(),
                 remarks: liq.remarks,
                 nursing_remark: po.nursing_remark,
                 diet_remark: po.diet_remark,
