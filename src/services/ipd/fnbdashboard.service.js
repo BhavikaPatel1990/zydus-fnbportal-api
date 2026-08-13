@@ -427,7 +427,9 @@ export const getDietSheet = async (body, jwtUser) => {
         'EveTea': 6,
         '6PM': 7,
         'Dinner': 8,
-        'BT': 9
+        'BT': 9,
+        'NBM BreakDown Time': 10,
+        'Additional Diet': 11
     };
     const menuTimeMap = new Map(
         menuTimes.map(m => [m.id, descriptionToNumberMap[m.description] || 0])
@@ -474,7 +476,9 @@ export const getDietSheet = async (body, jwtUser) => {
                 evening_tea: remarks[6] || '',
                 six_pm: remarks[7] || '',
                 dinner: remarks[8] || '',
-                bed_time: remarks[9] || ''
+                bed_time: remarks[9] || '',
+                nbm_breakdown_time: remarks[10] || '',
+                additional_diet: remarks[11] || ''
             };
         });
 
@@ -514,7 +518,7 @@ export const downloadDietSheetCsv = async (body, jwtUser) => {
     const headers = [
         'MRNO', 'Patient Name', 'Ward', 'Bed No', 'Diet',
         'Nursing Remark', 'Diet Remark',
-        'EM', 'BF', 'MM', 'Lunch', '2PM', 'ET', '6PM', 'Dinner', 'BT'
+        'EM', 'BF', 'MM', 'Lunch', '2PM', 'ET', '6PM', 'Dinner', 'BT', 'NBM Breakdown', 'Additional Diet'
     ];
 
     const escape = (v) => {
@@ -541,7 +545,9 @@ export const downloadDietSheetCsv = async (body, jwtUser) => {
             r.evening_tea,
             r.six_pm,
             r.dinner,
-            r.bed_time
+            r.bed_time,
+            r.nbm_breakdown_time,
+            r.additional_diet
         ].map(escape).join(','))
     ];
 

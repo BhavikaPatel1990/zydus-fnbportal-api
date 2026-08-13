@@ -365,6 +365,7 @@ function renderLiquidLabel(doc, data, x, y, width, height) {
 
     // ===== Remark & Time =====
     const isNbmSticker = data.description === 'NBM BreakDown Time' || data.description === 'NBM' || data.description === '99';
+    const isAdditionalDietSticker = data.description === 'Additional Diet' || data.description === 'ADDITIONAL DIET' || data.description === '98';
     if (isNbmSticker) {
         doc
             .font('Helvetica-Bold')
@@ -384,6 +385,28 @@ function renderLiquidLabel(doc, data, x, y, width, height) {
 
         const remarkTimeHeight = doc.heightOfString(data.remarks || '-', {
             width: remarkTextWidth - 10,
+            lineGap: multilineLineGap
+        });
+        cy += Math.max(remarkTimeHeight, normalFontSize) + 3;
+    } else if (isAdditionalDietSticker) {
+        doc
+            .font('Helvetica-Bold')
+            .text('Add Diet:', remarkLabelX, cy);
+
+        doc
+            .font('Helvetica')
+            .text(
+                data.remarks || '-',
+                remarkTimeValueX + 4,
+                cy,
+                {
+                    width: remarkTextWidth - 14,
+                    lineGap: multilineLineGap
+                }
+            );
+
+        const remarkTimeHeight = doc.heightOfString(data.remarks || '-', {
+            width: remarkTextWidth - 14,
             lineGap: multilineLineGap
         });
         cy += Math.max(remarkTimeHeight, normalFontSize) + 3;

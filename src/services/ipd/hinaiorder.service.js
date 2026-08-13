@@ -195,6 +195,7 @@ const buildOrderPayload = ({
     nursingRemark = '',
     dietRemark = '',
     nbmRemark = '',
+    additionalDietRemark = '',
     liquidHours,
 }) => {
     const payload = {
@@ -203,6 +204,7 @@ const buildOrderPayload = ({
         nursing_remark: nursingRemark,
         diet_remark: dietRemark,
         nbm_remark: nbmRemark,
+        additional_diet_remark: additionalDietRemark,
     };
 
     if (liquidHours !== undefined) {
@@ -248,6 +250,7 @@ const buildMenuItemPayload = ({
     return payload;
 };
 
+
 const buildHinaiOrderListRow = ({
     row,
     po,
@@ -256,7 +259,34 @@ const buildHinaiOrderListRow = ({
     admissionDateLabel,
     admissionDateOnly,
     approvedDateLabel,
-}) => ({
+}) => {
+    console.log( ' po : ');
+console.log(po);
+    const hasAdditionalDietDetail = Boolean(
+        po?.patientOrderDetails?.some(
+            d => (d.ptm_id === '11' || (d.menuTime?.description && d.menuTime.description.toUpperCase().includes('ADDITIONAL')))
+                 && d.remarks && String(d.remarks).trim() !== ''
+        )
+    );
+
+    const hasAdditionalDietLiquid = Boolean(
+        po?.patientOrderLiquids?.some(
+            l => (l.liquid_time === 98 || (l.menuTime?.description && l.menuTime.description.toUpperCase().includes('ADDITIONAL')))
+                 && l.remarks && String(l.remarks).trim() !== ''
+        )
+    );
+
+    const hasAdditionalDietRemark = Boolean(
+        (po?.additional_diet_remark && String(po.additional_diet_remark).trim() !== '')
+    );
+
+    const hasAdditionalDiet = Boolean(
+        hasAdditionalDietDetail ||
+        hasAdditionalDietLiquid ||
+        hasAdditionalDietRemark
+    );
+
+    return {
     patient_id: row.patient_id,
     mrn_no: row.mr_no ? row.mr_no.toString() : null,
     patient_name: row.patient_name,
@@ -279,6 +309,7 @@ const buildHinaiOrderListRow = ({
     nursing_user: row.nursing_user,
     is_diet_change: row.is_diet_change,
     is_transfer: row.is_transfer,
+    is_additional_diet: hasAdditionalDiet ? 1 : 0,
     diet_order: [17129492, 17129493, 17129495].includes(row.diet_type)
         ? 'liquid'
         : 'regular',
@@ -301,7 +332,8 @@ const buildHinaiOrderListRow = ({
     clearance: row.clearance,
     patient_status: row.patient_status || '',
     plan_name: row.plan_name || '',
-});
+    };
+};
 
 const buildLegacyHinaiOrderListRow = (row) => ({
     patient_id: row.PATIENT_ID,
@@ -358,6 +390,7 @@ const LEGACY_REGULAR_STICKER_MENU_MAP = {
     '8': 'Dinner',
     '9': 'BT',
     '10': 'NBM BreakDown Time',
+    '11': 'Additional Diet',
 };
 
 export const resolveStickerMenuSelection = (rawMenuId, itemType = 'regular') => {
@@ -1520,7 +1553,19 @@ export const getHinaiOrders = async (body, jwtUser) => {
                 orderBy: { created_at: 'desc' },
                 take: 1,
                 include: {
-                    dietTypeData: true
+                    dietTypeData: true,
+                    patientOrderLiquids: {
+                        where: { is_active: true },
+                        include: {
+                            menuTime: true
+                        }
+                    },
+                    patientOrderDetails: {
+                        where: { is_active: true },
+                        include: {
+                            menuTime: true
+                        }
+                    }
                 }
             }
         }
@@ -1663,13 +1708,17 @@ export const getPatientLiquidOrderFormData = async (body, jwtUser) => {
     }
 
     let nbmRemark = '';
+    let additionalDietRemark = '';
 
     if (sourcePatientOrder) {
         const nbmRecord = sourcePatientOrder.patientOrderLiquids.find((item) => item.liquid_time === 99);
         nbmRemark = nbmRecord ? (nbmRecord.remarks || '') : '';
 
+        const additionalDietRecord = sourcePatientOrder.patientOrderLiquids.find((item) => item.liquid_time === 98);
+        additionalDietRemark = additionalDietRecord ? (additionalDietRecord.remarks || '') : '';
+
         timings = sourcePatientOrder.patientOrderLiquids
-            .filter((item) => item.liquid_time !== 99)
+            .filter((item) => item.liquid_time !== 99 && item.liquid_time !== 98)
             .map((item) => ({
                 liquid_time: item.liquid_time,
                 remarks: item.remarks || '',
@@ -1728,6 +1777,7 @@ export const getPatientLiquidOrderFormData = async (body, jwtUser) => {
                     ? sourcePatientOrder?.diet_remark || ''
                     : latestDietRemark,
             nbmRemark: nbmRemark,
+            additionalDietRemark: additionalDietRemark,
         }),
         timings,
     };
@@ -1750,10 +1800,12 @@ export const getPatientLiquidOrderTimings = async (body, jwtUser) => {
         return {
             liquid_hours: latestLiquidOrder.liquid_hours,
             po_id: latestLiquidOrder.id,
-            timings: latestLiquidOrder.patientOrderLiquids.map((item) => ({
-                liquid_time: item.liquid_time,
-                remarks: item.remarks || '',
-            })),
+            timings: latestLiquidOrder.patientOrderLiquids
+                .filter((item) => item.liquid_time !== 99 && item.liquid_time !== 98)
+                .map((item) => ({
+                    liquid_time: item.liquid_time,
+                    remarks: item.remarks || '',
+                })),
         };
     }
 
@@ -1774,6 +1826,7 @@ export const createPatientLiquidOrder = async (body, jwtUser) => {
     const dietRemark = toUpperTrimmed(getFirstDefined(body, ['diet_remark']));
     const nursingRemark = toUpperTrimmed(getFirstDefined(body, ['nursing_remark']));
     const nbmRemark = toUpperTrimmed(getFirstDefined(body, ['nbm_remark']));
+    const additionalDietRemark = toUpperTrimmed(getFirstDefined(body, ['additional_diet_remark', 'additional_remark']));
 
     const timingValues = parsePipeValueList(
         getFirstDefined(body, ['liquid_times'])
@@ -1917,6 +1970,16 @@ export const createPatientLiquidOrder = async (body, jwtUser) => {
             });
         }
 
+        if (additionalDietRemark) {
+            liquidEntries.push({
+                po_id: patientOrder.id,
+                ptm_id: null,
+                liquid_time: 98,
+                remarks: additionalDietRemark,
+                created_by: auditUserId ? String(auditUserId) : null,
+            });
+        }
+
         await tx.patientOrderLiquid.createMany({
             data: liquidEntries,
         });
@@ -1950,6 +2013,7 @@ export const createPatientLiquidOrder = async (body, jwtUser) => {
         nursing_remark: nursingRemark,
         diet_remark: dietRemark,
         nbm_remark: nbmRemark,
+        additional_diet_remark: additionalDietRemark,
         created_at: result.created_at,
         mode: existingPoId ? 'edit' : 'add',
     };
@@ -3011,9 +3075,10 @@ export const getOrderMenuListWithPrintStatus = async (body) => {
                     WHEN 'Dinner' THEN 8
                     WHEN 'BT' THEN 9
                     WHEN 'NBM BreakDown Time' THEN 10
+                    WHEN 'Additional Diet' THEN 11
                     ELSE 0 END)
             WHERE po.patient_id = ${patientId} AND po.diet_type = ${dietType} AND po.hinai_order_id = ${poId}
-                AND m.description IN ('EM', 'Breakfast', 'MM', 'Lunch', '2PM', 'EveTea', '6PM', 'Dinner', 'BT', 'NBM BreakDown Time')
+                AND m.description IN ('EM', 'Breakfast', 'MM', 'Lunch', '2PM', 'EveTea', '6PM', 'Dinner', 'BT', 'NBM BreakDown Time', 'Additional Diet')
             ORDER BY m.id
         `;
         menuItems = results;
@@ -3696,7 +3761,12 @@ export const getBulkStickerData = async (body, jwtUser) => {
     if (itemType === 'extra') {
         patientOrderWhere.diet_type = 18894123;
     } else {
-        patientOrderWhere.diet_type = { notIn: excludedDiets };
+        const isNbmOrAddDiet = menuSelection.value === 'NBM BreakDown Time' || menuSelection.value === 'Additional Diet';
+        if (isNbmOrAddDiet) {
+            patientOrderWhere.diet_type = { not: 18894123 };
+        } else {
+            patientOrderWhere.diet_type = { notIn: excludedDiets };
+        }
     }
 
     if (menuSelection.mode === 'ptm_id') {
@@ -3811,7 +3881,8 @@ export const getLiquidStickerData = async (body, jwtUser) => {
     const siteId = await resolveSiteMapping(getFirstDefined(body, ['site_id']) || jwtUser?.siteID, 'mst_id');
     const rawMenuId = getFirstDefined(body, ['menu_id']);
     const isNbmSelect = rawMenuId === 'NBM' || rawMenuId === 'NBM BreakDown Time' || rawMenuId === '99' || rawMenuId === 99;
-    const menuId = isNbmSelect ? 99 : (rawMenuId && parseInt(rawMenuId, 10) !== 0 ? parseInt(rawMenuId, 10) : null);
+    const isAdditionalDietSelect = rawMenuId === 'Additional Diet' || rawMenuId === 'ADDITIONAL DIET' || rawMenuId === '98' || rawMenuId === 98;
+    const menuId = isNbmSelect ? 99 : isAdditionalDietSelect ? 98 : (rawMenuId && parseInt(rawMenuId, 10) !== 0 ? parseInt(rawMenuId, 10) : null);
     const ward = body.ward;
     const markDischarge = getFirstDefined(body, ['mark_discharge', 'markDischarge']) || '';
     const dischargeIntimation = getFirstDefined(body, ['discharge_intimation', 'dischargeIntimation']) || '';
@@ -3897,7 +3968,11 @@ export const getLiquidStickerData = async (body, jwtUser) => {
                 bed_no: order.bed_no,
                 ward: order.ward,
                 menu_detail: order.menu_detail,
-                description: liq.liquid_time === 99 ? 'NBM BreakDown Time' : liq.liquid_time.toString(),
+                description: liq.liquid_time === 99 
+                    ? 'NBM BreakDown Time' 
+                    : liq.liquid_time === 98 
+                        ? 'Additional Diet' 
+                        : liq.liquid_time.toString(),
                 remarks: liq.remarks,
                 nursing_remark: po.nursing_remark,
                 diet_remark: po.diet_remark,

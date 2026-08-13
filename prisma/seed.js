@@ -42,7 +42,9 @@ async function seedMenuTime() {
     { description: "EveTea" },
     { description: "6PM" },
     { description: "Dinner" },
-    { description: "BT" }
+    { description: "BT" },
+    { description: "NBM BreakDown Time" },
+    { description: "Additional Diet" }
   ];
 
   await Promise.all(
