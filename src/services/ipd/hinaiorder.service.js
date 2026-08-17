@@ -3760,13 +3760,6 @@ export const getBulkStickerData = async (body, jwtUser) => {
 
     if (itemType === 'extra') {
         patientOrderWhere.diet_type = 18894123;
-    } else {
-        const isNbmOrAddDiet = menuSelection.value === 'NBM BreakDown Time' || menuSelection.value === 'Additional Diet';
-        if (isNbmOrAddDiet) {
-            patientOrderWhere.diet_type = { not: 18894123 };
-        } else {
-            patientOrderWhere.diet_type = { notIn: excludedDiets };
-        }
     }
 
     if (menuSelection.mode === 'ptm_id') {
