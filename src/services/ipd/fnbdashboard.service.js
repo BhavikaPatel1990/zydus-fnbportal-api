@@ -491,10 +491,27 @@ export const getDietSheet = async (body, jwtUser) => {
         );
     }
 
-    // 7️⃣ Sort
+    // 7️⃣ Sort by location display_order (floor/ward order) -> bed_no -> mr_no
+    const locations = await prisma.location.findMany({
+        where: { is_active: true }
+    });
+    const locationOrderMap = new Map(
+        locations.map(l => [l.name?.trim().toLowerCase(), l.display_order])
+    );
+
     result.sort((a, b) => {
-        if (a.ward === b.ward) return a.bed_no.localeCompare(b.bed_no);
-        return a.ward.localeCompare(b.ward);
+        const orderA = locationOrderMap.has(a.ward?.trim().toLowerCase())
+            ? locationOrderMap.get(a.ward?.trim().toLowerCase())
+            : 999999;
+        const orderB = locationOrderMap.has(b.ward?.trim().toLowerCase())
+            ? locationOrderMap.get(b.ward?.trim().toLowerCase())
+            : 999999;
+
+        if (orderA !== orderB) return orderA - orderB;
+        if (a.ward !== b.ward) return (a.ward || '').localeCompare(b.ward || '');
+        const bedCompare = (a.bed_no || '').localeCompare(b.bed_no || '');
+        if (bedCompare !== 0) return bedCompare;
+        return (a.mr_no || '').localeCompare(b.mr_no || '');
     });
 
     // 8️⃣ Pagination
@@ -516,40 +533,61 @@ export const downloadDietSheetCsv = async (body, jwtUser) => {
     const data = res.data;
 
     const headers = [
-        'MRNO', 'Patient Name', 'Ward', 'Bed No', 'Diet',
-        'Nursing Remark', 'Diet Remark',
-        'EM', 'BF', 'MM', 'Lunch', '2PM', 'ET', '6PM', 'Dinner', 'BT', 'NBM Breakdown', 'Additional Diet'
+        'MRNO', 'PATIENT_NAME', 'BED', 'MENU',
+        'NURSE_REMARK', 'DIET_REMARK',
+        'EM', 'BF', 'MM', 'Lunch', '2_PM', 'ET', '6_PM', 'Dinner', 'BT',
+        'NBM Breakdown', 'Additional Diet'
     ];
 
     const escape = (v) => {
-        if (!v) return '';
+        if (v === null || v === undefined) return '';
         const s = String(v);
-        return s.includes(',') ? `"${s}"` : s;
+        if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+            return `"${s.replace(/"/g, '""')}"`;
+        }
+        return s;
     };
 
-    const rows = [
-        headers.join(','),
-        ...data.map(r => [
-            r.mr_no,
-            r.patient_name,
-            r.ward,
-            r.bed_no,
-            r.diet_name,
-            r.nursing_remark,
-            r.diet_remark,
-            r.em,
-            r.breakfast,
-            r.mid_morning,
-            r.lunch,
-            r.two_pm,
-            r.evening_tea,
-            r.six_pm,
-            r.dinner,
-            r.bed_time,
-            r.nbm_breakdown_time,
-            r.additional_diet
-        ].map(escape).join(','))
-    ];
+    // Group records ward-wise while preserving ward and bed order
+    const wardMap = new Map();
+    for (const r of data) {
+        const wardName = r.ward || 'Unknown Ward';
+        if (!wardMap.has(wardName)) {
+            wardMap.set(wardName, []);
+        }
+        wardMap.get(wardName).push(r);
+    }
+
+    const rows = [];
+
+    for (const [wardName, records] of wardMap.entries()) {
+        // Ward Title row
+        rows.push(escape(wardName));
+        // Table Header row
+        rows.push(headers.join(','));
+        // Ward Patient records
+        for (const r of records) {
+            rows.push([
+                r.mr_no,
+                r.patient_name,
+                r.bed_no,
+                r.diet_name,
+                r.nursing_remark,
+                r.diet_remark,
+                r.em,
+                r.breakfast,
+                r.mid_morning,
+                r.lunch,
+                r.two_pm,
+                r.evening_tea,
+                r.six_pm,
+                r.dinner,
+                r.bed_time,
+                r.nbm_breakdown_time,
+                r.additional_diet
+            ].map(escape).join(','));
+        }
+    }
 
     return rows.join('\n');
 };
@@ -644,11 +682,24 @@ export const getDietSheetLiquids = async (body, jwtUser) => {
     const dietTypes = await prisma.dietType.findMany();
     const dietMap = new Map(dietTypes.map(d => [d.diet_type_id, d.diet_name]));
 
+    // Fetch liquid details for these patient orders
+    const poIds = latestOrders.map(o => o.id);
+    const liquidDetails = await prisma.patientOrderLiquid.findMany({
+        where: { po_id: { in: poIds }, is_active: true }
+    });
+
+    const liquidDetailMap = {};
+    for (const d of liquidDetails) {
+        if (!liquidDetailMap[d.po_id]) liquidDetailMap[d.po_id] = {};
+        liquidDetailMap[d.po_id][d.liquid_time] = d.remarks;
+    }
+
     // 4️⃣ Build result
     let result = latestOrders
         .filter(po => hinaiMap.has(po.hinai_order_id)) // only liquids
         .map(po => {
             const ho = hinaiMap.get(po.hinai_order_id);
+            const liq = liquidDetailMap[po.id] || {};
 
             return {
                 mr_no: ho?.mr_no?.toString(),
@@ -657,7 +708,29 @@ export const getDietSheetLiquids = async (body, jwtUser) => {
                 ward: ho?.ward,
                 diet_name: dietMap.get(po.diet_type) || '',
                 nursing_remark: po.nursing_remark,
-                diet_remark: po.diet_remark
+                diet_remark: po.diet_remark,
+
+                h6: liq[6] || '',
+                h7: liq[7] || '',
+                h8: liq[8] || '',
+                h9: liq[9] || '',
+                h10: liq[10] || '',
+                h11: liq[11] || '',
+                h12: liq[12] || '',
+                h13: liq[13] || '',
+                h14: liq[14] || '',
+                h15: liq[15] || '',
+                h16: liq[16] || '',
+                h17: liq[17] || '',
+                h18: liq[18] || '',
+                h19: liq[19] || '',
+                h20: liq[20] || '',
+                h21: liq[21] || '',
+                h22: liq[22] || '',
+                h23: liq[23] || '',
+                h24: liq[24] || '',
+                nbm_breakdown_time: liq[99] || '',
+                additional_diet: liq[98] || ''
             };
         });
 
@@ -670,10 +743,27 @@ export const getDietSheetLiquids = async (body, jwtUser) => {
         );
     }
 
-    // 6️⃣ Sort
+    // 6️⃣ Sort by location display_order (floor/ward order) -> bed_no -> mr_no
+    const locations = await prisma.location.findMany({
+        where: { is_active: true }
+    });
+    const locationOrderMap = new Map(
+        locations.map(l => [l.name?.trim().toLowerCase(), l.display_order])
+    );
+
     result.sort((a, b) => {
-        if (a.ward === b.ward) return a.bed_no.localeCompare(b.bed_no);
-        return a.ward.localeCompare(b.ward);
+        const orderA = locationOrderMap.has(a.ward?.trim().toLowerCase())
+            ? locationOrderMap.get(a.ward?.trim().toLowerCase())
+            : 999999;
+        const orderB = locationOrderMap.has(b.ward?.trim().toLowerCase())
+            ? locationOrderMap.get(b.ward?.trim().toLowerCase())
+            : 999999;
+
+        if (orderA !== orderB) return orderA - orderB;
+        if (a.ward !== b.ward) return (a.ward || '').localeCompare(b.ward || '');
+        const bedCompare = (a.bed_no || '').localeCompare(b.bed_no || '');
+        if (bedCompare !== 0) return bedCompare;
+        return (a.mr_no || '').localeCompare(b.mr_no || '');
     });
 
     // 7️⃣ Pagination
@@ -695,28 +785,73 @@ export const downloadDietSheetLiquidsCsv = async (body, jwtUser) => {
     const data = res.data;
 
     const headers = [
-        'MRNO', 'Patient Name', 'Ward', 'Bed No',
-        'Diet', 'Nursing Remark', 'Diet Remark'
+        'MRNO', 'PATIENT_NAME', 'BED', 'MENU',
+        'NURSE_REMARK', 'DIET_REMARK',
+        '6_AM', '7_AM', '8_AM', '9_AM', '10_AM', '11_AM',
+        '12_PM', '1_PM', '2_PM', '3_PM', '4_PM', '5_PM',
+        '6_PM', '7_PM', '8_PM', '9_PM', '10_PM', '11_PM', '12_AM',
+        'NBM Breakdown', 'Additional Diet'
     ];
 
     const escape = (v) => {
-        if (!v) return '';
+        if (v === null || v === undefined) return '';
         const s = String(v);
-        return s.includes(',') ? `"${s}"` : s;
+        if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+            return `"${s.replace(/"/g, '""')}"`;
+        }
+        return s;
     };
 
-    const rows = [
-        headers.join(','),
-        ...data.map(r => [
-            r.mr_no,
-            r.patient_name,
-            r.ward,
-            r.bed_no,
-            r.diet_name,
-            r.nursing_remark,
-            r.diet_remark
-        ].map(escape).join(','))
-    ];
+    // Group records ward-wise while preserving ward and bed order
+    const wardMap = new Map();
+    for (const r of data) {
+        const wardName = r.ward || 'Unknown Ward';
+        if (!wardMap.has(wardName)) {
+            wardMap.set(wardName, []);
+        }
+        wardMap.get(wardName).push(r);
+    }
+
+    const rows = [];
+
+    for (const [wardName, records] of wardMap.entries()) {
+        // Ward Title row
+        rows.push(escape(wardName));
+        // Table Header row
+        rows.push(headers.join(','));
+        // Ward Patient records
+        for (const r of records) {
+            rows.push([
+                r.mr_no,
+                r.patient_name,
+                r.bed_no,
+                r.diet_name,
+                r.nursing_remark,
+                r.diet_remark,
+                r.h6,
+                r.h7,
+                r.h8,
+                r.h9,
+                r.h10,
+                r.h11,
+                r.h12,
+                r.h13,
+                r.h14,
+                r.h15,
+                r.h16,
+                r.h17,
+                r.h18,
+                r.h19,
+                r.h20,
+                r.h21,
+                r.h22,
+                r.h23,
+                r.h24,
+                r.nbm_breakdown_time,
+                r.additional_diet
+            ].map(escape).join(','));
+        }
+    }
 
     return rows.join('\n');
 };
