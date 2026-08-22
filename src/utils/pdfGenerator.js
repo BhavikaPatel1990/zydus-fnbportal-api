@@ -364,28 +364,76 @@ function renderLiquidLabel(doc, data, x, y, width, height) {
     cy += Math.max(nursingRemarkHeight, normalFontSize) + 3;
 
     // ===== Remark & Time =====
-    doc
-        .font('Helvetica-Bold')
-        .text('Rem|Time:', remarkLabelX, cy);
+    const isNbmSticker = data.description === 'NBM BreakDown Time' || data.description === 'NBM' || data.description === '99';
+    const isAdditionalDietSticker = data.description === 'Additional Diet' || data.description === 'ADDITIONAL DIET' || data.description === '98';
+    if (isNbmSticker) {
+        doc
+            .font('Helvetica-Bold')
+            .text('NBM Rem:', remarkLabelX, cy);
 
-    const remarkTimeText = `${data.remarks || '-'} @${data.description}:00`;
-    doc
-        .font('Helvetica')
-        .text(
-            remarkTimeText,
-            remarkTimeValueX,
-            cy,
-            {
-                width: remarkTextWidth - 10,
-                lineGap: multilineLineGap
-            }
-        );
+        doc
+            .font('Helvetica')
+            .text(
+                data.remarks || '-',
+                remarkTimeValueX,
+                cy,
+                {
+                    width: remarkTextWidth - 10,
+                    lineGap: multilineLineGap
+                }
+            );
 
-    const remarkTimeHeight = doc.heightOfString(remarkTimeText, {
-        width: remarkTextWidth - 10,
-        lineGap: multilineLineGap
-    });
-    cy += Math.max(remarkTimeHeight, normalFontSize) + 3;
+        const remarkTimeHeight = doc.heightOfString(data.remarks || '-', {
+            width: remarkTextWidth - 10,
+            lineGap: multilineLineGap
+        });
+        cy += Math.max(remarkTimeHeight, normalFontSize) + 3;
+    } else if (isAdditionalDietSticker) {
+        doc
+            .font('Helvetica-Bold')
+            .text('Add Diet:', remarkLabelX, cy);
+
+        doc
+            .font('Helvetica')
+            .text(
+                data.remarks || '-',
+                remarkTimeValueX + 4,
+                cy,
+                {
+                    width: remarkTextWidth - 14,
+                    lineGap: multilineLineGap
+                }
+            );
+
+        const remarkTimeHeight = doc.heightOfString(data.remarks || '-', {
+            width: remarkTextWidth - 14,
+            lineGap: multilineLineGap
+        });
+        cy += Math.max(remarkTimeHeight, normalFontSize) + 3;
+    } else {
+        doc
+            .font('Helvetica-Bold')
+            .text('Rem|Time:', remarkLabelX, cy);
+
+        const remarkTimeText = `${data.remarks || '-'} @${data.description}:00`;
+        doc
+            .font('Helvetica')
+            .text(
+                remarkTimeText,
+                remarkTimeValueX,
+                cy,
+                {
+                    width: remarkTextWidth - 10,
+                    lineGap: multilineLineGap
+                }
+            );
+
+        const remarkTimeHeight = doc.heightOfString(remarkTimeText, {
+            width: remarkTextWidth - 10,
+            lineGap: multilineLineGap
+        });
+        cy += Math.max(remarkTimeHeight, normalFontSize) + 3;
+    }
 
     // ===== Order Date =====
     doc
