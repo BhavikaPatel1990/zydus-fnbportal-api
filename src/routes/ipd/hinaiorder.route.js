@@ -121,6 +121,9 @@ router.post('/print/all-stickers', checkPermission('FNB_PORTAL', 'READ'), hinaiO
 // Print Liquid Diet Stickers
 router.post('/print/liquid-stickers', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.printLiquidStickers);
 
+// Print Single Liquid Diet Sticker
+router.post('/print/single-liquid-stickers', checkPermission('FNB_PORTAL', 'READ'), hinaiOrderController.printSingleLiquidStickers);
+
 /* ==========================================================================
    EXPORTS & REPORTS
    ========================================================================== */
