@@ -490,6 +490,24 @@ export const printLiquidStickers = async (req, res) => {
     }
 };
 
+export const printSingleLiquidStickers = async (req, res) => {
+    try {
+        const stickersData = await hinaiOrderService.getSingleLiquidStickerData(req.body, req.user);
+
+        if (!stickersData.length) {
+            return response.normalError(res, 'No records to display...');
+        }
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline; filename=single_liquid_sticker.pdf');
+
+        pdfGenerator.generateLiquidStickers(stickersData, res);
+    } catch (error) {
+        console.error('printSingleLiquidStickers error:', error.message);
+        return handleHinaiOrderError(res, error, 'Failed to generate single liquid sticker');
+    }
+};
+
 
 export const hasNewOrder = async (req,res) => {
     try {

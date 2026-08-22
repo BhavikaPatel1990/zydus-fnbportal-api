@@ -4039,6 +4039,93 @@ export const getLiquidStickerData = async (body, jwtUser) => {
     return result;
 };
 
+export const getSingleLiquidStickerData = async (body, jwtUser) => {
+    const siteId = await resolveSiteMapping(getFirstDefined(body, ['site_id']) || jwtUser?.siteID, 'mst_id');
+    const patientId = getFirstDefined(body, ['patient_id']);
+    const orderId = getFirstDefined(body, ['hinai_order_id']);
+    const rawMenuId = getFirstDefined(body, ['menu_id']);
+    const isNbmSelect = rawMenuId === 'NBM' || rawMenuId === 'NBM BreakDown Time' || rawMenuId === '99' || rawMenuId === 99;
+    const isAdditionalDietSelect = rawMenuId === 'Additional Diet' || rawMenuId === 'ADDITIONAL DIET' || rawMenuId === '98' || rawMenuId === 98;
+    const menuId = isNbmSelect ? 99 : isAdditionalDietSelect ? 98 : (rawMenuId && parseInt(rawMenuId, 10) !== 0 ? parseInt(rawMenuId, 10) : null);
+
+    const poIdInt = orderId ? parseInt(orderId) : undefined;
+    const patientIdInt = patientId ? parseInt(patientId) : undefined;
+
+    const today = new Date();
+    const startOfDay = new Date(today);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(today);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const whereClause = {
+        mst_id: BigInt(siteId),
+        is_active: true,
+        patientOrders: {
+            some: {
+                is_active: true,
+                created_at: { gte: startOfDay, lte: endOfDay },
+                patientOrderLiquids: menuId !== null ? { some: { liquid_time: menuId } } : { some: {} }
+            }
+        }
+    };
+
+    if (patientIdInt && !isNaN(patientIdInt)) whereClause.patient_id = patientIdInt;
+    if (poIdInt && !isNaN(poIdInt)) whereClause.order_id = poIdInt;
+
+    const orders = await prisma.hinaiOrder.findMany({
+        where: whereClause,
+        include: {
+            patientOrders: {
+                where: {
+                    is_active: true,
+                    created_at: { gte: startOfDay, lte: endOfDay }
+                },
+                orderBy: { created_at: 'desc' },
+                take: 1,
+                include: {
+                    patientOrderLiquids: menuId !== null ? { where: { liquid_time: menuId } } : true
+                }
+            }
+        },
+        orderBy: [{ ward: 'asc' }, { bed_no: 'asc' }]
+    });
+
+    const result = [];
+    for (const order of orders) {
+        const po = order.patientOrders[0];
+        if (!po || !po.patientOrderLiquids) continue;
+        for (const liq of po.patientOrderLiquids) {
+            result.push({
+                mr_no: order.mr_no.toString(),
+                patient_name: order.patient_name,
+                bed_no: order.bed_no,
+                ward: order.ward,
+                menu_detail: order.menu_detail,
+                description: liq.liquid_time === 99 
+                    ? 'NBM BreakDown Time' 
+                    : liq.liquid_time === 98 
+                        ? 'Additional Diet' 
+                        : liq.liquid_time.toString(),
+                remarks: liq.remarks,
+                nursing_remark: po.nursing_remark,
+                diet_remark: po.diet_remark,
+                order_date: formatDateTime(order.updated_at || order.created_at)
+            });
+        }
+        if (patientIdInt || poIdInt) {
+            await markStickerAsPrinted(patientIdInt || order.patient_id, poIdInt || order.order_id, menuId || 98);
+        }
+    }
+
+    result.sort((a, b) => {
+        const bedCompare = (a.bed_no || '').localeCompare(b.bed_no || '', undefined, { numeric: true, sensitivity: 'base' });
+        if (bedCompare !== 0) return bedCompare;
+        return (a.mr_no || '').localeCompare(b.mr_no || '', undefined, { numeric: true });
+    });
+
+    return result;
+};
+
 export const checkLatestHinaiOrders = async (body, jwtUser) => {
     try {
 
