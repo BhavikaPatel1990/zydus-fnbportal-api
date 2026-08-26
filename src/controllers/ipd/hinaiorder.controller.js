@@ -501,7 +501,7 @@ export const printSingleLiquidStickers = async (req, res) => {
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'inline; filename=single_liquid_sticker.pdf');
 
-        pdfGenerator.generateLiquidStickers(stickersData, res);
+        pdfGenerator.generateSingleLiquidStickers(stickersData, res);
     } catch (error) {
         console.error('printSingleLiquidStickers error:', error.message);
         return handleHinaiOrderError(res, error, 'Failed to generate single liquid sticker');

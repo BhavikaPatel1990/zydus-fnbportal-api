@@ -4083,6 +4083,7 @@ export const getSingleLiquidStickerData = async (body, jwtUser) => {
                 orderBy: { created_at: 'desc' },
                 take: 1,
                 include: {
+                    dietTypeData: true,
                     patientOrderLiquids: menuId !== null ? { where: { liquid_time: menuId } } : true
                 }
             }
@@ -4095,20 +4096,36 @@ export const getSingleLiquidStickerData = async (body, jwtUser) => {
         const po = order.patientOrders[0];
         if (!po || !po.patientOrderLiquids) continue;
         for (const liq of po.patientOrderLiquids) {
+            const menuDesc = liq.liquid_time === 99
+                ? 'NBM BreakDown Time'
+                : liq.liquid_time === 98
+                    ? 'Additional Diet'
+                    : `${liq.liquid_time}:00`;
+
+            // const itemText = order.menu_detail
+            //     ? (liq.remarks ? `${order.menu_detail} - ${liq.remarks}` : order.menu_detail)
+            //     : (liq.remarks || '-');
+
+
+            const itemText = order.menu_detail
+                ? (liq.remarks ? `${liq.remarks}` : order.menu_detail)
+                : (liq.remarks || '-');
+
             result.push({
                 mr_no: order.mr_no.toString(),
                 patient_name: order.patient_name,
+                doctor: order.doctor || '',
+                admission_no: order.admission_no || '',
                 bed_no: order.bed_no,
                 ward: order.ward,
+                diet_name: po.dietTypeData?.diet_name || '',
+                menu_description: menuDesc,
+                items: itemText,
                 menu_detail: order.menu_detail,
-                description: liq.liquid_time === 99 
-                    ? 'NBM BreakDown Time' 
-                    : liq.liquid_time === 98 
-                        ? 'Additional Diet' 
-                        : liq.liquid_time.toString(),
+                description: menuDesc,
                 remarks: liq.remarks,
-                nursing_remark: po.nursing_remark,
-                diet_remark: po.diet_remark,
+                nursing_remark: po.nursing_remark || order.nurse_remark || '',
+                diet_remark: po.diet_remark || '',
                 order_date: formatDateTime(order.updated_at || order.created_at)
             });
         }
