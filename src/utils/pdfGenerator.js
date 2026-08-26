@@ -41,9 +41,212 @@ export const generateBulkStickers = (stickersData, stream) => {
 };
 
 /**
+ * Generate single liquid sticker(s) (101x101mm)
+ */
+export const generateSingleLiquidStickers = (stickersData, stream) => {
+    const doc = new PDFDocument({
+        size: [286, 286],
+        margins: { top: 10, bottom: 10, left: 10, right: 10 }
+    });
+
+    doc.pipe(stream);
+
+    stickersData.forEach((data, index) => {
+        if (index > 0) doc.addPage();
+        renderSingleLiquidStickers(doc, data, 0, 0, { hideDoctorAndAdmNo: true });
+    });
+
+    doc.end();
+};
+
+/**
  * Common render logic for a single sticker page
  */
-function renderSticker(doc, data, startX, startY) {
+function renderSingleLiquidStickers(doc, data, startX, startY, renderOptions = {}) {
+    // =========================
+    // STICKER SIZE
+    // =========================
+    const outerSize = 276;
+
+    // Equal margin from all sides
+    const borderMargin = 15;
+
+    // Border position
+    const left = startX + borderMargin;
+    const top = startY + borderMargin;
+
+    // Border dimensions
+    const stickerWidth = outerSize - (borderMargin * 2);
+    const stickerHeight = outerSize - (borderMargin * 2);
+
+    // Inner content padding
+    const contentPadding = 10;
+
+    // Text positions
+    const xLabel = left + contentPadding;
+    const xColon = left + 68;
+    const xValue = left + 78;
+
+    const defaultValueWidth = stickerWidth - 95;
+    const topValueWidth = 125;
+
+    doc.fillColor('black');
+
+    // Start content with equal top spacing
+    let y = top + contentPadding;
+
+    // =========================
+    // ROW HELPER
+    // =========================
+    const addRow = (label, value, options = {}) => {
+        const {
+            fontSize = 9,
+            valueFontSize = fontSize,
+            isBoldValue = false,
+            valueWidth = defaultValueWidth,
+            gap = 3
+        } = options;
+
+        const safeValue = value || '-';
+
+        // Label
+        doc .fontSize(fontSize) .font('Helvetica-Bold') .text(label, xLabel, y, { lineBreak: false });
+
+        // Colon
+        doc.text(':', xColon, y, {
+            lineBreak: false
+        });
+
+        // Calculate value height
+        const valueHeight = doc
+            .fontSize(valueFontSize)
+            .font(isBoldValue ? 'Helvetica-Bold' : 'Helvetica')
+            .heightOfString(safeValue, {
+                width: valueWidth,
+                align: 'left'
+            });
+
+        // Value
+        doc.text(safeValue, xValue, y, {
+            width: valueWidth,
+            align: 'left'
+        });
+
+        // Next line
+        y += Math.max(valueHeight, fontSize) + gap;
+    };
+
+    // =========================
+    // TOP SECTION
+    // =========================
+    addRow('MRN', data.mr_no, {
+        isBoldValue: true,
+        valueWidth: topValueWidth
+    });
+
+    addRow('NAME', data.patient_name, {
+        isBoldValue: true,
+        valueWidth: topValueWidth
+    });
+
+    if (!renderOptions.hideDoctorAndAdmNo) {
+        addRow('DOCTOR', data.doctor, {
+            isBoldValue: true,
+            valueWidth: topValueWidth
+        });
+
+        addRow('ADM NO.', data.admission_no, {
+            isBoldValue: true,
+            valueWidth: topValueWidth
+        });
+    }
+
+    addRow(
+        'BED-WARD',
+        `${data.bed_no || ''} - ${data.ward || ''}`,
+        {
+            isBoldValue: true,
+            valueWidth: defaultValueWidth,
+            gap: 5
+        }
+    );
+
+    // // =========================
+    // // SECTION DIVIDER
+    // // =========================
+    // doc.moveTo(left, y)
+    //     .lineTo(left + stickerWidth, y)
+    //     .stroke();
+
+    // y += 8;
+
+    // =========================
+    // MIDDLE SECTION
+    // =========================
+    // Label
+    doc.fontSize(9).font('Helvetica-Bold').text('DIET-TYPE', xLabel, y, { lineBreak: false });
+
+    // Colon
+    doc.text(':', xColon, y, { lineBreak: false });
+
+    // Value
+    const valueWidth = defaultValueWidth;
+
+    doc.fontSize(9)
+        .font('Helvetica')
+        .text(data.diet_name || '-', xValue, y, { continued: true, width: valueWidth, align: 'left' })
+        .font('Helvetica-Bold')
+        .text(', MENU : ', { continued: true })
+        .font('Helvetica')
+        .text(data.menu_description || '-');
+
+    // Dynamic height handling
+    const dietMenuTextForHeight = `${data.diet_name || '-'}, MENU : ${data.menu_description || '-'}`;
+    const valueHeight = doc.font('Helvetica').fontSize(9).heightOfString(dietMenuTextForHeight, {
+        width: valueWidth
+    });
+
+    y += Math.max(valueHeight, 9) + 5;
+
+    addRow('ITEM', data.items, {
+        valueFontSize: 8,
+        valueWidth: 170,
+        gap: 6
+    });
+
+    // // =========================
+    // // SECTION DIVIDER
+    // // =========================
+    // doc.moveTo(left, y)
+    //     .lineTo(left + stickerWidth, y)
+    //     .stroke();
+
+    // y += 8;
+
+    // =========================
+    // BOTTOM SECTION
+    // =========================
+    addRow('NR RMK', data.nursing_remark, {
+        fontSize: 8,
+        valueFontSize: 8,
+        valueWidth: 180
+    });
+
+    addRow('DT RMK', data.diet_remark, {
+        fontSize: 8,
+        valueFontSize: 8,
+        valueWidth: 180
+    });
+
+    addRow('ORDER DATE', data.order_date, {
+        gap: 0
+    });
+}
+
+/**
+ * Common render logic for a single sticker page
+ */
+function renderSticker(doc, data, startX, startY, renderOptions = {}) {
     // =========================
     // STICKER SIZE
     // =========================
@@ -144,15 +347,17 @@ function renderSticker(doc, data, startX, startY) {
         valueWidth: topValueWidth
     });
 
-    addRow('DOCTOR', data.doctor, {
-        isBoldValue: true,
-        valueWidth: topValueWidth
-    });
+    if (!renderOptions.hideDoctorAndAdmNo) {
+        addRow('DOCTOR', data.doctor, {
+            isBoldValue: true,
+            valueWidth: topValueWidth
+        });
 
-    addRow('ADM NO.', data.admission_no, {
-        isBoldValue: true,
-        valueWidth: topValueWidth
-    });
+        addRow('ADM NO.', data.admission_no, {
+            isBoldValue: true,
+            valueWidth: topValueWidth
+        });
+    }
 
     addRow(
         'BED-WARD',
