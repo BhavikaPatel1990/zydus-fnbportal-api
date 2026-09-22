@@ -986,14 +986,57 @@ export const getPendingDietOrders = async (body, jwtUser) => {
         };
 
     } catch (err) {
-        console.error('Error in get Pending Diet Orders:', err);
-        if (err.message?.includes('NJS-510') || err.message?.includes('transportConnectTimeout')) {
-            throw createNormalError(
-                'Unable to connect to the hinai server. Please try again later.'
-            );
-        }
+        console.warn('Error in get Pending Diet Orders (Oracle DB), falling back to local DB:', err.message);
 
-        throw err;
+        try {
+            const today = new Date();
+            const startOfDay = new Date(today);
+            startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date(today);
+            endOfDay.setHours(23, 59, 59, 999);
+
+            const localOrders = await prisma.hinaiOrder.findMany({
+                where: {
+                    is_discharge: false,
+                    status: false,
+                    order_date: {
+                        gte: startOfDay,
+                        lte: endOfDay,
+                    },
+                    ...(search ? {
+                        OR: [
+                            { patient_name: { contains: search, mode: 'insensitive' } },
+                            { ward: { contains: search, mode: 'insensitive' } },
+                            { bed_no: { contains: search, mode: 'insensitive' } },
+                            { doctor: { contains: search, mode: 'insensitive' } }
+                        ]
+                    } : {})
+                },
+                orderBy: [
+                    { ward: 'asc' },
+                    { order_date: 'desc' }
+                ],
+            });
+
+            const data = localOrders.map((row) => ({
+                ward: row.ward || '',
+                bed_no: row.bed_no || '',
+                mr_no: row.mr_no ? String(row.mr_no) : '',
+                patient_name: row.patient_name || '',
+                admission_date_only: row.admission_at ? new Date(row.admission_at).toISOString().slice(0, 10) : '',
+                admission_date: row.admission_at ? formatDateTime(row.admission_at) : '',
+                doctor: row.doctor || '',
+                patient_id: row.patient_id || null,
+            }));
+
+            return {
+                total: data.length,
+                data
+            };
+        } catch (localErr) {
+            console.error('Local fallback error in getPendingDietOrders:', localErr);
+            throw createNormalError('Unable to fetch pending diet orders.');
+        }
     } finally {
         if (connection) {
             try {

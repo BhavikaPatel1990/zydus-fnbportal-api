@@ -1649,6 +1649,277 @@
           "response": []
         },
         {
+          "name": "Upsert HINAI Order (Insert or Update)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"HINAIORDERID\": 61639970,\r\n  \"PATIENT_ID\": 1346560,\r\n  \"MRNO\": \"10002026563660\",\r\n  \"PATIENT\": \"Mrs SAKINABEN ZULFIKAR AGHARIYA\",\r\n  \"ADMISSIONNUMBER\": \"AD1000260401482\",\r\n  \"ADMDATE\": \"2026-04-21 15:02:00\",\r\n  \"BED_NO\": \"ICU6B_02\",\r\n  \"SCNAME\": \"ICU6D - 6F\",\r\n  \"DOCTOR\": \"Dr. RAJESH DESAI\",\r\n  \"MENU\": \"FULL DIET\",\r\n  \"NAME\": \"FULL DIET, SALT RESTRICTED DIET\",\r\n  \"CDATE\": \"2026-04-21 08:00:00\",\r\n  \"DIFF\": 1,\r\n  \"DIETTYPE\": 17129492,\r\n  \"APPROVEDDATE\": \"2026-04-21 08:01:52\",\r\n  \"SITEID\": 2,\r\n  \"USERNAME\": \"AJAY JANGID\",\r\n  \"ISDIETCHANGED\": 0,\r\n  \"NURSEREMARK\": \"Updated Remark\",\r\n  \"DIAGNOSIS\": \"Observation\",\r\n  \"AGEGENDER\": \"78 Years/F\",\r\n  \"MOBILENO\": \"9377249099\",\r\n  \"EMAIL\": \"ARYAMNKESHD@GMAIL.COM\",\r\n  \"PLAN_NAME\": \"TPA Insurance\"\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/upsert",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "upsert"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Bulk Upsert HINAI Orders",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"orders\": [\r\n    {\r\n      \"HINAIORDERID\": 61639970,\r\n      \"PATIENT_ID\": 1346560,\r\n      \"MRNO\": \"10002026563660\",\r\n      \"PATIENT\": \"Mrs SAKINABEN ZULFIKAR AGHARIYA\",\r\n      \"ADMISSIONNUMBER\": \"AD1000260401482\",\r\n      \"ADMDATE\": \"2026-04-21 15:02:00\",\r\n      \"BED_NO\": \"ICU6B_02\",\r\n      \"SCNAME\": \"ICU6D - 6F\",\r\n      \"DOCTOR\": \"Dr. RAJESH DESAI\",\r\n      \"MENU\": \"FULL DIET\",\r\n      \"NAME\": \"FULL DIET, SALT RESTRICTED DIET\",\r\n      \"CDATE\": \"2026-04-21 08:00:00\",\r\n      \"DIFF\": 1,\r\n      \"DIETTYPE\": 17129492,\r\n      \"APPROVEDDATE\": \"2026-04-21 08:01:52\",\r\n      \"SITEID\": 2,\r\n      \"USERNAME\": \"AJAY JANGID\",\r\n      \"ISDIETCHANGED\": 0,\r\n      \"NURSEREMARK\": \"0\",\r\n      \"DIAGNOSIS\": \"0\",\r\n      \"AGEGENDER\": \"78 Years/F\",\r\n      \"MOBILENO\": \"9377249099\",\r\n      \"EMAIL\": \"ARYAMNKESHD@GMAIL.COM\",\r\n      \"PLAN_NAME\": \"Cash\"\r\n    }\r\n  ]\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/upsert",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "upsert"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upsert Inpatient Census API",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"PATIENT_ID\": 1346560,\r\n  \"MRNO\": \"10002026563660\",\r\n  \"PATIENT\": \"Mrs SAKINABEN ZULFIKAR AGHARIYA\",\r\n  \"ADMISSIONNUMBER\": \"AD1000260401482\",\r\n  \"ADMDATE\": \"2026-04-21 15:02:00\",\r\n  \"BED_NO\": \"ICU6B_02\",\r\n  \"SCNAME\": \"ICU6D - 6F\",\r\n  \"DOCTOR\": \"Dr. RAJESH DESAI\",\r\n  \"SITEID\": 1\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/census/upsert",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "census",
+                "upsert"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upsert Nursing Remark API",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"PATIENT_ID\": 1346560,\r\n  \"HINAIORDERID\": 61639970,\r\n  \"NURSEREMARK\": \"Patient requires salt restricted diet.\"\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/nursing-remarks/upsert",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "nursing-remarks",
+                "upsert"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upsert Patient Transfer API",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"PATIENT_ID\": 1346560,\r\n  \"TOBED\": \"ICU7A_01\",\r\n  \"TOWARD\": \"ICU7D - 7F\"\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/transfer/upsert",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "transfer",
+                "upsert"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upsert Patient Discharge API",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"PATIENT_ID\": 1346560,\r\n  \"ADMISSIONNUMBER\": \"AD1000260401482\"\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/discharge/upsert",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "discharge",
+                "upsert"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upsert Patient Status API",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"PATIENT_ID\": 1346560,\r\n  \"ADMISSIONNUMBER\": \"AD1000260401482\",\r\n  \"PATIENTSTATUS\": \"93706101\",\r\n  \"PLAN_NAME\": \"Cash\"\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/patient-status/upsert",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "patient-status",
+                "upsert"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "inpatients viewlistcensus",
           "protocolProfileBehavior": {
             "disableBodyPruning": true

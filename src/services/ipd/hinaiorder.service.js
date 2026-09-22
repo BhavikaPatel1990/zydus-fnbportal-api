@@ -535,24 +535,24 @@ const mapHinaiOrderPayload = async (payload) => {
     const admissionNo = getFirstDefined(payload, ['admission_no', 'ADMISSIONNUMBER', 'admno']);
     const admissionAt = getFirstDefined(payload, ['admission_at', 'ADMDATE', 'admdatetime']);
     const bedNo = getFirstDefined(payload, ['bed_no', 'BED_NO']);
-    const ward = getFirstDefined(payload, ['ward', 'SCNAME']);
+    const ward = getFirstDefined(payload, ['ward', 'SCNAME', 'scname']);
     const doctor = getFirstDefined(payload, ['doctor', 'DOCTOR']);
     const menu = getFirstDefined(payload, ['menu', 'MENU']);
-    const menuDetail = getFirstDefined(payload, ['menu_detail', 'NAME', 'menudetail']);
-    const orderDate = getFirstDefined(payload, ['order_date', 'ORDDATE', 'orderdate']);
-    const timeDiff = getFirstDefined(payload, ['time_diff', 'DIFF', 'timediff']);
+    const menuDetail = getFirstDefined(payload, ['menu_detail', 'NAME', 'menudetail', 'name']);
+    const orderDate = getFirstDefined(payload, ['order_date', 'ORDDATE', 'orderdate', 'CDATE', 'cdate']);
+    const timeDiff = getFirstDefined(payload, ['time_diff', 'DIFF', 'timediff', 'diff']) ?? 0;
     const dietType = getFirstDefined(payload, ['diet_type', 'DIETTYPE', 'diettype']);
-    const orderId = getFirstDefined(payload, ['order_id', 'HINAIORDERID', 'orderid']);
-    const nursingUser = getFirstDefined(payload, ['nursing_user', 'USERNAME', 'nursinguser']);
-    const isDietChange = getFirstDefined(payload, ['is_diet_change', 'ISDIETCHANGED', 'isdietchange']);
-    const diagnosis = getFirstDefined(payload, ['diagnosis', 'DIAGNOSIS']);
+    const orderId = getFirstDefined(payload, ['order_id', 'HINAIORDERID', 'orderid', 'hinaiorderid']);
+    const nursingUser = getFirstDefined(payload, ['nursing_user', 'USERNAME', 'nursinguser', 'username']);
+    const isDietChange = getFirstDefined(payload, ['is_diet_change', 'ISDIETCHANGED', 'isdietchange', 'isdietchanged']);
+    const diagnosis = getFirstDefined(payload, ['diagnosis', 'Diagnosis', 'DIAGNOSIS']);
     const ageGender = getFirstDefined(payload, ['age_gender', 'AGEGENDER', 'agegender']);
     const mobileNo = getFirstDefined(payload, ['mobile_no', 'MOBILENO', 'mobileno']);
     const email = getFirstDefined(payload, ['email', 'EMAIL']);
     const nurseRemark = getFirstDefined(payload, ['nurse_remark', 'NURSEREMARK', 'nurseremark']);
-    const approvedDate = getFirstDefined(payload, ['approved_date', 'APPROVEDDATE', 'ord_approveddate']);
+    const approvedDate = getFirstDefined(payload, ['approved_date', 'APPROVEDDATE', 'ord_approveddate', 'approveddate']);
     const planName = getFirstDefined(payload, ['plan_name', 'PLAN_NAME', 'planname']);
-    const siteId = getFirstDefined(payload, ['site_id', 'SITEID', 'siteid']);
+    const siteId = getFirstDefined(payload, ['site_id', 'SITEID', 'siteid', 'ad_siteid', 'SITE_ID']);
     const status = getFirstDefined(payload, ['status']);
     const isDischarge = getFirstDefined(payload, ['is_discharge']);
     const isTransfer = getFirstDefined(payload, ['is_transfer']);
@@ -576,7 +576,7 @@ const mapHinaiOrderPayload = async (payload) => {
         menu: toStringValue(menu, 'menu'),
         menu_detail: toStringValue(menuDetail, 'menu_detail'),
         order_date: toDateValue(orderDate, 'order_date'),
-        time_diff: toIntValue(timeDiff, 'time_diff'),
+        time_diff: toIntValue(timeDiff, 'time_diff', { required: false }) ?? 0,
         diet_type: toIntValue(dietType, 'diet_type'),
         order_id: toIntValue(orderId, 'order_id'),
         status: toBooleanValue(status, true),
@@ -602,6 +602,10 @@ const mapHinaiOrderPayload = async (payload) => {
 };
 
 export const createHinaiOrder = async (body, jwtUser) => {
+    if (toBooleanValue(body.upsert, false)) {
+        return upsertHinaiOrder(body, jwtUser);
+    }
+
     const data = await mapHinaiOrderPayload(body);
     const auditUserId = getAuditUserId(jwtUser);
 
@@ -621,7 +625,7 @@ export const createHinaiOrder = async (body, jwtUser) => {
     const order = await prisma.hinaiOrder.create({
         data: {
             ...data,
-            created_by: auditUserId,
+            created_by: auditUserId ? String(auditUserId) : undefined,
         },
         select: hinaiOrderSelect,
     });
@@ -631,6 +635,93 @@ export const createHinaiOrder = async (body, jwtUser) => {
         ignored: false,
         order: serializeHinaiOrder(order),
     };
+};
+
+const extractBulkItems = (body, keys = []) => {
+    if (!body) return [];
+
+    if (Array.isArray(body)) {
+        return body;
+    }
+
+    for (const key of [...keys, 'data', 'orders', 'items', 'list', 'records', 'remarks', 'transfers', 'discharges', 'statuses', 'patients']) {
+        if (Array.isArray(body[key])) {
+            return body[key];
+        }
+    }
+
+    if (typeof body === 'object' && body !== null && body['0'] !== undefined) {
+        const items = Object.keys(body)
+            .filter(k => !isNaN(k))
+            .sort((a, b) => Number(a) - Number(b))
+            .map(k => body[k]);
+        if (items.length > 0) {
+            return items;
+        }
+    }
+
+    return [body];
+};
+
+const isBulkInput = (body, keys = []) => {
+    if (Array.isArray(body)) return true;
+    for (const key of [...keys, 'data', 'orders', 'items', 'list', 'records', 'remarks', 'transfers', 'discharges', 'statuses', 'patients']) {
+        if (Array.isArray(body?.[key])) return true;
+    }
+    if (typeof body === 'object' && body !== null && body['0'] !== undefined) return true;
+    return false;
+};
+
+export const upsertHinaiOrder = async (body, jwtUser) => {
+    const rawItems = extractBulkItems(body, ['orders']);
+    const isBulk = isBulkInput(body, ['orders']);
+
+    const auditUserId = getAuditUserId(jwtUser);
+    const results = [];
+
+    for (const item of rawItems) {
+        const data = await mapHinaiOrderPayload(item);
+
+        const existingOrder = await prisma.hinaiOrder.findUnique({
+            where: { order_id: data.order_id },
+            select: hinaiOrderSelect,
+        });
+
+        if (existingOrder) {
+            const updated = await prisma.hinaiOrder.update({
+                where: { order_id: data.order_id },
+                data: {
+                    ...data,
+                    updated_by: auditUserId ? String(auditUserId) : undefined,
+                },
+                select: hinaiOrderSelect,
+            });
+
+            results.push({
+                action: 'updated',
+                created: false,
+                updated: true,
+                order: serializeHinaiOrder(updated),
+            });
+        } else {
+            const created = await prisma.hinaiOrder.create({
+                data: {
+                    ...data,
+                    created_by: auditUserId ? String(auditUserId) : undefined,
+                },
+                select: hinaiOrderSelect,
+            });
+
+            results.push({
+                action: 'created',
+                created: true,
+                updated: false,
+                order: serializeHinaiOrder(created),
+            });
+        }
+    }
+
+    return isBulk ? { total: results.length, data: results } : results[0];
 };
 
 const getTodayRange = () => {
@@ -2349,11 +2440,21 @@ WHERE rn = 1
         };
 
     } catch (err) {
-        console.error(err);
-        return {
-            status: false,
-            message: err.message
-        };
+        console.error('refreshHinaiOrders Oracle DB sync warning:', err.message);
+        try {
+            const localCount = await prisma.hinaiOrder.count();
+            return {
+                status: true,
+                source: 'local_database',
+                message: `Oracle DB sync unavailable (${err.message}). Using local database (${localCount} orders available).`,
+                local_count: localCount
+            };
+        } catch (dbErr) {
+            return {
+                status: false,
+                message: err.message
+            };
+        }
     } finally {
         if (connection) await connection.close();
     }
@@ -2748,18 +2849,18 @@ export const getNursingDeskDietDetails = async (body, jwtUser) => {
 export const getNursingRemarks = async (body, jwtUser) => {
     let connection;
 
+    const patientId = Number(body.patient_id);
+    const hinaiOrderId = Number(body.hinai_order_id);
+
+    if (!patientId || Number.isNaN(patientId)) {
+        throw new Error('patient id is required and must be numeric');
+    }
+
+    if (!hinaiOrderId || Number.isNaN(hinaiOrderId)) {
+        throw new Error('order id is required and must be numeric');
+    }
+
     try {
-        const patientId = Number(body.patient_id);
-        const hinaiOrderId = Number(body.hinai_order_id);
-
-        if (!patientId || Number.isNaN(patientId)) {
-            throw new Error('patient id is required and must be numeric');
-        }
-
-        if (!hinaiOrderId || Number.isNaN(hinaiOrderId)) {
-            throw new Error('order id is required and must be numeric');
-        }
-
         connection = await getOracleConnection();
 
         const sql = `
@@ -2804,11 +2905,12 @@ export const getNursingRemarks = async (body, jwtUser) => {
             nurse_remark: row.NURSE_REMARK,
         }));
 
-        return data;
+        if (data.length > 0) {
+            return data;
+        }
 
     } catch (error) {
-        console.error('getNursingRemarks service error:', error);
-        throw error;
+        console.warn('getNursingRemarks Oracle error, falling back to local DB:', error.message);
     } finally {
         if (connection) {
             try {
@@ -2818,6 +2920,28 @@ export const getNursingRemarks = async (body, jwtUser) => {
             }
         }
     }
+
+    const localOrder = await prisma.hinaiOrder.findFirst({
+        where: {
+            patient_id: patientId,
+            order_id: hinaiOrderId,
+        },
+        select: {
+            patient_id: true,
+            order_id: true,
+            nurse_remark: true,
+        },
+    });
+
+    if (localOrder) {
+        return [{
+            patient_id: localOrder.patient_id,
+            hinai_order_id: localOrder.order_id,
+            nurse_remark: localOrder.nurse_remark || '',
+        }];
+    }
+
+    return [];
 };
 
 export const updateDiagnosis = async (body, jwtUser) => {
@@ -4423,4 +4547,275 @@ export const updatePOSiteId = async (body, jwtUser) => {
 
     // Return the updated order list (using getLastOrder per PHP logic)
     return await getLastOrder(body, jwtUser);
+};
+
+export const upsertNursingRemark = async (body, jwtUser) => {
+    const rawItems = extractBulkItems(body, ['remarks', 'nursing_remarks']);
+    const isBulk = isBulkInput(body, ['remarks', 'nursing_remarks']);
+
+    const auditUserId = getAuditUserId(jwtUser);
+    const results = [];
+
+    for (const item of rawItems) {
+        const patientId = toIntValue(getFirstDefined(item, ['patient_id', 'PATIENT_ID']), 'patient_id');
+        const hinaiOrderId = toIntValue(getFirstDefined(item, ['order_id', 'hinai_order_id', 'HINAIORDERID']), 'order_id');
+        const nurseRemark = toStringValue(getFirstDefined(item, ['nurse_remark', 'NURSEREMARK', 'comments', 'remark']), 'nurse_remark', { required: false }) || '';
+
+        const updated = await prisma.hinaiOrder.updateMany({
+            where: {
+                patient_id: patientId,
+                order_id: hinaiOrderId,
+            },
+            data: {
+                nurse_remark: nurseRemark,
+                updated_at: new Date(),
+                updated_by: auditUserId ? String(auditUserId) : 'api_user',
+            },
+        });
+
+        results.push({
+            patient_id: patientId,
+            order_id: hinaiOrderId,
+            nurse_remark: nurseRemark,
+            updated: updated.count > 0,
+            count: updated.count,
+        });
+    }
+
+    return isBulk ? { total: results.length, data: results } : results[0];
+};
+
+export const upsertPatientTransfer = async (body, jwtUser) => {
+    const rawItems = extractBulkItems(body, ['transfers', 'patient_transfers']);
+    const isBulk = isBulkInput(body, ['transfers', 'patient_transfers']);
+
+    const auditUserId = getAuditUserId(jwtUser);
+    const results = [];
+
+    for (const item of rawItems) {
+        const patientId = toIntValue(getFirstDefined(item, ['patient_id', 'PATIENT_ID']), 'patient_id');
+        const bedNo = toStringValue(getFirstDefined(item, ['bed_no', 'BED_NO', 'to_bed', 'TOBED']), 'bed_no');
+        const ward = toStringValue(getFirstDefined(item, ['ward', 'SCNAME', 'to_ward', 'TOWARD']), 'ward');
+
+        const updated = await prisma.hinaiOrder.updateMany({
+            where: {
+                patient_id: patientId,
+                is_discharge: false,
+                deleted_at: null,
+            },
+            data: {
+                is_transfer: true,
+                bed_no: bedNo,
+                ward: ward,
+                updated_at: new Date(),
+                updated_by: auditUserId ? String(auditUserId) : 'api_user',
+            },
+        });
+
+        results.push({
+            patient_id: patientId,
+            bed_no: bedNo,
+            ward: ward,
+            updated: updated.count > 0,
+            count: updated.count,
+        });
+    }
+
+    return isBulk ? { total: results.length, data: results } : results[0];
+};
+
+export const upsertPatientDischarge = async (body, jwtUser) => {
+    const rawItems = extractBulkItems(body, ['discharges', 'patient_discharges']);
+    const isBulk = isBulkInput(body, ['discharges', 'patient_discharges']);
+
+    const auditUserId = getAuditUserId(jwtUser);
+    const results = [];
+
+    for (const item of rawItems) {
+        const patientId = toIntValue(getFirstDefined(item, ['patient_id', 'PATIENT_ID']), 'patient_id', { required: false });
+        const admissionNo = getFirstDefined(item, ['admission_no', 'ADMISSIONNUMBER', 'ADMISSIONNO', 'admno']);
+
+        const where = {
+            deleted_at: null,
+        };
+
+        if (admissionNo) {
+            where.admission_no = String(admissionNo);
+        }
+        if (patientId) {
+            where.patient_id = patientId;
+        }
+
+        const updated = await prisma.hinaiOrder.updateMany({
+            where,
+            data: {
+                is_discharge: true,
+                updated_at: new Date(),
+                updated_by: auditUserId ? String(auditUserId) : 'api_user',
+            },
+        });
+
+        results.push({
+            patient_id: patientId,
+            admission_no: admissionNo,
+            is_discharge: true,
+            updated: updated.count > 0,
+            count: updated.count,
+        });
+    }
+
+    return isBulk ? { total: results.length, data: results } : results[0];
+};
+
+export const upsertPatientStatus = async (body, jwtUser) => {
+    const rawItems = extractBulkItems(body, ['statuses', 'patient_statuses']);
+    const isBulk = isBulkInput(body, ['statuses', 'patient_statuses']);
+
+    const auditUserId = getAuditUserId(jwtUser);
+    const results = [];
+
+    for (const item of rawItems) {
+        const patientId = toIntValue(getFirstDefined(item, ['patient_id', 'PATIENT_ID']), 'patient_id', { required: false });
+        const admissionNo = getFirstDefined(item, ['admission_no', 'ADMISSIONNUMBER', 'ADMISSIONNO', 'admno']);
+        const patientStatus = getFirstDefined(item, ['patient_status', 'PATIENTSTATUS', 'visit_patientstatus', 'status_code']);
+        const planName = getFirstDefined(item, ['plan_name', 'PLAN_NAME', 'planname']);
+
+        const where = {
+            deleted_at: null,
+            is_discharge: false,
+        };
+
+        if (admissionNo) {
+            where.admission_no = String(admissionNo);
+        }
+        if (patientId) {
+            where.patient_id = patientId;
+        }
+
+        const dataToUpdate = {
+            updated_at: new Date(),
+            updated_by: auditUserId ? String(auditUserId) : 'api_user',
+        };
+
+        if (patientStatus !== undefined && patientStatus !== null) {
+            dataToUpdate.patient_status = String(patientStatus);
+        }
+
+        if (planName !== undefined && planName !== null) {
+            dataToUpdate.plan_name = String(planName);
+        }
+
+        const updated = await prisma.hinaiOrder.updateMany({
+            where,
+            data: dataToUpdate,
+        });
+
+        results.push({
+            patient_id: patientId,
+            admission_no: admissionNo,
+            patient_status: patientStatus,
+            plan_name: planName,
+            updated: updated.count > 0,
+            count: updated.count,
+        });
+    }
+
+    return isBulk ? { total: results.length, data: results } : results[0];
+};
+
+export const upsertInpatientCensus = async (body, jwtUser) => {
+    const rawItems = extractBulkItems(body, ['patients', 'census']);
+    const isBulk = isBulkInput(body, ['patients', 'census']);
+
+    const auditUserId = getAuditUserId(jwtUser);
+    const results = [];
+
+    for (const item of rawItems) {
+        const patientId = toIntValue(getFirstDefined(item, ['patient_id', 'PATIENT_ID', 'patient']), 'patient_id');
+        const mrNo = toBigIntValue(getFirstDefined(item, ['mr_no', 'MRNO', 'mrno']), 'mr_no');
+        const patientName = toStringValue(getFirstDefined(item, ['patient_name', 'PATIENT', 'patientname']), 'patient_name');
+        const admissionNo = toStringValue(getFirstDefined(item, ['admission_no', 'ADMISSIONNUMBER', 'admissionnumber', 'admno']), 'admission_no');
+        const admissionAt = toDateValue(getFirstDefined(item, ['admission_at', 'ADMDATE', 'admissiondate', 'admdatetime']), 'admission_at');
+        const bedNo = toStringValue(getFirstDefined(item, ['bed_no', 'BED_NO', 'bedno']), 'bed_no');
+        const ward = toStringValue(getFirstDefined(item, ['ward', 'SCNAME', 'service_center_name', 'scname']), 'ward');
+        const doctor = toStringValue(getFirstDefined(item, ['doctor', 'DOCTOR', 'consultant']), 'doctor');
+        const siteId = getFirstDefined(item, ['site_id', 'SITEID', 'siteid', 'admitted_site']);
+
+        const mstId = await resolveSiteMapping(siteId);
+
+        const existing = await prisma.hinaiOrder.findFirst({
+            where: {
+                patient_id: patientId,
+                admission_no: admissionNo,
+                deleted_at: null,
+            },
+            orderBy: { order_date: 'desc' },
+        });
+
+        if (existing) {
+            const updated = await prisma.hinaiOrder.update({
+                where: { id: existing.id },
+                data: {
+                    mr_no: mrNo,
+                    patient_name: patientName,
+                    admission_at: admissionAt,
+                    bed_no: bedNo,
+                    ward: ward,
+                    doctor: doctor,
+                    mst_id: mstId,
+                    is_discharge: false,
+                    updated_at: new Date(),
+                    updated_by: auditUserId ? String(auditUserId) : 'api_user',
+                },
+                select: hinaiOrderSelect,
+            });
+
+            results.push({
+                action: 'updated',
+                created: false,
+                updated: true,
+                order: serializeHinaiOrder(updated),
+            });
+        } else {
+            const orderIdInput = getFirstDefined(item, ['order_id', 'HINAIORDERID', 'orderid']);
+            const orderId = orderIdInput ? toIntValue(orderIdInput, 'order_id') : (Date.now() % 2147483647);
+
+            const created = await prisma.hinaiOrder.create({
+                data: {
+                    patient_id: patientId,
+                    mr_no: mrNo,
+                    patient_name: patientName,
+                    admission_no: admissionNo,
+                    admission_at: admissionAt,
+                    bed_no: bedNo,
+                    ward: ward,
+                    doctor: doctor,
+                    menu: getFirstDefined(item, ['menu', 'MENU']) || 'FULL DIET',
+                    menu_detail: getFirstDefined(item, ['menu_detail', 'NAME', 'name']) || 'FULL DIET',
+                    order_date: new Date(),
+                    time_diff: 0,
+                    diet_type: 17129491,
+                    order_id: orderId,
+                    status: false,
+                    nursing_user: getFirstDefined(item, ['nursing_user', 'USERNAME']) || 'api_user',
+                    is_diet_change: false,
+                    is_discharge: false,
+                    is_transfer: false,
+                    age_gender: getFirstDefined(item, ['age_gender', 'AGEGENDER']) || 'N/A',
+                    mst_id: mstId,
+                    created_by: auditUserId ? String(auditUserId) : 'api_user',
+                },
+                select: hinaiOrderSelect,
+            });
+
+            results.push({
+                action: 'created',
+                created: true,
+                updated: false,
+                order: serializeHinaiOrder(created),
+            });
+        }
+    }
+
+    return isBulk ? { total: results.length, data: results } : results[0];
 };

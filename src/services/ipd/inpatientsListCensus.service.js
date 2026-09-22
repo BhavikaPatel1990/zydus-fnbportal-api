@@ -1,5 +1,6 @@
 import { getOracleConnection } from '../../config/oracleDb.js';
 import oracledb from 'oracledb';
+import prisma from '../../config/db.js';
 
 const createHttpError = (message, statusCode = 200) => {
   const error = new Error(message);
@@ -32,11 +33,11 @@ const toSnakeCase = (obj) => {
 export const getInpatientsListCensus = async (siteId) => {
   let connection;
 
-  try {
-    if (siteId === undefined || siteId === null || siteId === '') {
-      throw createNormalError('Site ID is required');
-    }
+  if (siteId === undefined || siteId === null || siteId === '') {
+    throw createNormalError('Site ID is required');
+  }
 
+  try {
     connection = await getOracleConnection();
 
     const sql = `
@@ -72,11 +73,41 @@ export const getInpatientsListCensus = async (siteId) => {
     // Convert all response keys to snake_case lowercase
     return result.rows.map(toSnakeCase);
   } catch (err) {
-    console.error('Error in get inpatients service:', err);
-    if (err?.statusCode) {
+    console.warn('Error fetching inpatients list from Oracle DB, falling back to local DB:', err.message);
+
+    if (err?.statusCode === 200) {
       throw err;
     }
-    throw createBadRequestError(err.message || 'Failed to fetch inpatient list from Oracle');
+
+    try {
+      const parsedSiteId = Number(siteId);
+      const localOrders = await prisma.hinaiOrder.findMany({
+        where: {
+          is_discharge: false,
+          ...(parsedSiteId ? { mst_id: BigInt(parsedSiteId) } : {})
+        },
+        orderBy: { bed_no: 'asc' },
+      });
+
+      const map = new Map();
+      for (const order of localOrders) {
+        if (!map.has(order.patient_id)) {
+          map.set(order.patient_id, {
+            mrno: order.mr_no ? String(order.mr_no) : '',
+            patient: order.patient_name || '',
+            admissionnumber: order.admission_no || '',
+            bed_id: 0,
+            bed_no: order.bed_no || '',
+            service_center_name: order.ward || '',
+            doctor: order.doctor || ''
+          });
+        }
+      }
+      return Array.from(map.values());
+    } catch (localErr) {
+      console.error('Local fallback error in getInpatientsListCensus:', localErr);
+      throw createBadRequestError(err.message || 'Failed to fetch inpatient list');
+    }
   } finally {
     if (connection) {
       try {

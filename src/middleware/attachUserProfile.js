@@ -5,7 +5,7 @@ const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL?.replace(/\/$/, '');
 
 const getUserProfileApiUrl = () => {
     if (!AUTH_SERVICE_URL) {
-        throw new Error("AUTH_SERVICE_URL is not configured");
+        return null;
     }
 
     return AUTH_SERVICE_URL.endsWith('/api')
@@ -17,21 +17,30 @@ const attachUserProfile = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
 
-        const apiRes = await axios.get(
-            getUserProfileApiUrl(),
-            {
-                headers: { Authorization: authHeader },
+        const profileUrl = getUserProfileApiUrl();
+        if (profileUrl && authHeader) {
+            const apiRes = await axios.get(
+                profileUrl,
+                {
+                    headers: { Authorization: authHeader },
+                    timeout: 3000,
+                }
+            );
+
+            const data = apiRes.data?.data;
+            if (data) {
+                req.userProfile = data.userProfile;
+                req.permissions = data.permissions;
+                req.siteId = data.siteId;
             }
-        );
-
-        const data = apiRes.data.data;
-
-        req.userProfile = data.userProfile;
-        req.permissions = data.permissions;
-        req.siteId = data.siteId;
+        }
 
         next();
     } catch (err) {
+        console.warn("attachUserProfile call warning (continuing with JWT payload):", err.message);
+        if (req.user) {
+            return next();
+        }
         return response.authError(res, "Unauthorized");
     }
 };

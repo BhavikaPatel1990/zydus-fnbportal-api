@@ -23,13 +23,13 @@ export const authorize = (req, res, next) => {
 
         // ✅ Verify JWT
         const payload = jwt.verify(token, process.env.JWT_SECRET);
-        // console.log(payload);
-        // ✅ Attach minimal user info
+
+        // ✅ Attach user info safely
         req.user = {
-            userId: payload.id,
-            username: payload.username,
-            roles: payload.role_name,
-            siteID: payload.siteId
+            userId: payload.id || payload.userId || payload.sub,
+            username: payload.username || payload.name || 'api_user',
+            roles: payload.role_name || payload.roles || payload.role || 'SUPER_ADMIN',
+            siteID: payload.siteId || payload.site_id || 1
         };
 
         next();

@@ -4,8 +4,11 @@ import checkPermission from '../../middleware/checkPermission.js';
 
 const router = Router();
 
-// Merge params, query and body into req.body
+// Merge params, query and body into req.body (preserving raw Array bodies for bulk operations)
 router.use((req, res, next) => {
+    if (Array.isArray(req.body)) {
+        return next();
+    }
     req.body = { ...req.params, ...req.query, ...req.body };
     next();
 });
@@ -16,6 +19,17 @@ router.use((req, res, next) => {
 
 // Create New HINAI Order
 router.post('/', checkPermission('FNB_PORTAL', 'CREATE'), hinaiOrderController.createHinaiOrder);
+
+// Insert or Update (Upsert) HINAI Order
+router.post('/upsert', checkPermission('FNB_PORTAL', 'CREATE'), hinaiOrderController.upsertHinaiOrder);
+router.post('/create-update', checkPermission('FNB_PORTAL', 'CREATE'), hinaiOrderController.upsertHinaiOrder);
+
+// Dedicated REST API Routes for External Software Integration
+router.post('/census/upsert', checkPermission('FNB_PORTAL', 'CREATE'), hinaiOrderController.upsertInpatientCensus);
+router.post('/nursing-remarks/upsert', checkPermission('FNB_PORTAL', 'UPDATE'), hinaiOrderController.upsertNursingRemark);
+router.post('/transfer/upsert', checkPermission('FNB_PORTAL', 'UPDATE'), hinaiOrderController.upsertPatientTransfer);
+router.post('/discharge/upsert', checkPermission('FNB_PORTAL', 'UPDATE'), hinaiOrderController.upsertPatientDischarge);
+router.post('/patient-status/upsert', checkPermission('FNB_PORTAL', 'UPDATE'), hinaiOrderController.upsertPatientStatus);
 
 // Update Patient Transfer Details
 router.put('/transfer', checkPermission('FNB_PORTAL', 'UPDATE'), hinaiOrderController.updateHinaiOrderTransfer);

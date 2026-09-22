@@ -1,0 +1,521 @@
+{
+  "info": {
+    "_postman_id": "e8f32194-4712-4c28-98bc-7649d63f912a",
+    "name": "Zydus FNB External Integration API",
+    "description": "Postman API Collection for external software/systems to insert and update patient orders, nursing remarks, transfers, discharges, patient statuses, and inpatient census data directly into Zydus FNB Portal database.\n\n### Authentication\nAll requests require a Bearer token in the `Authorization` header. Set your token in the `jwt_token` collection variable.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. HINAI Data Sync & Upsert (Bulk & Single)",
+      "item": [
+        {
+          "name": "1.1 Upsert HINAI Orders (Bulk Payload)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orders\": [\n    {\n      \"HINAIORDERID\": 61639970,\n      \"PATIENT_ID\": 1346560,\n      \"MRNO\": \"10002026563660\",\n      \"PATIENT\": \"Mrs SAKINABEN ZULFIKAR AGHARIYA\",\n      \"ADMISSIONNUMBER\": \"AD1000260401482\",\n      \"ADMDATE\": \"2026-04-21 15:02:00\",\n      \"BED_NO\": \"ICU6B_02\",\n      \"SCNAME\": \"ICU6D - 6F\",\n      \"DOCTOR\": \"Dr. RAJESH DESAI\",\n      \"MENU\": \"FULL DIET\",\n      \"NAME\": \"FULL DIET, SALT RESTRICTED DIET\",\n      \"CDATE\": \"2026-04-21 08:00:00\",\n      \"DIFF\": 1,\n      \"DIETTYPE\": 17129492,\n      \"APPROVEDDATE\": \"2026-04-21 08:01:52\",\n      \"SITEID\": 2,\n      \"USERNAME\": \"AJAY JANGID\",\n      \"ISDIETCHANGED\": 0,\n      \"NURSEREMARK\": \"0\",\n      \"DIAGNOSIS\": \"0\",\n      \"AGEGENDER\": \"78 Years/F\",\n      \"MOBILENO\": \"9377249099\",\n      \"EMAIL\": \"ARYAMNKESHD@GMAIL.COM\",\n      \"PLAN_NAME\": \"Cash\"\n    },\n    {\n      \"HINAIORDERID\": 61639971,\n      \"PATIENT_ID\": 1346561,\n      \"MRNO\": \"10002026563661\",\n      \"PATIENT\": \"Mr RAMESH PATEL\",\n      \"ADMISSIONNUMBER\": \"AD1000260401483\",\n      \"ADMDATE\": \"2026-04-21 16:00:00\",\n      \"BED_NO\": \"ICU6B_03\",\n      \"SCNAME\": \"ICU6D - 6F\",\n      \"DOCTOR\": \"Dr. AMIT SHAH\",\n      \"MENU\": \"SOFT DIET\",\n      \"NAME\": \"SOFT DIET\",\n      \"CDATE\": \"2026-04-21 08:30:00\",\n      \"DIFF\": 1,\n      \"DIETTYPE\": 17129492,\n      \"APPROVEDDATE\": \"2026-04-21 08:35:00\",\n      \"SITEID\": 2,\n      \"USERNAME\": \"AJAY JANGID\",\n      \"ISDIETCHANGED\": 0,\n      \"NURSEREMARK\": \"0\",\n      \"DIAGNOSIS\": \"0\",\n      \"AGEGENDER\": \"65 Years/M\",\n      \"MOBILENO\": \"9898012345\",\n      \"EMAIL\": \"RAMESH@GMAIL.COM\",\n      \"PLAN_NAME\": \"Insurance\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/upsert",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "upsert"
+              ]
+            },
+            "description": "Insert or update HINAI orders in bulk. Accepts object with `orders` array, raw JSON array `[...]`, or single order object."
+          },
+          "response": []
+        },
+        {
+          "name": "1.2 Upsert HINAI Orders (Single Payload)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"HINAIORDERID\": 61639970,\n  \"PATIENT_ID\": 1346560,\n  \"MRNO\": \"10002026563660\",\n  \"PATIENT\": \"Mrs SAKINABEN ZULFIKAR AGHARIYA\",\n  \"ADMISSIONNUMBER\": \"AD1000260401482\",\n  \"ADMDATE\": \"2026-04-21 15:02:00\",\n  \"BED_NO\": \"ICU6B_02\",\n  \"SCNAME\": \"ICU6D - 6F\",\n  \"DOCTOR\": \"Dr. RAJESH DESAI\",\n  \"MENU\": \"FULL DIET\",\n  \"NAME\": \"FULL DIET, SALT RESTRICTED DIET\",\n  \"CDATE\": \"2026-04-21 08:00:00\",\n  \"DIFF\": 1,\n  \"DIETTYPE\": 17129492,\n  \"APPROVEDDATE\": \"2026-04-21 08:01:52\",\n  \"SITEID\": 2,\n  \"USERNAME\": \"AJAY JANGID\",\n  \"ISDIETCHANGED\": 0,\n  \"NURSEREMARK\": \"0\",\n  \"DIAGNOSIS\": \"0\",\n  \"AGEGENDER\": \"78 Years/F\",\n  \"MOBILENO\": \"9377249099\",\n  \"EMAIL\": \"ARYAMNKESHD@GMAIL.COM\",\n  \"PLAN_NAME\": \"Cash\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/upsert",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "upsert"
+              ]
+            },
+            "description": "Insert or update a single HINAI order."
+          },
+          "response": []
+        },
+        {
+          "name": "1.3 Upsert Nursing Remarks (Bulk Payload)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"remarks\": [\n    {\n      \"HINAIORDERID\": 61639970,\n      \"PATIENT_ID\": 1346560,\n      \"NURSEREMARK\": \"Patient prefers warm water\"\n    },\n    {\n      \"HINAIORDERID\": 61639971,\n      \"PATIENT_ID\": 1346561,\n      \"NURSEREMARK\": \"Diabetic diet recommended\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/nursing-remarks/upsert",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "nursing-remarks",
+                "upsert"
+              ]
+            },
+            "description": "Update nursing remarks in bulk."
+          },
+          "response": []
+        },
+        {
+          "name": "1.4 Upsert Patient Transfer (Bulk Payload)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transfers\": [\n    {\n      \"PATIENT_ID\": 1346560,\n      \"BED_NO\": \"ICU6B_05\",\n      \"SCNAME\": \"ICU6D - 6F\"\n    },\n    {\n      \"PATIENT_ID\": 1346561,\n      \"BED_NO\": \"WARD_102\",\n      \"SCNAME\": \"GENERAL WARD\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/transfer/upsert",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "transfer",
+                "upsert"
+              ]
+            },
+            "description": "Update patient bed/ward transfers in bulk."
+          },
+          "response": []
+        },
+        {
+          "name": "1.5 Upsert Patient Discharge (Bulk Payload)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"discharges\": [\n    {\n      \"PATIENT_ID\": 1346560,\n      \"ADMISSIONNUMBER\": \"AD1000260401482\"\n    },\n    {\n      \"PATIENT_ID\": 1346561,\n      \"ADMISSIONNUMBER\": \"AD1000260401483\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/discharge/upsert",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "discharge",
+                "upsert"
+              ]
+            },
+            "description": "Mark patient orders as discharged in bulk."
+          },
+          "response": []
+        },
+        {
+          "name": "1.6 Upsert Patient Status (Bulk Payload)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"statuses\": [\n    {\n      \"PATIENT_ID\": 1346560,\n      \"ADMISSIONNUMBER\": \"AD1000260401482\",\n      \"PATIENTSTATUS\": \"DISCHARGED\",\n      \"PLAN_NAME\": \"Cash\"\n    },\n    {\n      \"PATIENT_ID\": 1346561,\n      \"ADMISSIONNUMBER\": \"AD1000260401483\",\n      \"PATIENTSTATUS\": \"ADMITTED\",\n      \"PLAN_NAME\": \"TPA Insurance\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/patient-status/upsert",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "patient-status",
+                "upsert"
+              ]
+            },
+            "description": "Update patient status and billing plan in bulk."
+          },
+          "response": []
+        },
+        {
+          "name": "1.7 Upsert Inpatient Census (Bulk Payload)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patients\": [\n    {\n      \"PATIENT_ID\": 1346560,\n      \"MRNO\": \"10002026563660\",\n      \"PATIENT\": \"Mrs SAKINABEN ZULFIKAR AGHARIYA\",\n      \"ADMISSIONNUMBER\": \"AD1000260401482\",\n      \"ADMDATE\": \"2026-04-21 15:02:00\",\n      \"BED_NO\": \"ICU6B_02\",\n      \"SCNAME\": \"ICU6D - 6F\",\n      \"DOCTOR\": \"Dr. RAJESH DESAI\",\n      \"SITEID\": 2\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/census/upsert",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "census",
+                "upsert"
+              ]
+            },
+            "description": "Insert or update inpatient census data in bulk."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Order Operations",
+      "item": [
+        {
+          "name": "2.1 Save Patient Diet Order",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": 1346560,\n  \"hinai_order_id\": 61639970,\n  \"mrn_no\": \"10002026563660\",\n  \"patient_name\": \"Mrs SAKINABEN ZULFIKAR AGHARIYA\",\n  \"admission_no\": \"AD1000260401482\",\n  \"bed_no\": \"ICU6B_02\",\n  \"ward\": \"ICU6D - 6F\",\n  \"doctor\": \"Dr. RAJESH DESAI\",\n  \"diet_type\": 17129492,\n  \"nursing_remark\": \"Salt restricted\",\n  \"diet_remark\": \"No sugar\",\n  \"menu_items\": [\n    {\n      \"menu_id\": 1,\n      \"description\": \"BREAKFAST FULL DIET\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/patient-order",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "patient-order"
+              ]
+            },
+            "description": "Create or update patient diet order details."
+          },
+          "response": []
+        },
+        {
+          "name": "2.2 Update Order Diagnosis",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": 1346560,\n  \"order_id\": 61639970,\n  \"diagnosis\": \"Type 2 Diabetes, Hypertension\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/update-diagnosis",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "update-diagnosis"
+              ]
+            },
+            "description": "Update patient diagnosis on diet order."
+          },
+          "response": []
+        },
+        {
+          "name": "2.3 Dispatch Diet Order",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": 1346560,\n  \"order_id\": 61639970\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/dispatch",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "dispatch"
+              ]
+            },
+            "description": "Mark diet order as dispatched."
+          },
+          "response": []
+        },
+        {
+          "name": "2.4 Cancel Diet Order",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": 1346560,\n  \"order_id\": 61639970,\n  \"reason\": \"Patient discharged early\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{fnb_url}}/ipd/hinaiorders/cancel",
+              "host": [
+                "{{fnb_url}}"
+              ],
+              "path": [
+                "ipd",
+                "hinaiorders",
+                "cancel"
+              ]
+            },
+            "description": "Cancel a diet order."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "fnb_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "YOUR_BEARER_TOKEN_HERE",
+      "type": "string"
+    }
+  ]
+}

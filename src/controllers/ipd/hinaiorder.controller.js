@@ -26,7 +26,7 @@ export const createHinaiOrder = async (req, res) => {
         const data = await hinaiOrderService.createHinaiOrder(req.body, req.user);
         const message = data.created
             ? 'HINAI order created successfully'
-            : 'HINAI order already exists, insert ignored';
+            : (data.updated ? 'HINAI order updated successfully' : 'HINAI order already exists, insert ignored');
 
         return response.success(res, message, data);
     } catch (error) {
@@ -34,6 +34,94 @@ export const createHinaiOrder = async (req, res) => {
         return handleHinaiOrderError(res, error, 'Failed to create HINAI order');
     }
 
+};
+
+export const upsertHinaiOrder = async (req, res) => {
+    try {
+        const data = await hinaiOrderService.upsertHinaiOrder(req.body, req.user);
+        const message = Array.isArray(data?.data)
+            ? `Successfully processed ${data.total} HINAI order(s)`
+            : (data.created
+                ? 'HINAI order created successfully'
+                : 'HINAI order updated successfully');
+
+        return response.success(res, message, data);
+    } catch (error) {
+        console.error('Error upserting HINAI order:', error);
+        return handleHinaiOrderError(res, error, 'Failed to insert/update HINAI order');
+    }
+};
+
+export const upsertNursingRemark = async (req, res) => {
+    try {
+        const data = await hinaiOrderService.upsertNursingRemark(req.body, req.user);
+        const message = Array.isArray(data?.data)
+            ? `Successfully processed ${data.total} nursing remark(s)`
+            : 'Nursing remark updated successfully';
+
+        return response.success(res, message, data);
+    } catch (error) {
+        console.error('Error upserting nursing remark:', error);
+        return handleHinaiOrderError(res, error, 'Failed to update nursing remark');
+    }
+};
+
+export const upsertPatientTransfer = async (req, res) => {
+    try {
+        const data = await hinaiOrderService.upsertPatientTransfer(req.body, req.user);
+        const message = Array.isArray(data?.data)
+            ? `Successfully processed ${data.total} patient transfer(s)`
+            : 'Patient transfer details updated successfully';
+
+        return response.success(res, message, data);
+    } catch (error) {
+        console.error('Error upserting patient transfer:', error);
+        return handleHinaiOrderError(res, error, 'Failed to update patient transfer details');
+    }
+};
+
+export const upsertPatientDischarge = async (req, res) => {
+    try {
+        const data = await hinaiOrderService.upsertPatientDischarge(req.body, req.user);
+        const message = Array.isArray(data?.data)
+            ? `Successfully processed ${data.total} patient discharge(s)`
+            : 'Patient discharge status updated successfully';
+
+        return response.success(res, message, data);
+    } catch (error) {
+        console.error('Error upserting patient discharge:', error);
+        return handleHinaiOrderError(res, error, 'Failed to update patient discharge status');
+    }
+};
+
+export const upsertPatientStatus = async (req, res) => {
+    try {
+        const data = await hinaiOrderService.upsertPatientStatus(req.body, req.user);
+        const message = Array.isArray(data?.data)
+            ? `Successfully processed ${data.total} patient status update(s)`
+            : 'Patient status updated successfully';
+
+        return response.success(res, message, data);
+    } catch (error) {
+        console.error('Error upserting patient status:', error);
+        return handleHinaiOrderError(res, error, 'Failed to update patient status');
+    }
+};
+
+export const upsertInpatientCensus = async (req, res) => {
+    try {
+        const data = await hinaiOrderService.upsertInpatientCensus(req.body, req.user);
+        const message = Array.isArray(data?.data)
+            ? `Successfully processed ${data.total} inpatient census record(s)`
+            : (data.created
+                ? 'Inpatient census record created successfully'
+                : 'Inpatient census record updated successfully');
+
+        return response.success(res, message, data);
+    } catch (error) {
+        console.error('Error upserting inpatient census:', error);
+        return handleHinaiOrderError(res, error, 'Failed to save inpatient census record');
+    }
 };
 
 export const updateHinaiOrderTransfer = async (req, res) => {
