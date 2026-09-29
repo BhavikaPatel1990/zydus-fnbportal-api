@@ -482,12 +482,12 @@ export const getDietSheet = async (body, jwtUser) => {
             };
         });
 
-    // 6️⃣ Search
+    // 6️⃣ Search across all columns
     if (search) {
         result = result.filter(r =>
-            r.patient_name?.toLowerCase().includes(search) ||
-            r.ward?.toLowerCase().includes(search) ||
-            r.bed_no?.toLowerCase().includes(search)
+            Object.values(r).some(val =>
+                val !== null && val !== undefined && String(val).toLowerCase().includes(search)
+            )
         );
     }
 
@@ -734,12 +734,12 @@ export const getDietSheetLiquids = async (body, jwtUser) => {
             };
         });
 
-    // 5️⃣ Search
+    // 5️⃣ Search across all columns
     if (search) {
         result = result.filter(r =>
-            r.patient_name?.toLowerCase().includes(search) ||
-            r.ward?.toLowerCase().includes(search) ||
-            r.bed_no?.toLowerCase().includes(search)
+            Object.values(r).some(val =>
+                val !== null && val !== undefined && String(val).toLowerCase().includes(search)
+            )
         );
     }
 
