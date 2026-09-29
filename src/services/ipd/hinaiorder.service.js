@@ -2446,7 +2446,7 @@ WHERE rn = 1
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
 
-        console.log(' transfer data ', transferResult.rows);
+        // console.log(' transfer data ');
         
         for (const row of transferResult.rows) {
             const patientId = Number(row.PATIENT_ID || row.patient_id);
