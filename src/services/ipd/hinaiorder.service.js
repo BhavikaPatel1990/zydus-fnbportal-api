@@ -260,8 +260,7 @@ const buildHinaiOrderListRow = ({
     admissionDateOnly,
     approvedDateLabel,
 }) => {
-    console.log( ' po : ');
-console.log(po);
+
     const hasAdditionalDietDetail = Boolean(
         po?.patientOrderDetails?.some(
             d => (d.ptm_id === '11' || (d.menuTime?.description && d.menuTime.description.toUpperCase().includes('ADDITIONAL')))
@@ -1632,11 +1631,12 @@ export const getHinaiOrders = async (body, jwtUser) => {
         }
     }
 
-    // fetch
     const rows = await prisma.hinaiOrder.findMany({
         where,
         orderBy: [
-            { order_date: 'desc' }
+            { order_date: 'desc' },
+            { approved_date: 'desc' },
+            { order_id: 'desc' }
         ],
         include: {
             patientOrders: {
@@ -1673,26 +1673,57 @@ export const getHinaiOrders = async (body, jwtUser) => {
     }
     const uniqueRows = Array.from(map.values());
 
-    // Sort by latest order date/time DESC (punch_date / created_at or order_date)
-    uniqueRows.sort((a, b) => {
-        const poA = a.patientOrders?.[0];
-        const poB = b.patientOrders?.[0];
-
-        const dateA = poA?.created_at || a.order_date || a.created_at;
-        const dateB = poB?.created_at || b.order_date || b.created_at;
-
-        const timeA = dateA ? new Date(dateA).getTime() : 0;
-        const timeB = dateB ? new Date(dateB).getTime() : 0;
-
-        if (timeA !== timeB) {
-            return timeB - timeA;
+    const getTimeMs = (dateVal) => {
+        if (!dateVal) return 0;
+        if (dateVal instanceof Date) return dateVal.getTime();
+        if (typeof dateVal === 'number') return dateVal;
+        let str = String(dateVal).trim();
+        if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}/.test(str)) {
+            str = str.replace(/\s+/, 'T');
         }
+        const parsed = new Date(str);
+        const ms = parsed.getTime();
+        return isNaN(ms) ? 0 : ms;
+    };
 
-        const idA = Number(poA?.id || a.order_id || 0);
-        const idB = Number(poB?.id || b.order_id || 0);
+    // Sort unique rows
+    if (listType === 'hinai') {
+        // For /nursing-orders & /nursing-extra-orders: sort by order_date (primary DESC), then approved_date (fallback secondary DESC)
+        uniqueRows.sort((a, b) => {
+            const timeA = getTimeMs(a.order_date);
+            const timeB = getTimeMs(b.order_date);
 
-        return idB - idA;
-    });
+            if (timeA !== timeB) {
+                return timeB - timeA;
+            }
+
+            const appTimeA = getTimeMs(a.approved_date);
+            const appTimeB = getTimeMs(b.approved_date);
+
+            return appTimeB - appTimeA;
+        });
+    } else {
+        // Sort for listType === 'ordered' (F&B Regular View, F&B Extra View, F&B Clearance, etc.)
+        uniqueRows.sort((a, b) => {
+            const poA = a.patientOrders?.[0];
+            const poB = b.patientOrders?.[0];
+
+            const dateA = poA?.created_at || a.order_date || a.created_at;
+            const dateB = poB?.created_at || b.order_date || b.created_at;
+
+            const timeA = getTimeMs(dateA);
+            const timeB = getTimeMs(dateB);
+
+            if (timeA !== timeB) {
+                return timeB - timeA;
+            }
+
+            const idA = Number(poA?.id || a.order_id || 0);
+            const idB = Number(poB?.id || b.order_id || 0);
+
+            return idB - idA;
+        });
+    }
 
     // Resolve usernames (created_by → name)
     const userMap = await getUserMap(mstId);
@@ -2405,33 +2436,41 @@ WHERE rn = 1
         inner join patient pat on pat.patient_id = treq.from_patientid
         left join bed tob on tob.bed_id = treq.to_bedid
         inner join servicecenter tosc on tosc.service_center_id=treq.servicecenter_id
-        where to_char(treq.createddt,'yyyy-mm-dd') = :ctime
+        where TRUNC(treq.createddt) = TRUNC(SYSDATE)
         and pat.patient_id<>396106
         and treq.to_bedid is not null
         and treq.request_status = 352
       ) where trid = 1
       `,
-            { ctime },
+            {},
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
 
+        // console.log(' transfer data ');
+        
         for (const row of transferResult.rows) {
-            await prisma.hinaiOrder.updateMany({
-                where: {
-                    patient_id: Number(row.PATIENT_ID),
-                    created_at: {
-                        gte: new Date(`${ctime}T00:00:00.000Z`),
-                        lte: new Date(`${ctime}T23:59:59.999Z`)
+            const patientId = Number(row.PATIENT_ID || row.patient_id);
+            const toWard = row.TOWARD || row.toWard;
+            const toBed = row.TOBED || row.toBed;
+
+            if (patientId) {
+                const cleanWard = toWard ? String(toWard).replace(/\s+/g, ' ').trim() : null;
+                const cleanBed = toBed ? String(toBed).trim() : null;
+
+                await prisma.hinaiOrder.updateMany({
+                    where: {
+                        patient_id: patientId,
+                        is_discharge: false
+                    },
+                    data: {
+                        is_transfer: true,
+                        bed_no: cleanBed,
+                        ward: cleanWard,
+                        updated_at: new Date(),
+                        updated_by: 'system'
                     }
-                },
-                data: {
-                    is_transfer: true,
-                    bed_no: row.TOBED,
-                    ward: row.TOWARD,
-                    updated_at: new Date(),
-                    updated_by: 'system'
-                }
-            });
+                });
+            }
         }
 
         return {
