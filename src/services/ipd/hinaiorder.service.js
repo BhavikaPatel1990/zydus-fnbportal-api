@@ -259,6 +259,7 @@ const buildHinaiOrderListRow = ({
     admissionDateLabel,
     admissionDateOnly,
     approvedDateLabel,
+    dietTypeMap,
 }) => {
 
     const hasAdditionalDietDetail = Boolean(
@@ -285,6 +286,8 @@ const buildHinaiOrderListRow = ({
         hasAdditionalDietRemark
     );
 
+    const masterDietName = dietTypeMap?.get(Number(row.diet_type));
+
     return {
     patient_id: row.patient_id,
     mrn_no: row.mr_no ? row.mr_no.toString() : null,
@@ -292,13 +295,13 @@ const buildHinaiOrderListRow = ({
     bed_no: row.bed_no,
     ward: row.ward,
     doctor: row.doctor,
-    menu_name: row.menu,
+    menu_name: masterDietName || row.menu,
     menu_detail: row.menu_detail,
     order_date: row.order_date,
     order_date_label: orderDateLabel,
     diff: Math.floor((Date.now() - new Date(row.order_date)) / 60000),
     diet_type: row.diet_type,
-    diet_name: po?.dietTypeData?.diet_name || '',
+    diet_name: po?.dietTypeData?.diet_name || masterDietName || '',
     hinai_order_id: row.order_id,
     admission_date: row.admission_at,
     admission_date_label: admissionDateLabel,
@@ -1732,6 +1735,12 @@ export const getHinaiOrders = async (body, jwtUser) => {
     // Resolve usernames (created_by → name)
     const userMap = await getUserMap(mstId);
 
+    // Fetch DietType master map to ensure menu names match diet_type IDs
+    const dietTypesList = await prisma.dietType.findMany({
+        where: { is_active: true }
+    });
+    const dietTypeMap = new Map(dietTypesList.map(d => [Number(d.diet_type_id), d.diet_name]));
+
     // pagination AFTER grouping
     const total = uniqueRows.length;
     const paginated = uniqueRows.slice((page - 1) * limit, page * limit);
@@ -1768,6 +1777,7 @@ export const getHinaiOrders = async (body, jwtUser) => {
                 admissionDateLabel: admDate,
                 admissionDateOnly: admDt,
                 approvedDateLabel: approvedDate,
+                dietTypeMap,
             });
         })
     };
