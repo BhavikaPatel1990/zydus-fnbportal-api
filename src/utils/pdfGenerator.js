@@ -482,7 +482,7 @@ const formatNurRem = (raw) => {
     if (raw === null || raw === undefined) return '-';
     const trimmed = String(raw).trim();
     if (!trimmed) return '-';
-    return trimmed.substring(0, 20);
+    return trimmed.substring(0, 30);
 };
 
 const formatDtRem = (raw) => {
@@ -495,8 +495,8 @@ const formatDtRem = (raw) => {
     }
 
     const line1 = trimmed.substring(0, 30);
-    const line2Raw = trimmed.substring(30, 70);
-    const isTruncated = trimmed.length > 70;
+    const line2Raw = trimmed.substring(30, 60);
+    const isTruncated = trimmed.length > 60;
     const line2 = isTruncated ? `${line2Raw}...` : line2Raw;
 
     return `${line1}\n${line2}`;

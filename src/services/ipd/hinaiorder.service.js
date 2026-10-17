@@ -1251,6 +1251,22 @@ export const getPatientOrderFormData = async (body, jwtUser) => {
         prefillNursingRemark = hinaiOrder.nurse_remark || '';
     }
 
+    const trimmedNurseRemark = toUpperTrimmed(prefillNursingRemark);
+    const trimmedMenuDetail = toUpperTrimmed(hinaiOrder.menu_detail);
+    const isExtraOrder =
+        hinaiOrder.menu?.toString().trim().toUpperCase() === 'EXTRA ORDER' ||
+        dietType === 18894123;
+
+    let initialNursingRemark = trimmedNurseRemark;
+    if (isExtraOrder && trimmedMenuDetail) {
+        if (!initialNursingRemark) {
+            initialNursingRemark = trimmedMenuDetail;
+        } else if (!initialNursingRemark.includes(trimmedMenuDetail)) {
+            const cleanRemark = initialNursingRemark.replace(/[\s,]+$/, '');
+            initialNursingRemark = `${cleanRemark} , ${trimmedMenuDetail}`;
+        }
+    }
+
     return {
         mode,
         patient: buildPatientPayload(hinaiOrder),
@@ -1260,7 +1276,7 @@ export const getPatientOrderFormData = async (body, jwtUser) => {
             nursingRemark:
                 mode === 'edit'
                     ? sourcePatientOrder?.nursing_remark || ''
-                    : toUpperTrimmed(prefillNursingRemark),
+                    : initialNursingRemark,
             dietRemark: sourcePatientOrder?.diet_remark || '',
         }),
         menu_items: menuTimes.map((menu) => {
@@ -1898,6 +1914,22 @@ export const getPatientLiquidOrderFormData = async (body, jwtUser) => {
         prefillNursingRemark = hinaiOrder.nurse_remark || '';
     }
 
+    const trimmedNurseRemark = toUpperTrimmed(prefillNursingRemark);
+    const trimmedMenuDetail = toUpperTrimmed(hinaiOrder.menu_detail);
+    const isExtraOrder =
+        hinaiOrder.menu?.toString().trim().toUpperCase() === 'EXTRA ORDER' ||
+        dietType === 18894123;
+
+    let initialNursingRemark = trimmedNurseRemark;
+    if (isExtraOrder && trimmedMenuDetail) {
+        if (!initialNursingRemark) {
+            initialNursingRemark = trimmedMenuDetail;
+        } else if (!initialNursingRemark.includes(trimmedMenuDetail)) {
+            const cleanRemark = initialNursingRemark.replace(/[\s,]+$/, '');
+            initialNursingRemark = `${cleanRemark} , ${trimmedMenuDetail}`;
+        }
+    }
+
     let latestDietRemark = '';
     const latestLiquidOrder = await prisma.patientOrder.findFirst({
         where: {
@@ -1928,7 +1960,7 @@ export const getPatientLiquidOrderFormData = async (body, jwtUser) => {
             nursingRemark:
                 mode === 'edit'
                     ? sourcePatientOrder?.nursing_remark || ''
-                    : toUpperTrimmed(prefillNursingRemark),
+                    : initialNursingRemark,
             dietRemark:
                 mode === 'edit'
                     ? sourcePatientOrder?.diet_remark || ''
