@@ -544,7 +544,14 @@ export const printPatientSticker = async (req, res) => {
 
 export const printBulkStickers = async (req, res) => {
     try {
-        const stickersData = await hinaiOrderService.getBulkStickerData(req.body, req.user);
+        
+        // Retrieve all stickers data first
+        const allStickers = await hinaiOrderService.getBulkStickerData(req.body, req.user);
+        // Exclude NBM diet stickers – identified by diet_name containing 'NBM' (case‑insensitive)
+        const stickersData = allStickers.filter(sticker => {
+            const name = (sticker.diet_name || '').toString().toUpperCase();
+            return !name.includes('NBM');
+        });
 
         if (!stickersData.length) {
             return response.normalError(res, 'No records to display...');

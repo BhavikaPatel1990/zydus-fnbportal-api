@@ -478,6 +478,29 @@ export const generateLiquidStickers = (stickersData, stream) => {
 
     doc.end();
 };
+const formatNurRem = (raw) => {
+    if (raw === null || raw === undefined) return '-';
+    const trimmed = String(raw).trim();
+    if (!trimmed) return '-';
+    return trimmed.substring(0, 30);
+};
+
+const formatDtRem = (raw) => {
+    if (raw === null || raw === undefined) return '-';
+    const trimmed = String(raw).trim();
+    if (!trimmed) return '-';
+
+    if (trimmed.length <= 30) {
+        return trimmed;
+    }
+
+    const line1 = trimmed.substring(0, 30);
+    const line2Raw = trimmed.substring(30, 60);
+    const isTruncated = trimmed.length > 60;
+    const line2 = isTruncated ? `${line2Raw}...` : line2Raw;
+
+    return `${line1}\n${line2}`;
+};
 
 function renderLiquidLabel(doc, data, x, y, width, height) {
 
@@ -523,6 +546,8 @@ function renderLiquidLabel(doc, data, x, y, width, height) {
     cy += normalFontSize + 3;
 
     // ===== Diet Remark =====
+    const formattedDietRemark = formatDtRem(data.diet_remark);
+
     doc
         .font('Helvetica-Bold')
         .text('DtRem:', remarkLabelX, cy);
@@ -530,7 +555,7 @@ function renderLiquidLabel(doc, data, x, y, width, height) {
     doc
         .font('Helvetica')
         .text(
-            data.diet_remark || '-',
+            formattedDietRemark,
             remarkValueX,
             cy,
             {
@@ -539,13 +564,15 @@ function renderLiquidLabel(doc, data, x, y, width, height) {
             }
         );
 
-    const dietRemarkHeight = doc.heightOfString(data.diet_remark || '-', {
+    const dietRemarkHeight = doc.heightOfString(formattedDietRemark, {
         width: remarkTextWidth,
         lineGap: multilineLineGap
     });
     cy += Math.max(dietRemarkHeight, normalFontSize) + 3;
 
     // ===== Nursing Remark =====
+    const formattedNursingRemark = formatNurRem(data.nursing_remark);
+
     doc
         .font('Helvetica-Bold')
         .text('NurRem:', remarkLabelX, cy);
@@ -553,7 +580,7 @@ function renderLiquidLabel(doc, data, x, y, width, height) {
     doc
         .font('Helvetica')
         .text(
-            data.nursing_remark || '-',
+            formattedNursingRemark,
             remarkValueX,
             cy,
             {
@@ -562,7 +589,7 @@ function renderLiquidLabel(doc, data, x, y, width, height) {
             }
         );
 
-    const nursingRemarkHeight = doc.heightOfString(data.nursing_remark || '-', {
+    const nursingRemarkHeight = doc.heightOfString(formattedNursingRemark, {
         width: remarkTextWidth,
         lineGap: multilineLineGap
     });

@@ -482,21 +482,22 @@ export const getDietSheet = async (body, jwtUser) => {
             };
         });
 
-    // 6️⃣ Search
+    // 6️⃣ Search across all columns
     if (search) {
         result = result.filter(r =>
-            r.patient_name?.toLowerCase().includes(search) ||
-            r.ward?.toLowerCase().includes(search) ||
-            r.bed_no?.toLowerCase().includes(search)
+            Object.values(r).some(val =>
+                val !== null && val !== undefined && String(val).toLowerCase().includes(search)
+            )
         );
     }
 
-    // 7️⃣ Sort by location display_order (floor/ward order) -> bed_no -> mr_no
+    // 7️⃣ Sort by location floor order (floor/ward order) -> bed_no -> mr_no
     const locations = await prisma.location.findMany({
-        where: { is_active: true }
+        where: { is_active: true },
+        select: { name: true, floor_id: true, display_order: true }
     });
     const locationOrderMap = new Map(
-        locations.map(l => [l.name?.trim().toLowerCase(), l.display_order])
+        locations.map(l => [l.name?.trim().toLowerCase(), l.floor_id ?? l.display_order])
     );
 
     result.sort((a, b) => {
@@ -508,6 +509,18 @@ export const getDietSheet = async (body, jwtUser) => {
             : 999999;
 
         if (orderA !== orderB) return orderA - orderB;
+
+        // Extract floor number from ward string (e.g., "10F", "8F")
+        const extractFloor = (ward) => {
+            if (!ward) return 0;
+            const match = ward.match(/(\d+)F/i);
+            return match ? parseInt(match[1], 10) : 0;
+        };
+        const floorA = extractFloor(a.ward);
+        const floorB = extractFloor(b.ward);
+        if (floorA !== floorB) return floorA - floorB;
+
+        // Fallback to alphabetical ward comparison
         if (a.ward !== b.ward) return (a.ward || '').localeCompare(b.ward || '');
         const bedCompare = (a.bed_no || '').localeCompare(b.bed_no || '');
         if (bedCompare !== 0) return bedCompare;
@@ -734,21 +747,22 @@ export const getDietSheetLiquids = async (body, jwtUser) => {
             };
         });
 
-    // 5️⃣ Search
+    // 5️⃣ Search across all columns
     if (search) {
         result = result.filter(r =>
-            r.patient_name?.toLowerCase().includes(search) ||
-            r.ward?.toLowerCase().includes(search) ||
-            r.bed_no?.toLowerCase().includes(search)
+            Object.values(r).some(val =>
+                val !== null && val !== undefined && String(val).toLowerCase().includes(search)
+            )
         );
     }
 
-    // 6️⃣ Sort by location display_order (floor/ward order) -> bed_no -> mr_no
+    // 6️⃣ Sort by location floor order (floor/ward order) -> bed_no -> mr_no
     const locations = await prisma.location.findMany({
-        where: { is_active: true }
+        where: { is_active: true },
+        select: { name: true, floor_id: true, display_order: true }
     });
     const locationOrderMap = new Map(
-        locations.map(l => [l.name?.trim().toLowerCase(), l.display_order])
+        locations.map(l => [l.name?.trim().toLowerCase(), l.floor_id ?? l.display_order])
     );
 
     result.sort((a, b) => {
@@ -760,6 +774,18 @@ export const getDietSheetLiquids = async (body, jwtUser) => {
             : 999999;
 
         if (orderA !== orderB) return orderA - orderB;
+
+        // Extract floor number from ward string (e.g., "10F", "8F")
+        const extractFloor = (ward) => {
+            if (!ward) return 0;
+            const match = ward.match(/(\d+)F/i);
+            return match ? parseInt(match[1], 10) : 0;
+        };
+        const floorA = extractFloor(a.ward);
+        const floorB = extractFloor(b.ward);
+        if (floorA !== floorB) return floorA - floorB;
+
+        // Fallback to alphabetical ward comparison
         if (a.ward !== b.ward) return (a.ward || '').localeCompare(b.ward || '');
         const bedCompare = (a.bed_no || '').localeCompare(b.bed_no || '');
         if (bedCompare !== 0) return bedCompare;
@@ -812,9 +838,24 @@ export const downloadDietSheetLiquidsCsv = async (body, jwtUser) => {
         wardMap.get(wardName).push(r);
     }
 
+    // Helper to extract floor number from ward string
+    const extractFloor = (ward) => {
+        if (!ward) return 0;
+        const match = ward.match(/(\d+)F/i);
+        return match ? parseInt(match[1], 10) : 0;
+    };
+
     const rows = [];
 
-    for (const [wardName, records] of wardMap.entries()) {
+    // Sort wards by floor number then alphabetically
+    const sortedWardEntries = Array.from(wardMap.entries()).sort((a, b) => {
+        const floorA = extractFloor(a[0]);
+        const floorB = extractFloor(b[0]);
+        if (floorA !== floorB) return floorA - floorB;
+        return a[0].localeCompare(b[0]);
+    });
+
+    for (const [wardName, records] of sortedWardEntries) {
         // Ward Title row
         rows.push(escape(wardName));
         // Table Header row

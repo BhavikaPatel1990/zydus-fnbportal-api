@@ -259,6 +259,7 @@ const buildHinaiOrderListRow = ({
     admissionDateLabel,
     admissionDateOnly,
     approvedDateLabel,
+    dietTypeMap,
 }) => {
 
     const hasAdditionalDietDetail = Boolean(
@@ -285,6 +286,8 @@ const buildHinaiOrderListRow = ({
         hasAdditionalDietRemark
     );
 
+    const masterDietName = dietTypeMap?.get(Number(row.diet_type));
+
     return {
     patient_id: row.patient_id,
     mrn_no: row.mr_no ? row.mr_no.toString() : null,
@@ -292,13 +295,13 @@ const buildHinaiOrderListRow = ({
     bed_no: row.bed_no,
     ward: row.ward,
     doctor: row.doctor,
-    menu_name: row.menu,
+    menu_name: masterDietName || row.menu,
     menu_detail: row.menu_detail,
     order_date: row.order_date,
     order_date_label: orderDateLabel,
     diff: Math.floor((Date.now() - new Date(row.order_date)) / 60000),
     diet_type: row.diet_type,
-    diet_name: po?.dietTypeData?.diet_name || '',
+    diet_name: po?.dietTypeData?.diet_name || masterDietName || '',
     hinai_order_id: row.order_id,
     admission_date: row.admission_at,
     admission_date_label: admissionDateLabel,
@@ -459,17 +462,20 @@ const getMstIdFromSiteId = async (siteId) => {
     const parsedSiteId = toIntValue(siteId, 'site_id', { required: false });
     if (parsedSiteId === null) return null;
 
-    const siteList = await fetchSiteList();
+    try {
+        const siteList = await fetchSiteList();
+        const siteRecord = siteList.find(
+            (site) => Number(site.site_id) === parsedSiteId || Number(site.id) === parsedSiteId
+        );
 
-    const siteRecord = siteList.find(
-        (site) => Number(site.site_id) === parsedSiteId
-    );
-
-    if (!siteRecord) {
-        throw createNormalError(`No mst mapping found for site_id ${parsedSiteId}`);
+        if (siteRecord) {
+            return siteRecord.id; // mst_id
+        }
+    } catch (err) {
+        console.error('fetchSiteList error in getMstIdFromSiteId:', err.message);
     }
 
-    return siteRecord.id; // mst_id
+    return parsedSiteId;
 };
 
 const getMstIdDirect = async (mstId) => {
@@ -480,17 +486,20 @@ const getMstIdDirect = async (mstId) => {
     const parsedMstId = toIntValue(mstId, 'mst_id', { required: false });
     if (parsedMstId === null) return null;
 
-    const siteList = await fetchSiteList();
+    try {
+        const siteList = await fetchSiteList();
+        const siteRecord = siteList.find(
+            (site) => Number(site.id) === parsedMstId || Number(site.site_id) === parsedMstId
+        );
 
-    const siteRecord = siteList.find(
-        (site) => Number(site.id) === parsedMstId
-    );
-
-    if (!siteRecord) {
-        throw createNormalError(`Invalid mst_id ${parsedMstId}`);
+        if (siteRecord) {
+            return siteRecord.id;
+        }
+    } catch (err) {
+        console.error('fetchSiteList error in getMstIdDirect:', err.message);
     }
 
-    return siteRecord.id;
+    return parsedMstId;
 };
 
 const getUserMap = async (siteId) => {
@@ -723,14 +732,16 @@ export const upsertHinaiOrder = async (body, jwtUser) => {
     return isBulk ? { total: results.length, data: results } : results[0];
 };
 
+export const getTodayISTRange = () => {
+    const istDateStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    const startOfDay = new Date(`${istDateStr}T00:00:00.000+05:30`);
+    const endOfDay = new Date(`${istDateStr}T23:59:59.999+05:30`);
+    return { startOfDay, endOfDay };
+};
+
 const getTodayRange = () => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-
-    const end = new Date(start);
-    end.setDate(end.getDate() + 1);
-
-    return { start, end };
+    const { startOfDay, endOfDay } = getTodayISTRange();
+    return { start: startOfDay, end: endOfDay };
 };
 
 const toUpperTrimmed = (value) => {
@@ -1240,6 +1251,22 @@ export const getPatientOrderFormData = async (body, jwtUser) => {
         prefillNursingRemark = hinaiOrder.nurse_remark || '';
     }
 
+    const trimmedNurseRemark = toUpperTrimmed(prefillNursingRemark);
+    const trimmedMenuDetail = toUpperTrimmed(hinaiOrder.menu_detail);
+    const isExtraOrder =
+        hinaiOrder.menu?.toString().trim().toUpperCase() === 'EXTRA ORDER' ||
+        dietType === 18894123;
+
+    let initialNursingRemark = trimmedNurseRemark;
+    if (isExtraOrder && trimmedMenuDetail) {
+        if (!initialNursingRemark) {
+            initialNursingRemark = trimmedMenuDetail;
+        } else if (!initialNursingRemark.includes(trimmedMenuDetail)) {
+            const cleanRemark = initialNursingRemark.replace(/[\s,]+$/, '');
+            initialNursingRemark = `${cleanRemark} , ${trimmedMenuDetail}`;
+        }
+    }
+
     return {
         mode,
         patient: buildPatientPayload(hinaiOrder),
@@ -1249,7 +1276,7 @@ export const getPatientOrderFormData = async (body, jwtUser) => {
             nursingRemark:
                 mode === 'edit'
                     ? sourcePatientOrder?.nursing_remark || ''
-                    : toUpperTrimmed(prefillNursingRemark),
+                    : initialNursingRemark,
             dietRemark: sourcePatientOrder?.diet_remark || '',
         }),
         menu_items: menuTimes.map((menu) => {
@@ -1481,11 +1508,7 @@ export const getHinaiOrders = async (body, jwtUser) => {
     const mstId = await resolveSiteMapping(siteIdParam, 'mst_id');
     if (!mstId) throw new Error('Invalid site mapping');
 
-    const today = new Date();
-    const startOfDay = new Date(today);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(today);
-    endOfDay.setHours(23, 59, 59, 999);
+    const { startOfDay, endOfDay } = getTodayISTRange();
 
     let where = {
         mst_id: mstId,
@@ -1728,6 +1751,12 @@ export const getHinaiOrders = async (body, jwtUser) => {
     // Resolve usernames (created_by → name)
     const userMap = await getUserMap(mstId);
 
+    // Fetch DietType master map to ensure menu names match diet_type IDs
+    const dietTypesList = await prisma.dietType.findMany({
+        where: { is_active: true }
+    });
+    const dietTypeMap = new Map(dietTypesList.map(d => [Number(d.diet_type_id), d.diet_name]));
+
     // pagination AFTER grouping
     const total = uniqueRows.length;
     const paginated = uniqueRows.slice((page - 1) * limit, page * limit);
@@ -1764,6 +1793,7 @@ export const getHinaiOrders = async (body, jwtUser) => {
                 admissionDateLabel: admDate,
                 admissionDateOnly: admDt,
                 approvedDateLabel: approvedDate,
+                dietTypeMap,
             });
         })
     };
@@ -1884,6 +1914,22 @@ export const getPatientLiquidOrderFormData = async (body, jwtUser) => {
         prefillNursingRemark = hinaiOrder.nurse_remark || '';
     }
 
+    const trimmedNurseRemark = toUpperTrimmed(prefillNursingRemark);
+    const trimmedMenuDetail = toUpperTrimmed(hinaiOrder.menu_detail);
+    const isExtraOrder =
+        hinaiOrder.menu?.toString().trim().toUpperCase() === 'EXTRA ORDER' ||
+        dietType === 18894123;
+
+    let initialNursingRemark = trimmedNurseRemark;
+    if (isExtraOrder && trimmedMenuDetail) {
+        if (!initialNursingRemark) {
+            initialNursingRemark = trimmedMenuDetail;
+        } else if (!initialNursingRemark.includes(trimmedMenuDetail)) {
+            const cleanRemark = initialNursingRemark.replace(/[\s,]+$/, '');
+            initialNursingRemark = `${cleanRemark} , ${trimmedMenuDetail}`;
+        }
+    }
+
     let latestDietRemark = '';
     const latestLiquidOrder = await prisma.patientOrder.findFirst({
         where: {
@@ -1914,7 +1960,7 @@ export const getPatientLiquidOrderFormData = async (body, jwtUser) => {
             nursingRemark:
                 mode === 'edit'
                     ? sourcePatientOrder?.nursing_remark || ''
-                    : toUpperTrimmed(prefillNursingRemark),
+                    : initialNursingRemark,
             dietRemark:
                 mode === 'edit'
                     ? sourcePatientOrder?.diet_remark || ''
@@ -2173,7 +2219,7 @@ export const refreshHinaiOrders = async () => {
         const sql = `
 WITH cte AS (
     SELECT ip.ADMITTED_SITE ad_siteid, sc.site_id siteid, p.patient_id, p.mrno,
-           pm2.prefix||' '||p.patientname AS PATIENT, ip.admissionnumber,
+           replace(pm2.prefix||' '||p.patientname, '''', '') AS PATIENT, ip.admissionnumber,
            ip.admissiondate admdate, b.bed_id, dl.bedno AS bed_no,
            sc.service_center_name scname,
            pm.prefix||' '||e.employee_name AS DOCTOR,
@@ -2213,7 +2259,7 @@ WITH cte AS (
     UNION
 
     SELECT ip.ADMITTED_SITE ad_siteid, sc.site_id siteid, p.patient_id, p.mrno,
-           pm2.prefix||' '||p.patientname AS PATIENT, ip.admissionnumber,
+           replace(pm2.prefix||' '||p.patientname, '''', '') AS PATIENT, ip.admissionnumber,
            ip.admissiondate admdate, b.bed_id, b.bed_no,
            sc.service_center_name scname,
            pm.prefix||' '||e.employee_name AS DOCTOR,
@@ -2249,7 +2295,7 @@ WITH cte AS (
       AND ip.visit_patientstatus<>1122
       AND drd.id IS NOT NULL
       AND dc.name IS NOT NULL
-      AND dr.createddatetime >= SYSDATE - INTERVAL '24' HOUR
+      AND dr.createddatetime >= SYSDATE - INTERVAL '2' HOUR
 ),
 cte1 AS (
     SELECT ROW_NUMBER() OVER (PARTITION BY mrno,diettype ORDER BY cdate DESC) RN,
@@ -2266,10 +2312,16 @@ cte1 AS (
              username, isdietchanged, Diagnosis, agegender,
              mobileno, email, nurseremark, approveddate, plan_name
 )
-SELECT *
+SELECT ad_siteid, siteid, patient_id, mrno, PATIENT, admissionnumber,
+       TO_CHAR(admdate, 'YYYY-MM-DD hh24:mi') AS admdate_str, admdate,
+       bed_id, bed_no, scname, DOCTOR, NAME, menu,
+       TO_CHAR(cdate, 'yyyy-mm-dd hh24:mi') AS orddate_str, cdate,
+       ROUND(24*60*(TO_DATE(TO_CHAR(SYSDATE,'YYYY-MM-DD hh24:mi'), 'YYYY-MM-DD hh24:mi') - TO_DATE(TO_CHAR(cdate,'YYYY-MM-DD hh24:mi'), 'YYYY-MM-DD hh24:mi')), 0) AS diff,
+       diettype, hinaiorderid, username, isdietchanged, Diagnosis, agegender,
+       mobileno, email, nurseremark, approveddate, plan_name
 FROM cte1
 WHERE rn = 1
-  AND trunc(cdate) = trunc(SYSDATE)
+  AND TRUNC(cdate) = TRUNC(SYSDATE)
 `;
 
         const result = await connection.execute(
@@ -2279,81 +2331,97 @@ WHERE rn = 1
         );
 
         for (const row of result.rows) {
-            const mappedSiteId = await resolveSiteMapping(
-                row.SITEID, 'site_id'
-            );
+            const orderId = Number(row.HINAIORDERID);
+            if (!orderId) continue;
 
-            await prisma.hinaiOrder.upsert({
-                where: { order_id: Number(row.HINAIORDERID) },
-                update: {
-                    ward: row.SCNAME ? row.SCNAME.replace(/\s+/g, ' ').trim() : null,
-                    bed_no: row.BED_NO,
-                    is_transfer: false,
-                    is_discharge: false,
-                    plan_name: row.PLAN_NAME || null
-                },
-                create: {
-                    mst_id: mappedSiteId,
-                    patient_id: Number(row.PATIENT_ID),
-                    mr_no: BigInt(row.MRNO),
-                    patient_name: row.PATIENT,
-                    admission_no: row.ADMISSIONNUMBER,
-                    admission_at: new Date(row.ADMDATE),
-                    bed_no: row.BED_NO,
-                    ward: row.SCNAME ? row.SCNAME.replace(/\s+/g, ' ').trim() : null,
-                    doctor: row.DOCTOR,
-                    menu: row.MENU,
-                    menu_detail: row.NAME,
-                    order_date: new Date(row.CDATE),
-                    time_diff: Number(row.DIFF || 0),
-                    diet_type: Number(row.DIETTYPE),
-                    order_id: Number(row.HINAIORDERID),
-                    status: false,
-                    is_discharge: false,
-                    nursing_user: row.USERNAME,
-                    is_diet_change: Boolean(row.ISDIETCHANGED),
-                    is_transfer: false,
-                    age_gender: row.AGEGENDER,
-                    mobile_no: row.MOBILENO,
-                    email: row.EMAIL,
-                    nurse_remark: row.NURSEREMARK,
-                    approved_date: row.APPROVEDDATE ? new Date(row.APPROVEDDATE) : null,
-                    plan_name: row.PLAN_NAME || null,
-                    created_by: row.USERNAME || null,
-                    updated_by: row.USERNAME || null
-                }
+            const existingOrder = await prisma.hinaiOrder.findUnique({
+                where: { order_id: orderId },
+                select: { id: true }
             });
+
+            // PHP uses "INSERT IGNORE": if order already exists, do not overwrite existing state (is_discharge, is_transfer, etc.)
+            if (!existingOrder) {
+                const mappedSiteId = await resolveSiteMapping(
+                    row.SITEID, 'site_id'
+                );
+
+                const orderDateVal = row.CDATE ? new Date(row.CDATE) : new Date();
+                const admDateVal = row.ADMDATE ? new Date(row.ADMDATE) : new Date();
+                const approvedDateVal = row.APPROVEDDATE ? new Date(row.APPROVEDDATE) : null;
+                const timeDiffVal = row.DIFF !== undefined && row.DIFF !== null ? Number(row.DIFF) : 0;
+
+                await prisma.hinaiOrder.create({
+                    data: {
+                        mst_id: mappedSiteId,
+                        patient_id: Number(row.PATIENT_ID),
+                        mr_no: BigInt(row.MRNO),
+                        patient_name: row.PATIENT || '',
+                        admission_no: row.ADMISSIONNUMBER || '',
+                        admission_at: admDateVal,
+                        bed_no: row.BED_NO || '',
+                        ward: row.SCNAME ? row.SCNAME.replace(/\s+/g, ' ').trim() : '',
+                        doctor: row.DOCTOR || '',
+                        menu: row.MENU || '',
+                        menu_detail: row.NAME || '',
+                        order_date: orderDateVal,
+                        time_diff: timeDiffVal,
+                        diet_type: Number(row.DIETTYPE),
+                        order_id: orderId,
+                        status: false,
+                        is_discharge: false,
+                        nursing_user: row.USERNAME || '',
+                        is_diet_change: Boolean(row.ISDIETCHANGED),
+                        is_transfer: false,
+                        age_gender: row.AGEGENDER || '',
+                        mobile_no: row.MOBILENO || null,
+                        email: row.EMAIL || null,
+                        nurse_remark: row.NURSEREMARK || null,
+                        approved_date: approvedDateVal,
+                        diagnosis: row.DIAGNOSIS || null,
+                        plan_name: row.PLAN_NAME || null,
+                        created_by: row.USERNAME || null,
+                        updated_by: row.USERNAME || null
+                    }
+                });
+            }
         }
 
         // ===============================
-        // 2. DISCHARGE QUERY
+        // 2. DISCHARGE QUERY (Matching PHP sql1)
         // ===============================
         const dischargeResult = await connection.execute(
             `
-      select pa.admissionno, pa.patientid
-      from patientadmission pa
-      inner join visit v on v.visitid=pa.visitid
-      inner join inpatients ip on ip.visitid=v.visitid
-      inner join discharge d on d.visit=v.visitid
-      where d.dateofdischarge>=SYSDATE - INTERVAL '1' HOUR
-      and d.dateofdischarge is not null
-      `,
+            select pa.admissionno, pa.patientid, to_char(d.dateofdischarge,'dd/MM/yyyy') dod
+            from patientadmission pa 
+            left join visit v on v.visitid=pa.visitid
+            left join discharge d on d.visit=v.visitid
+            left join patient p on p.patient_id=pa.patientid
+            inner join inpatients ip on ip.patientadmissionid = pa.admissionid
+            inner join hisdepartment hd on ip.department = hd.department_id
+            where d.dateofdischarge >= SYSDATE - INTERVAL '1' HOUR
+              and d.dateofdischarge is not null
+            `,
             {},
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
 
         for (const row of dischargeResult.rows) {
-            await prisma.hinaiOrder.updateMany({
-                where: {
-                    admission_no: row.ADMISSIONNO,
-                    patient_id: Number(row.PATIENTID)
-                },
-                data: {
-                    is_discharge: true,
-                    updated_at: new Date(),
-                    updated_by: 'system'
-                }
-            });
+            const admNo = row.ADMISSIONNO || row.admissionno;
+            const patientId = Number(row.PATIENTID || row.patientid);
+
+            if (admNo && patientId) {
+                await prisma.hinaiOrder.updateMany({
+                    where: {
+                        admission_no: admNo,
+                        patient_id: patientId
+                    },
+                    data: {
+                        is_discharge: true,
+                        updated_at: new Date(),
+                        updated_by: 'system'
+                    }
+                });
+            }
         }
 
         // ===============================
@@ -2420,34 +2488,36 @@ WHERE rn = 1
             }
         }
 
-
-
         // ===============================
-        // 3. TRANSFER QUERY
+        // 3. TRANSFER QUERY (Matching PHP sqltran)
         // ===============================
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+
+        const endOfToday = new Date(startOfToday);
+        endOfToday.setDate(endOfToday.getDate() + 1);
+
         const transferResult = await connection.execute(
             `
-      select * from (
-        select row_number() over(partition by from_patientid order by treq.transfer_id desc) trid,
-               pat.patient_id,
-               tosc.service_center_name as toWard,
-               tob.bed_no as toBed
-        from transferrequest treq
-        inner join patient pat on pat.patient_id = treq.from_patientid
-        left join bed tob on tob.bed_id = treq.to_bedid
-        inner join servicecenter tosc on tosc.service_center_id=treq.servicecenter_id
-        where TRUNC(treq.createddt) = TRUNC(SYSDATE)
-        and pat.patient_id<>396106
-        and treq.to_bedid is not null
-        and treq.request_status = 352
-      ) where trid = 1
-      `,
+            select * from (
+              select row_number() over(partition by from_patientid order by treq.transfer_id desc) trid,
+                     pat.patient_id,
+                     tosc.service_center_name as toWard,
+                     tob.bed_no as toBed
+              from transferrequest treq
+              inner join patient pat on pat.patient_id = treq.from_patientid
+              left join bed tob on tob.bed_id = treq.to_bedid
+              inner join servicecenter tosc on tosc.service_center_id=treq.servicecenter_id
+              where TRUNC(treq.createddt) = TRUNC(SYSDATE)
+                and pat.patient_id <> 396106
+                and treq.to_bedid is not null
+                and treq.request_status = 352
+            ) where trid = 1
+            `,
             {},
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
 
-        // console.log(' transfer data ');
-        
         for (const row of transferResult.rows) {
             const patientId = Number(row.PATIENT_ID || row.patient_id);
             const toWard = row.TOWARD || row.toWard;
@@ -2460,7 +2530,10 @@ WHERE rn = 1
                 await prisma.hinaiOrder.updateMany({
                     where: {
                         patient_id: patientId,
-                        is_discharge: false
+                        created_at: {
+                            gte: startOfToday,
+                            lt: endOfToday
+                        }
                     },
                     data: {
                         is_transfer: true,
@@ -2500,84 +2573,106 @@ WHERE rn = 1
 };
 
 export const getHinaiOrderSummary = async (body, jwtUser) => {
-
-    const siteIdParam =
-        getFirstDefined(body, ['site_id']) ||
-        jwtUser?.siteID;
+    const siteIdParam = getFirstDefined(body, ['site_id']) || jwtUser?.siteID;
     if (!siteIdParam) {
         throw new Error('site id is required');
     }
 
-    const viewdata = body.view_data || 'today';
-    const ordertype = body.order_type || 'all';
+    const viewdata = getFirstDefined(body, ['view_data', 'viewdata']) || 'today';
+    const ordertype = getFirstDefined(body, ['order_type', 'ordertype']) || 'all';
 
     const mstId = await resolveSiteMapping(siteIdParam, 'mst_id');
-
     if (!mstId) {
         throw new Error('Invalid site mapping');
     }
 
-    const today = new Date();
+    const { startOfDay, endOfDay } = getTodayISTRange();
 
-    const startOfDay = new Date(today);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(today);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    let dateCondition = Prisma.empty;
-    let orderTypeCondition = Prisma.empty;
+    const where = {
+        mst_id: BigInt(mstId),
+        is_discharge: false,
+        is_active: true,
+    };
 
     if (viewdata === 'today') {
-        dateCondition = Prisma.sql`
-            AND order_date >= ${startOfDay}
-            AND order_date <= ${endOfDay}
-        `;
-    }
-    if (ordertype === 'extra' && viewdata === 'today') {
-        orderTypeCondition = Prisma.sql`
-            AND menu = 'EXTRA ORDER'
-        `;
+        where.order_date = {
+            gte: startOfDay,
+            lte: endOfDay,
+        };
     }
 
-    const latestOrders = await prisma.$queryRaw`
-        SELECT DISTINCT ON (patient_id)
-            patient_id,
-            order_id,
-            menu,
-            status
-        FROM "HinaiOrder"
-        WHERE
-            mst_id = ${BigInt(mstId)}
-            AND is_discharge = false
-            AND is_active = true
-            ${dateCondition}
-            ${orderTypeCondition}
-        ORDER BY patient_id, order_id DESC
-    `;
+    if (ordertype === 'extra') {
+        where.menu = 'EXTRA ORDER';
+        where.diet_type = 18894123;
+    } else if (ordertype === 'regular') {
+        where.menu = { not: 'EXTRA ORDER' };
+        where.diet_type = { not: 18894123 };
+    }
 
-    const total_orders = latestOrders.filter(
-        x => x.menu !== 'EXTRA ORDER'
-    ).length;
+    const rows = await prisma.hinaiOrder.findMany({
+        where,
+        orderBy: [
+            { order_date: 'desc' },
+            { approved_date: 'desc' },
+            { order_id: 'desc' },
+        ],
+        include: {
+            patientOrders: {
+                where: { is_active: true },
+                orderBy: { created_at: 'desc' },
+                take: 1,
+            },
+        },
+    });
 
-    const punched_orders = latestOrders.filter(
-        x => x.menu !== 'EXTRA ORDER' && x.status === true
-    ).length;
+    // Group by patient_id (latest order per patient)
+    const map = new Map();
+    for (const row of rows) {
+        if (!map.has(row.patient_id)) {
+            map.set(row.patient_id, row);
+        }
+    }
+    const latestOrders = Array.from(map.values());
 
-    const pending_order_punch = latestOrders.filter(
-        x => x.menu !== 'EXTRA ORDER' && x.status === false
-    ).length;
+    let total_orders = 0;
+    let punched_orders = 0;
+    let pending_order_punch = 0;
+    let pending_extra_order_punch = 0;
 
-    const pending_extra_order_punch = latestOrders.filter(
-        x => x.menu === 'EXTRA ORDER' && x.status === false
-    ).length;
+    for (const row of latestOrders) {
+        const isExtra = row.menu === 'EXTRA ORDER' || row.diet_type === 18894123;
+        const hasActivePo = row.patientOrders?.some(po => !po.is_cancelled);
+        const isPunched = row.status === true || Boolean(hasActivePo);
+
+        if (ordertype === 'extra') {
+            total_orders++;
+            if (isPunched) {
+                punched_orders++;
+            } else {
+                pending_extra_order_punch++;
+            }
+        } else {
+            if (!isExtra) {
+                total_orders++;
+                if (isPunched) {
+                    punched_orders++;
+                } else {
+                    pending_order_punch++;
+                }
+            } else {
+                if (!isPunched) {
+                    pending_extra_order_punch++;
+                }
+            }
+        }
+    }
 
     return {
         total_orders,
         punched_orders,
         pending_order_punch,
         pending_extra_order_punch,
-        totals: `Total Orders: ${total_orders} | Punched Orders: ${punched_orders}| Pending Order Punch: ${pending_order_punch}| Pending Extra Order Punch: ${pending_extra_order_punch}`
+        totals: `Total Orders: ${total_orders} | Punched Orders: ${punched_orders}| Pending Order Punch: ${pending_order_punch}| Pending Extra Order Punch: ${pending_extra_order_punch}`,
     };
 };
 

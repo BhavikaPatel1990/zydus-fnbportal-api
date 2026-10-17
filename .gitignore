@@ -9,3 +9,5 @@ Zydus_FNB_Portal_API.postman_collection.json
 .vscode/settings.json
 /.vscode
 /docs
+phpcode/*
+requirement.md
